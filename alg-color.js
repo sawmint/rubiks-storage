@@ -15,21 +15,21 @@
 /* Single-pass tokenizer. The regex tries, in order:
  *   1. whitespace          → kind: "space"
  *   2. parenthesis         → kind: "paren"
- *   3. wide notation (Rw)  → kind: "move", head=Rw
- *   4. single-char move    → kind: "move", head=R|r|M|x|...
- *      ...followed by optional modifier: '', "'", "2", or "2'"
- *      ...then a negative lookahead so a move-letter directly followed
- *         by another letter isn't colored (e.g. "Right" — the R isn't a
- *         move). The corresponding lookBEHIND is done MANUALLY in the
- *         loop below: regex literals with `(?<=...)` are a SyntaxError
- *         on iOS Safari < 16.4, which would kill the entire module at
- *         parse time and cascade-blank the whole PWA on older phones.
+ *   3. move + non-empty modifier (', 2, or 2'), no trailing-letter constraint
+ *      — the modifier itself is a clear move terminator, so `R'U` (no
+ *      space) tokenizes cleanly as R' then U.
+ *   4. move with NO modifier, but only if not followed by another letter
+ *      — guards against prose like "Right" / "fix" coloring R / x.
+ *   The corresponding lookBEHIND is done MANUALLY in the loop below:
+ *   regex literals with `(?<=...)` are a SyntaxError on iOS Safari
+ *   < 16.4, which would kill the entire module at parse time and
+ *   cascade-blank the whole PWA on older phones.
  *
  * Anything not matched falls through as raw text so callers can pass
  * arbitrary notation without crashing the renderer.
  */
 const TOKEN_RE =
-  /(\s+)|([()])|(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])((?:'|2'?)?)(?![A-Za-z])/g;
+  /(\s+)|([()])|(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])(?:('|2'?)|(?![A-Za-z]))/g;
 
 const IS_LETTER_RE = /[A-Za-z]/;
 

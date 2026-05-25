@@ -491,19 +491,26 @@ function renderOllChoices() {
   wrap.appendChild(grid);
 }
 
+/* Returns up to min(n, pool.length - 1) distractors. Prefers different
+ * recognitionGroup first (so the user isn't asked to disambiguate two
+ * visually-identical cases), then falls back to same-group items. Today
+ * pool is always all 57 OLLs and n ≤ 5, so the clamp is purely defensive
+ * — but it keeps the contract explicit if pool shrinks in the future. */
 function pickDistractors(correct, pool, n) {
-  // Prefer ones from a different recognitionGroup
+  const max = Math.max(0, pool.length - 1);
+  const want = Math.min(n, max);
+  if (want === 0) return [];
   const candidates = pool.filter((o) =>
     o.id !== correct.id && o.recognitionGroup !== correct.recognitionGroup
   );
   shuffle(candidates);
-  if (candidates.length >= n) return candidates.slice(0, n);
-  // Fallback: include any other OLL if needed
+  if (candidates.length >= want) return candidates.slice(0, want);
+  // Fall back to same-recognitionGroup items to fill the remainder
   const others = pool.filter((o) =>
     o.id !== correct.id && !candidates.includes(o)
   );
   shuffle(others);
-  return [...candidates, ...others].slice(0, n);
+  return [...candidates, ...others].slice(0, want);
 }
 
 function judgeOll(picked) {

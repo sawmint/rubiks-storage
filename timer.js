@@ -315,7 +315,7 @@ function renderSolvesList() {
     t.className = "timer-solve-time";
     t.textContent = sessions.fmtSolve(s);
     if (s.phases && s.phases.length > 1) {
-      t.title = s.phases.map((cum, idx) => `${labelForPhaseIndex(idx)}: ${(cum / 1000).toFixed(2)}`).join("\n");
+      t.title = s.phases.map((cum, phaseIdx) => `${labelForPhaseIndex(phaseIdx)}: ${(cum / 1000).toFixed(2)}`).join("\n");
     }
     t.title = (t.title ? t.title + "\n\n" : "") + `Scramble: ${s.scramble}`;
     if (s.comment) t.title += `\n\nNote: ${s.comment}`;
@@ -637,12 +637,12 @@ function cancelInspectionInterval() {
 }
 
 /* Keep ticking through the entire pre-solve inspection cycle, including the
- * "arming" / "armed" hold-states. The previous behavior cancelled the
- * interval as soon as state left "inspecting", which froze the countdown
- * AND stopped the +2/DNF threshold checks — meaning a user could hold past
- * 17s and bypass the WCA DNF entirely. Now the timer keeps firing; only
- * the display update is suppressed during arming/armed so those state
- * colors stay on screen. */
+ * "arming" / "armed" hold-states. Updates BOTH the threshold checks
+ * (+2 banking and the auto-DNF at limit+2s) AND the visible countdown
+ * — holding space to re-arm during inspection should not freeze the
+ * displayed seconds. Only the className is gated by state so the
+ * green/yellow arm colors from the state-transition handlers aren't
+ * overwritten during arming/armed. */
 function inspectionTick() {
   if (!session) { cancelInspectionInterval(); return; }
   const inInspectCycle =
@@ -669,21 +669,24 @@ function inspectionTick() {
     session.inspectionPenalty = "+2";
   }
 
-  // Suppress display updates while the user is holding/armed — let the
-  // arming/armed style win so visual state is consistent with what the hand
-  // is doing. The countdown resumes the moment focus returns to "inspecting".
-  if (session.state !== "inspecting") return;
-
+  // Always update the visible countdown — including during arming/armed.
+  // Without this the displayed seconds freeze the moment the user holds
+  // space to re-arm, which misleads them about how much inspection time
+  // they have left.
   if (elapsed >= totalMs) {
     session.ui.timeDisplay.textContent = "+2";
-    session.ui.timeDisplay.className = "timer-time timer-inspecting timer-bad";
   } else {
     const remaining = Math.max(0, totalMs - elapsed);
-    const secsLeft = Math.ceil(remaining / 1000);
-    session.ui.timeDisplay.textContent = String(secsLeft);
+    session.ui.timeDisplay.textContent = String(Math.ceil(remaining / 1000));
+  }
+
+  // className is owned by the state-transition handlers during arming/armed
+  // so we don't clobber the green/yellow arm colors. While in pure
+  // inspecting, drive the warn/bad bands here.
+  if (session.state === "inspecting") {
     let cls = "timer-time timer-inspecting";
-    // Warn/bad bands scale to the configured duration (≥80% bad, ≥53% warn)
-    if (elapsed >= totalMs * 0.80) cls += " timer-bad";
+    if (elapsed >= totalMs) cls += " timer-bad";
+    else if (elapsed >= totalMs * 0.80) cls += " timer-bad";
     else if (elapsed >= totalMs * 0.53) cls += " timer-warn";
     session.ui.timeDisplay.className = cls;
   }
