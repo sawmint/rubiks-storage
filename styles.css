@@ -773,24 +773,6 @@ details.alternates[open] summary { color: var(--text); }
   gap: var(--space-2);
 }
 
-/* ----- footer ----- */
-.site-footer {
-  border-top: 1px solid var(--border);
-  background: var(--bg-elev);
-  margin-top: var(--space-8);
-}
-.footer-inner {
-  display: flex;
-  align-items: center;
-  padding: var(--space-4) var(--space-5);
-  font-size: 12px;
-  color: var(--text-muted);
-  gap: var(--space-3);
-}
-.footer-spacer { flex: 1; }
-.footer-link { color: var(--text-muted); }
-.footer-link:hover { color: var(--accent); }
-
 /* ----- recognition settings screen ----- */
 .recog-settings {
   display: flex;

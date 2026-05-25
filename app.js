@@ -162,7 +162,6 @@ async function init() {
   selection.subscribe(updateSelectionUI);
   // Re-render cards when stats change so the badges stay fresh
   stats.subscribe(() => render());
-  renderFooter();
   selectCategory(state.category);
 }
 
@@ -583,19 +582,6 @@ function bindThemeToggle() {
     document.documentElement.setAttribute("data-theme", next);
     localStorage.setItem("rs-theme", next);
   });
-}
-
-/* ---------- footer / meta ---------- */
-
-function renderFooter() {
-  const meta = state.data.meta || {};
-  const counts = meta.counts || {};
-  const parts = [];
-  if (meta.generated_by) parts.push(meta.generated_by);
-  if (counts.pll || counts.oll || counts.f2l_advanced) {
-    parts.push(`${counts.pll || "?"} PLL · ${counts.oll || "?"} OLL · ${counts.f2l_advanced || "?"} F2L-adv · ${counts.f2l_beginner || "?"} F2L-beg`);
-  }
-  document.getElementById("meta-info").textContent = parts.join("  ·  ");
 }
 
 /* ---------- utils ---------- */
