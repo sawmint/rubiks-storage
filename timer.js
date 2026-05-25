@@ -346,9 +346,8 @@ function renderSolvesList() {
 /* ---------- per-solve comment popover ---------- */
 
 function openCommentPopover(anchor, solve) {
-  // Re-clicking the same pill toggles closed; clicking a different pill closes
-  // the previous popover before opening the new one. Either way the prior
-  // dismiss listeners are cleaned up by close().
+  // Re-clicking the same pill toggles closed; clicking a different pill
+  // closes the previous popover before opening the new one.
   if (activeCommentPopover) {
     const wasSame = activeCommentPopover.solveId === solve.id;
     activeCommentPopover.close();
@@ -356,49 +355,85 @@ function openCommentPopover(anchor, solve) {
     if (wasSame) return;
   }
 
-  const pop = document.createElement("div");
-  pop.className = "timer-comment-pop";
-  pop.dataset.solveId = solve.id;
+  // Backdrop overlay sits at top of stacking — clicking it closes the editor
+  // while clicking inside the card doesn't. This sidesteps the z-index dance
+  // with the timer modal entirely (the backdrop is body-attached and above
+  // everything in the timer UI) and dims the timer content so the note
+  // editor visually pops as the foreground task.
+  const backdrop = document.createElement("div");
+  backdrop.className = "timer-comment-backdrop";
 
+  const card = document.createElement("div");
+  card.className = "timer-comment-pop";
+  card.dataset.solveId = solve.id;
+  backdrop.appendChild(card);
+
+  // Header: title + close button
   const head = document.createElement("div");
   head.className = "timer-comment-head";
-  head.textContent = `Note · ${sessions.fmtSolve(solve)}`;
-  pop.appendChild(head);
+  const headTitle = document.createElement("div");
+  headTitle.className = "timer-comment-title";
+  headTitle.textContent = `Note for solve · ${sessions.fmtSolve(solve)}`;
+  head.appendChild(headTitle);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "timer-comment-close";
+  closeBtn.setAttribute("aria-label", "Close note editor");
+  closeBtn.textContent = "×";
+  closeBtn.addEventListener("click", () => closeAndForget());
+  head.appendChild(closeBtn);
+  card.appendChild(head);
 
+  // Scramble section with explicit label so user knows what they're looking at
+  const scrambleLabel = document.createElement("div");
+  scrambleLabel.className = "timer-comment-section-label";
+  scrambleLabel.textContent = "Scramble";
+  card.appendChild(scrambleLabel);
   const scrambleRow = document.createElement("div");
   scrambleRow.className = "timer-comment-scramble";
-  scrambleRow.innerHTML = colorizeAlg(solve.scramble || "");
-  pop.appendChild(scrambleRow);
+  scrambleRow.innerHTML = solve.scramble
+    ? colorizeAlg(solve.scramble)
+    : '<span style="color:var(--text-faint)">(no scramble recorded)</span>';
+  card.appendChild(scrambleRow);
 
+  // Note section
+  const noteLabel = document.createElement("div");
+  noteLabel.className = "timer-comment-section-label";
+  noteLabel.textContent = "Note";
+  card.appendChild(noteLabel);
   const textarea = document.createElement("textarea");
   textarea.className = "timer-comment-textarea";
-  textarea.rows = 3;
-  textarea.placeholder = "Note for this solve (e.g. \"messed up PLL recognition\")";
+  textarea.rows = 6;
+  textarea.placeholder = "e.g. \"locked up on PLL recognition\", \"bad cross — should drill that case\"";
   textarea.value = solve.comment || "";
-  pop.appendChild(textarea);
+  card.appendChild(textarea);
 
+  // Hint row (keyboard shortcuts)
+  const hint = document.createElement("div");
+  hint.className = "timer-comment-hint";
+  hint.textContent = "Ctrl/⌘+Enter to save · Esc to cancel";
+  card.appendChild(hint);
+
+  // Actions
   const actions = document.createElement("div");
   actions.className = "timer-comment-actions";
-
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
-  cancelBtn.className = "btn btn-small";
+  cancelBtn.className = "btn";
   cancelBtn.textContent = "Cancel";
   cancelBtn.addEventListener("click", () => closeAndForget());
-
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
-  saveBtn.className = "btn btn-primary btn-small";
-  saveBtn.textContent = "Save";
+  saveBtn.className = "btn btn-primary";
+  saveBtn.textContent = "Save note";
   saveBtn.addEventListener("click", () => {
     sessions.setSolveComment(solve.id, textarea.value.trim());
     closeAndForget();
   });
-
   actions.append(cancelBtn, saveBtn);
-  pop.appendChild(actions);
+  card.appendChild(actions);
 
-  // Ctrl/Cmd+Enter to save, Esc to cancel
+  // Keyboard shortcuts inside the textarea
   textarea.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -409,14 +444,31 @@ function openCommentPopover(anchor, solve) {
     }
   });
 
-  // Body-attached + fixed positioning, so a session re-render (which does
-  // `solves-list.innerHTML = ""` on every solve/penalty change) doesn't nuke
-  // the popover and lose the user's unsaved typing.
-  document.body.appendChild(pop);
-  positionCommentPopover(pop, anchor);
+  // Backdrop click = close; clicks bubbling from the card itself don't
+  backdrop.addEventListener("click", (e) => {
+    if (e.target === backdrop) closeAndForget();
+  });
 
-  const dismiss = attachPopoverDismiss(pop, anchor);
-  const handle = { pop, anchor, solveId: solve.id, close: dismiss.close };
+  // Top-level Esc handler in case focus isn't in the textarea
+  function onEscape(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAndForget();
+    }
+  }
+  document.addEventListener("keydown", onEscape, true);
+
+  document.body.appendChild(backdrop);
+
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener("keydown", onEscape, true);
+    backdrop.remove();
+  }
+  const handle = { pop: card, backdrop, anchor, solveId: solve.id, close };
   activeCommentPopover = handle;
 
   function closeAndForget() {
@@ -424,23 +476,11 @@ function openCommentPopover(anchor, solve) {
     handle.close();
   }
 
-  setTimeout(() => textarea.focus(), 0);
-}
-
-/* Place the popover near the anchor pencil pill. Right-align to the pill,
- * drop below; clamp horizontally inside the viewport. Vertical clamping
- * keeps it on-screen if the row is near the modal's bottom edge. */
-function positionCommentPopover(pop, anchor) {
-  const r = anchor.getBoundingClientRect();
-  const popW = pop.offsetWidth || 320;
-  const popH = pop.offsetHeight || 180;
-  let left = r.right - popW;
-  if (left < 8) left = 8;
-  if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-  let top = r.bottom + 4;
-  if (top + popH > window.innerHeight - 8) top = Math.max(8, r.top - popH - 4);
-  pop.style.left = left + "px";
-  pop.style.top = top + "px";
+  setTimeout(() => {
+    textarea.focus();
+    // Place caret at end so user can keep typing on a saved note
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+  }, 0);
 }
 
 function mkPenaltyBtn(label, value, s) {
@@ -837,6 +877,17 @@ function openSessionManager() {
     });
     row.appendChild(rename);
 
+    const exp = document.createElement("button");
+    exp.type = "button";
+    exp.className = "timer-pill";
+    exp.textContent = "export";
+    exp.title = "Download this session as a JSON file";
+    exp.addEventListener("click", () => {
+      const json = sessions.exportSession(s.id);
+      if (json) downloadJson(json, `${slugify(s.name)}-${dateStamp()}.json`);
+    });
+    row.appendChild(exp);
+
     const del = document.createElement("button");
     del.type = "button";
     del.className = "timer-pill timer-pill-del";
@@ -852,6 +903,9 @@ function openSessionManager() {
     pop.appendChild(row);
   }
 
+  const footer = document.createElement("div");
+  footer.className = "timer-session-pop-footer";
+
   const newBtn = document.createElement("button");
   newBtn.type = "button";
   newBtn.className = "btn btn-small";
@@ -863,7 +917,20 @@ function openSessionManager() {
       closeAndForget();
     }
   });
-  pop.appendChild(newBtn);
+  footer.appendChild(newBtn);
+
+  const exportAllBtn = document.createElement("button");
+  exportAllBtn.type = "button";
+  exportAllBtn.className = "btn btn-small";
+  exportAllBtn.textContent = "Export all";
+  exportAllBtn.title = "Download all sessions as one JSON file";
+  exportAllBtn.addEventListener("click", () => {
+    const json = sessions.exportAll();
+    downloadJson(json, `rubiks-storage-sessions-${dateStamp()}.json`);
+  });
+  footer.appendChild(exportAllBtn);
+
+  pop.appendChild(footer);
 
   session.ui.sessionLabel.insertAdjacentElement("afterend", pop);
   const dismiss = attachPopoverDismiss(pop, session.ui.sessionLabel);
@@ -963,4 +1030,33 @@ function defaultLabelsFor(n) {
   if (n === 3) return ["Cross+F2L", "OLL", "PLL"];
   if (n === 4) return ["Cross", "F2L", "OLL", "PLL"];
   return new Array(n).fill(0).map((_, i) => `Phase ${i + 1}`);
+}
+
+/* ---------- export helpers ---------- */
+
+function downloadJson(jsonText, filename) {
+  const blob = new Blob([jsonText], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Release the object URL after the click has had time to start the download
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function slugify(s) {
+  return String(s || "session")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    || "session";
+}
+
+function dateStamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }

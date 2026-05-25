@@ -236,6 +236,10 @@ function bindOpenTimer() {
     const mod = await import("./timer.js");
     mod.openTimer();
   });
+  document.getElementById("open-weak-cases")?.addEventListener("click", async () => {
+    const mod = await import("./weak-cases.js");
+    mod.start(state.data);
+  });
 }
 
 /* ---------- selection toolbar ---------- */

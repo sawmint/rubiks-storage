@@ -182,6 +182,39 @@ export function setSolveComment(solveId, comment) {
   save();
 }
 
+/* ---------- export ---------- */
+
+/* Serialize a single session as a pretty JSON string. Wraps with a small
+ * envelope (schema + exportedAt) so the file is self-describing and forward
+ * compatible with a future import path. */
+export function exportSession(id) {
+  load();
+  const sess = cache.sessions[id];
+  if (!sess) return null;
+  const payload = {
+    kind: "rs-session-export",
+    schema: SCHEMA,
+    exportedAt: new Date().toISOString(),
+    phaseConfig: cache.phaseConfig,
+    session: sess,
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/* Serialize all sessions in one file. Same envelope, multiple sessions. */
+export function exportAll() {
+  load();
+  const payload = {
+    kind: "rs-sessions-export",
+    schema: SCHEMA,
+    exportedAt: new Date().toISOString(),
+    phaseConfig: cache.phaseConfig,
+    inspection: cache.inspection,
+    sessions: cache.sessions,
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
 export function clearActiveSession() {
   const sess = getActiveSession();
   if (!sess) return;

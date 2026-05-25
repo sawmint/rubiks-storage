@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v26";
+const CACHE_VERSION = "rs-v27";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -28,6 +28,7 @@ const CORE_ASSETS = [
   "./sessions.js",
   "./batch.js",
   "./alg-color.js",
+  "./weak-cases.js",
   "./pll-compose.json",
   "./rubiks-cube-algorithms.json",
   "./manifest.webmanifest",

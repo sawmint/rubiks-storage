@@ -15,6 +15,8 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `sessions.js` — timer sessions + solves persistence; WCA stats helpers (ao5/ao12/mean/best)
 - `scramble-3x3.js` — random-move 3x3 scramble generator with prefetch hooks
 - `batch.js` — chained PLL batch drill (one short scramble + 5 algs, cube ends solved)
+- `weak-cases.js` — "Today's drill" modal: ranks drillable cases by weakness, delegates to drill/batch
+- `alg-color.js` — tokenizer + colorizer for cube notation (used everywhere algs are displayed)
 - `pll-compose.json` — precomputed PLL composition lookup (288 LL states × 21 PLLs); generated server-side by pycuber
 - `rubiks-cube-algorithms.json` — dataset (PLL/OLL include `setup` and OLL has `recognitionGroup`). No `alternates` field — those were removed after a data-quality audit showed 48/66 alternates didn't actually solve their case; only `algorithm` is trusted
 - `scripts/compute-setups.py` — one-time pycuber script that generated setup + recognitionGroup
@@ -131,15 +133,36 @@ To regenerate `pll-compose.json` (if PLL setups change or new ones are added), s
 - Working directory is `/home/arjun/WebstormProjects/Rubik's Storage` (quote — apostrophe).
 - The user is impatient with reverts/misinterpretation. When they say "X is supposed to do Y", believe them and don't second-guess. If a request seems mathematically impossible, push back specifically rather than implementing the wrong thing twice.
 
-## Planned (user-requested, not yet built)
-- **Suggest weak cases** (a.k.a. "today's drill"): use existing `rs-stats-v2` to surface the N cases practiced least or with the slowest `best`. Open them in drill or batch directly. Foundation for spaced repetition.
-- **Per-solve comments + session export**: click a row in the timer solves table to add a note string (already in the schema as `comment: ""`). Add an "Export session as JSON" button so sessions can be backed up or migrated between devices.
-- **Color-coded algorithm text**: render each move's face letter in a color so algs are easier to scan. User-specified palette:
-  - `D` = green, `R` = orange, `U` = blue, `L` = white, `F` = yellow, `B` = purple
-  - `M` = turquoise, `E` = lavender, `S` = scarlet
-  - `x` = red, `y` = pink, `z` = brown
-  - Lowercase (wide moves) use the same color as their uppercase counterpart.
-  - Implementation: tokenize algorithm strings in `algRow()` (app.js) and the batch.js alg display, wrap each token's leading face letter in a `<span>` with a class like `move-letter move-R`. Modifiers (`'`, `2`) inherit the surrounding color or stay neutral.
+## Color-coded algorithm text
+`alg-color.js` tokenizes cube notation and returns colored HTML. Used by `algRow()` (app.js), `renderCurrent()` + initial scramble (batch.js), the drill+timer scramble displays, and recognition feedback. Palette is theme-aware CSS vars in `:root` and `[data-theme="dark"]`:
+- `D` green, `R` orange, `U` blue, `L` "white" (dark-gray in light mode for readability), `F` yellow (mustard in light), `B` purple
+- `M` turquoise, `E` lavender (lighter purple, distinct from B), `S` scarlet (darker red, distinct from x)
+- `x` red, `y` pink, `z` brown
+- Lowercase wide moves (r, l, u, d, f, b) share the color of their uppercase face.
+
+Tokenizer regex uses lookbehind + lookahead so prose like "fix" or "Right" doesn't get partially colored. Whitespace, parens, and unknown chars fall through as raw escaped text.
+
+## Per-solve comments
+✎ pill in each timer-solves row opens a backdrop-overlaid editor card (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` with z-index 1000, sitting above the timer modal. The card shows the solve's time, the colored scramble (clearly labeled), and a multi-line textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes. Comment persists at `sess.solves[i].comment` (schema was already in place).
+
+Key architectural note: the editor lives on `document.body`, NOT inside the solves list. The timer's sessions listener runs `renderSolvesList` (which does `list.innerHTML = ""`) on every solve/penalty/comment change — if the editor were inside the list, it would be wiped along with the user's in-progress typing. Same reason any popover spawned from inside the timer modal should follow this pattern.
+
+`attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")` and a scroll-close, returning a `close()` function used by every dismissal path. Applied to comment, session-manager, and settings popovers — without it the document-level click listeners leaked.
+
+## Session export
+`sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, and an `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all. Import path not built yet — the envelope schema makes future import straightforward.
+
+## Weak cases ("Today's drill")
+`weak-cases.js` is a small modal that surfaces drillable cases the user has practiced least or is slowest on, using `stats.getAll()`. Ranking:
+1. Unpracticed cases first (no drill record or n=0), sorted by id.
+2. Then practiced, sorted by slowest `best` descending.
+3. Tiebreak: oldest `lastAt` first.
+
+UI: category toggles (PLL/OLL — both default on), count selector (5/10/20, default 10), ranked list with name + cat tag + meta ("best 2.34s · 5d ago · n=12" or "never drilled"). Two action buttons:
+- `Drill these` — passes the ranked keys to `drill.start(data, keys)`.
+- `Batch (5)` — filters to PLL-only keys and passes to `batch.start`.
+
+Entry point: `#open-weak-cases` button in the selection toolbar (next to Timer, always visible). Settings persist at `rs-weak-settings-v1`. No new drill/batch code — this module is pure case selection.
 
 ## Deploy
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.
