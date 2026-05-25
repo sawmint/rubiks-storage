@@ -888,11 +888,15 @@ a:hover { text-decoration: underline; }
   font-family: inherit;
 }
 .card-meta-toggle:hover { color: var(--accent-strong); }
-/* When expanded, drop the line-clamp so the full text renders. */
+/* When expanded, drop the line-clamp so the full text renders. Reset
+   every -webkit-box-related property explicitly (not just "unset") so
+   Safari / older Chromium reliably switch out of the box layout. */
 .card-meta.expanded {
-  -webkit-line-clamp: unset;
   display: block;
+  -webkit-line-clamp: none;
+  -webkit-box-orient: initial;
   overflow: visible;
+  max-height: none;
 }
 
 /* ----- recognition settings screen ----- */

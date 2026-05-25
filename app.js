@@ -686,8 +686,19 @@ function metaRowWithToggle(m) {
   toggle.className = "card-meta-toggle hidden";
   toggle.textContent = "more";
   toggle.addEventListener("click", () => {
-    const expanded = text.classList.toggle("expanded");
-    toggle.textContent = expanded ? "collapse" : "more";
+    const wasExpanded = text.classList.contains("expanded");
+    if (wasExpanded) {
+      text.classList.remove("expanded");
+      // Force layout flush — Safari / older Chromium can be sticky re-applying
+      // -webkit-line-clamp after a display:block override unless we touch
+      // a layout-triggering property here. Reading offsetHeight is the
+      // canonical reflow nudge.
+      void text.offsetHeight;
+      toggle.textContent = "more";
+    } else {
+      text.classList.add("expanded");
+      toggle.textContent = "collapse";
+    }
   });
   wrap.appendChild(toggle);
 
