@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v12";
+const CACHE_VERSION = "rs-v13";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
