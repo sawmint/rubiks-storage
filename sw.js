@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v31";
+const CACHE_VERSION = "rs-v32";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -74,8 +74,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for shell assets and VisualCube images.
-  if (url.origin === self.location.origin || url.origin === VISUALCUBE_ORIGIN) {
+  // Stale-while-revalidate for same-origin shell assets (JS/CSS/JSON/etc).
+  // Returns the cached version immediately for fast loads, AND kicks off a
+  // network refetch in the background so the next reload picks up any
+  // changes. The previous cache-first strategy meant edits stuck around
+  // until a CACHE_VERSION bump triggered a SW reinstall — painful for
+  // active development AND for users between deploys.
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((res) => cacheAndReturn(request, res))
+          .catch(() => cached); // offline → fall back to whatever we have
+        // If cached: serve immediately, refresh in background.
+        // If not cached: wait for the network response.
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // Cache-first for VisualCube images (effectively immutable per URL —
+  // params encode the entire request, so the same URL always = same image).
+  if (url.origin === VISUALCUBE_ORIGIN) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
