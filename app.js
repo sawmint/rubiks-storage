@@ -156,10 +156,10 @@ async function init() {
 
   renderTabs();
   bindSearch();
-  bindThemeToggle();
+  applyStoredTheme();
   bindLoadAll();
   bindSelectionToolbar();
-  bindResetStats();
+  bindSettings();
   bindOpenTimer();
   selection.subscribe(updateSelectionUI);
   // Re-render cards when stats change so the badges stay fresh
@@ -167,12 +167,66 @@ async function init() {
   selectCategory(state.category);
 }
 
-function bindResetStats() {
-  document.getElementById("reset-stats")?.addEventListener("click", () => {
+function bindSettings() {
+  const btn = document.getElementById("open-settings");
+  if (!btn) return;
+  btn.addEventListener("click", () => toggleSettingsPopover(btn));
+}
+
+function toggleSettingsPopover(anchor) {
+  const existing = document.querySelector(".header-settings-pop");
+  if (existing) { existing.remove(); return; }
+
+  const pop = document.createElement("div");
+  pop.className = "header-settings-pop";
+
+  // Dark mode toggle
+  const themeRow = document.createElement("label");
+  themeRow.className = "header-settings-row";
+  const themeCb = document.createElement("input");
+  themeCb.type = "checkbox";
+  themeCb.checked = document.documentElement.getAttribute("data-theme") === "dark";
+  themeCb.addEventListener("change", () => {
+    const next = themeCb.checked ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("rs-theme", next);
+  });
+  themeRow.append(themeCb, document.createTextNode(" Dark mode"));
+  pop.appendChild(themeRow);
+
+  // Divider
+  const hr = document.createElement("hr");
+  hr.className = "header-settings-divider";
+  pop.appendChild(hr);
+
+  // Reset stats action
+  const resetBtn = document.createElement("button");
+  resetBtn.type = "button";
+  resetBtn.className = "header-settings-action header-settings-danger";
+  resetBtn.textContent = "Reset drill + recognition stats";
+  resetBtn.addEventListener("click", () => {
     if (confirm("Reset all drill + recognition stats? This cannot be undone.")) {
       stats.resetAll();
+      pop.remove();
     }
   });
+  pop.appendChild(resetBtn);
+
+  // Click outside to close
+  const onDocClick = (e) => {
+    if (!pop.contains(e.target) && e.target !== anchor) {
+      pop.remove();
+      document.removeEventListener("click", onDocClick);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", onDocClick), 0);
+
+  anchor.insertAdjacentElement("afterend", pop);
+}
+
+function applyStoredTheme() {
+  const stored = localStorage.getItem("rs-theme");
+  if (stored) document.documentElement.setAttribute("data-theme", stored);
 }
 
 function bindOpenTimer() {
@@ -218,9 +272,13 @@ function updateSelectionUI() {
     const btn = document.getElementById(id);
     if (btn) btn.disabled = count === 0;
   }
-  // Hide selection toolbar entirely if current category isn't drillable
-  const wrap = document.getElementById("selection-toolbar");
-  if (wrap) wrap.classList.toggle("hidden", !cat.drillable);
+  // Selection toolbar always shows Timer; hide the selection-specific
+  // controls (drill, recognition, select-all, etc.) when category isn't drillable.
+  for (const el of document.querySelectorAll(".selection-only")) {
+    el.classList.toggle("hidden", !cat.drillable);
+  }
+  const divider = document.getElementById("selection-divider");
+  if (divider) divider.classList.toggle("hidden", !cat.drillable);
 }
 
 function bindLoadAll() {
@@ -578,19 +636,6 @@ function badge(text, className) {
   el.className = `badge ${className || ""}`.trim();
   el.textContent = text;
   return el;
-}
-
-/* ---------- theme toggle ---------- */
-
-function bindThemeToggle() {
-  const btn = document.getElementById("theme-toggle");
-  const stored = localStorage.getItem("rs-theme");
-  if (stored) document.documentElement.setAttribute("data-theme", stored);
-  btn.addEventListener("click", () => {
-    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("rs-theme", next);
-  });
 }
 
 /* ---------- utils ---------- */

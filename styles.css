@@ -106,14 +106,14 @@ a:hover { text-decoration: underline; }
 .header-inner {
   height: var(--header-h);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  align-items: stretch;
   gap: var(--space-4);
 }
 .brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  flex-shrink: 0;
 }
 .brand-mark {
   width: 36px;
@@ -142,6 +142,57 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Settings gear popover (light dropdown anchored under the gear button) */
+.header-settings-pop {
+  position: absolute;
+  top: 100%;
+  right: var(--space-4);
+  margin-top: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-3);
+  z-index: 40;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.header-settings-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 14px;
+  color: var(--text);
+  padding: 4px 0;
+  cursor: pointer;
+}
+.header-settings-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: var(--space-1) 0;
+}
+.header-settings-action {
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.header-settings-action:hover { background: var(--accent-weak); }
+.header-settings-danger { color: var(--bad); }
+.header-settings-danger:hover {
+  background: var(--bad);
+  color: white;
+  border-color: var(--bad);
 }
 
 /* ----- buttons ----- */
@@ -166,24 +217,20 @@ a:hover { text-decoration: underline; }
   font-size: 12px;
 }
 
-/* ----- tabs ----- */
-.tabs {
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: var(--header-h);
-  z-index: 20;
-}
-.tabs-inner {
+/* ----- tabs (inline inside header) ----- */
+.tabs.tabs-inline {
   display: flex;
   gap: var(--space-1);
+  align-items: stretch;
   overflow-x: auto;
   scrollbar-width: none;
+  flex: 1;
+  min-width: 0;
 }
-.tabs-inner::-webkit-scrollbar { display: none; }
+.tabs.tabs-inline::-webkit-scrollbar { display: none; }
 .tab {
   position: relative;
-  padding: 14px var(--space-4);
+  padding: 0 var(--space-3);
   border: 0;
   background: transparent;
   color: var(--text-muted);
@@ -192,6 +239,10 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
   border-bottom: 2px solid transparent;
   transition: color 120ms, border-color 120ms;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
 }
 .tab:hover { color: var(--text); }
 .tab.active {
@@ -325,6 +376,12 @@ a:hover { text-decoration: underline; }
 .selection-spacer {
   flex: 1;
   min-width: 0;
+}
+.selection-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 var(--space-2);
 }
 .btn-small {
   padding: 4px 10px;
@@ -855,20 +912,20 @@ details.alternates[open] summary { color: var(--text); }
 /* ----- responsive ----- */
 @media (max-width: 640px) {
   /* Header / layout */
-  .header-inner { padding: 0 var(--space-3); height: 56px; }
+  .header-inner { padding: 0 var(--space-3); height: 56px; gap: var(--space-2); }
   .brand-title { font-size: 16px; }
-  .brand-sub { display: none; }  /* save vertical space */
   .brand-mark { width: 30px; height: 30px; }
   .header-actions .btn { padding: 6px 10px; font-size: 12px; }
-  #load-all, #reset-stats { display: none; }  /* hide power-user actions on small screens */
 
   .toolbar-inner { padding: var(--space-3) var(--space-3); }
   .main { padding: var(--space-4) var(--space-3) var(--space-6); }
   .stats { margin-left: 0; }
   .grid { grid-template-columns: 1fr; gap: var(--space-3); }
 
-  /* Tabs: bigger tap targets */
-  .tab { padding: 12px 14px; font-size: 13px; }
+  /* Tabs: smaller padding so they fit inline with logo */
+  .tabs.tabs-inline { gap: 0; }
+  .tab { padding: 0 var(--space-2); font-size: 13px; }
+  .tab .tab-count { margin-left: 4px; padding: 1px 5px; }
 
   /* Selection toolbar: stack and grow buttons */
   .selection-toolbar { padding: var(--space-2) var(--space-3) var(--space-3); }

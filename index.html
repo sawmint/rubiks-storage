@@ -17,25 +17,14 @@
     <div class="container header-inner">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true"></div>
-        <div>
-          <h1 class="brand-title">Rubik's Storage</h1>
-          <p class="brand-sub">CFOP algorithm browser · PLL · OLL · F2L</p>
-        </div>
+        <h1 class="brand-title">Rubik's Storage</h1>
       </div>
+      <nav class="tabs tabs-inline" role="tablist" aria-label="Algorithm categories" id="tabs"></nav>
       <div class="header-actions">
-        <button id="open-timer" class="btn btn-primary" type="button" title="Open speedcubing timer">Timer</button>
-        <button id="load-all" class="btn" type="button" title="Load all visible case images">Load all images</button>
-        <button id="reset-stats" class="btn btn-ghost" type="button" title="Reset all drill and recognition stats">Reset stats</button>
-        <button id="theme-toggle" class="btn btn-ghost" type="button" aria-label="Toggle theme">
-          <span class="theme-icon">◐</span>
-        </button>
+        <button id="open-settings" class="btn btn-ghost btn-icon" type="button" aria-label="Settings" title="Settings">⚙</button>
       </div>
     </div>
   </header>
-
-  <nav class="tabs" role="tablist" aria-label="Algorithm categories">
-    <div class="container tabs-inner" id="tabs"></div>
-  </nav>
 
   <section class="toolbar">
     <div class="container toolbar-inner">
@@ -50,14 +39,17 @@
       </div>
       <div class="filters" id="filters" aria-label="Filters"></div>
       <div class="stats" id="stats" aria-live="polite"></div>
+      <button id="load-all" class="btn btn-small" type="button" title="Pre-cache all visible case images for offline use">Load all images</button>
     </div>
-    <div id="selection-toolbar" class="container selection-toolbar hidden">
-      <button id="select-all" class="btn btn-small" type="button">Select all in tab</button>
-      <button id="clear-selection" class="btn btn-small" type="button" disabled>Clear</button>
-      <span id="selection-count" class="selection-count" aria-live="polite"></span>
+    <div id="selection-toolbar" class="container selection-toolbar">
+      <button id="open-timer" class="btn btn-primary" type="button" title="Open speedcubing timer">Timer</button>
+      <span class="selection-divider" id="selection-divider"></span>
+      <button id="select-all" class="btn btn-small selection-only" type="button">Select all in tab</button>
+      <button id="clear-selection" class="btn btn-small selection-only" type="button" disabled>Clear</button>
+      <span id="selection-count" class="selection-count selection-only" aria-live="polite"></span>
       <span class="selection-spacer"></span>
-      <button id="drill-selected" class="btn btn-primary" type="button" disabled>Drill selected</button>
-      <button id="recog-selected" class="btn btn-primary" type="button" disabled>Train recognition</button>
+      <button id="drill-selected" class="btn btn-primary selection-only" type="button" disabled>Drill selected</button>
+      <button id="recog-selected" class="btn btn-primary selection-only" type="button" disabled>Train recognition</button>
     </div>
   </section>
 
