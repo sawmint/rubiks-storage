@@ -157,7 +157,6 @@ async function init() {
   renderTabs();
   bindSearch();
   applyStoredTheme();
-  bindLoadAll();
   bindSelectionToolbar();
   bindSettings();
   bindOpenTimer();
@@ -285,18 +284,6 @@ function updateSelectionUI() {
   if (divider) divider.classList.toggle("hidden", !cat.drillable);
 }
 
-function bindLoadAll() {
-  const btn = document.getElementById("load-all");
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
-    btn.disabled = true;
-    const original = btn.textContent;
-    btn.textContent = "Loading…";
-    await loadAllImages();
-    btn.textContent = original;
-    btn.disabled = false;
-  });
-}
 
 /* ---------- tabs ---------- */
 
@@ -402,6 +389,11 @@ function render() {
   stats.textContent = items.length === total
     ? `${total} ${cat.label.toLowerCase()}`
     : `${items.length} / ${total} ${cat.label.toLowerCase()}`;
+
+  // Auto-load all visible case images. Concurrency-capped inside loadAllImages
+  // so VisualCube isn't flooded; the SW caches each response so subsequent
+  // renders (e.g. filter changes) hit the cache.
+  loadAllImages();
 }
 
 function matchesFilters(it, cat) {

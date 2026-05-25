@@ -46,7 +46,7 @@
 
   /* type */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace;
 
   /* layout */
   --container-max: 1200px;
@@ -494,7 +494,8 @@ a:hover { text-decoration: underline; }
   word-break: break-word;
 }
 .drill-timer {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 56px;
   font-weight: 700;
   text-align: center;
@@ -1068,7 +1069,8 @@ details.alternates[open] summary { color: var(--text); }
   min-height: 280px;
 }
 .timer-time {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
   font-size: clamp(72px, 16vw, 200px);
   line-height: 1;
@@ -1105,7 +1107,9 @@ details.alternates[open] summary { color: var(--text); }
   letter-spacing: 0.5px;
 }
 .timer-stat-val {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   font-size: 15px;
   color: var(--text);
 }
@@ -1141,7 +1145,8 @@ details.alternates[open] summary { color: var(--text); }
 }
 .timer-solve-row + .timer-solve-row { border-top: 1px solid var(--border); }
 .timer-solve-time {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 14px;
   color: var(--text);
   cursor: help;
@@ -1297,7 +1302,8 @@ details.alternates[open] summary { color: var(--text); }
   word-break: break-word;
 }
 .batch-timer {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   font-size: 56px;
   font-weight: 700;
   text-align: center;
@@ -1374,6 +1380,7 @@ details.alternates[open] summary { color: var(--text); }
 }
 .batch-split-row:first-child { border-top: 0; }
 .batch-split-time {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   color: var(--accent-strong);
 }
