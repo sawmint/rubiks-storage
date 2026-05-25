@@ -16,6 +16,8 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `scramble-3x3.js` — random-move 3x3 scramble generator with prefetch hooks
 - `batch.js` — chained PLL batch drill (one short scramble + 5 algs, cube ends solved)
 - `weak-cases.js` — "Today's drill" modal: ranks drillable cases by weakness, delegates to drill/batch
+- `auth.js` · `auth-ui.js` · `cloud-sync.js` · `supabase-config.js` · `vendor/supabase.js` — optional Supabase account + cloud sync (see Account system section). All UI is hidden when `supabase-config.js` is empty.
+- `SETUP.md` — user-facing one-time setup guide for the account system (Supabase project, SQL schema, redirect URL allow-list, Google OAuth client)
 - `alg-color.js` — tokenizer + colorizer for cube notation (used everywhere algs are displayed)
 - `pll-compose.json` — precomputed PLL composition lookup (288 LL states × 21 PLLs); generated server-side by pycuber
 - `rubiks-cube-algorithms.json` — dataset (PLL/OLL include `setup` and OLL has `recognitionGroup`). No `alternates` field — those were removed after a data-quality audit showed 48/66 alternates didn't actually solve their case; only `algorithm` is trusted
@@ -41,7 +43,7 @@ Extension hooks:
 - `--card-accent` / `--tab-accent` for per-category color
 
 ## UI layout
-**Header (consolidated, single bar on desktop)**: brand + 4 tabs (inline) + ⚙ settings gear. Tabs use a left/right fade mask so the user knows there's more to scroll if it overflows. Settings gear opens a small dropdown with a dark-mode checkbox and a "Reset drill + recognition stats" button.
+**Header (consolidated, single bar on desktop)**: brand + 4 tabs (inline) + optional **Sign in** chip + ⚙ settings gear. Tabs use a left/right fade mask so the user knows there's more to scroll if it overflows. Settings gear opens a small dropdown with a dark-mode checkbox, a "Reset drill + recognition stats" button, and (when cloud sync is configured) an Account section with the current email + Sign out. The Sign in chip is hidden when `supabase-config.js` is empty; once filled, it shows "Sign in" (logged out) or the email-prefix with a green dot (logged in).
 
 **Toolbar**: search input + filter chips + match count. The "Load all images" button was removed; `loadAllImages()` now runs automatically after every `render()` (concurrency-capped at 4, SW caches each response so tab/filter switches don't re-fetch).
 
@@ -197,6 +199,48 @@ UI: category toggles (PLL/OLL — both default on), count selector (5/10/20, def
 - `Batch (5)` — filters to PLL-only keys and passes to `batch.start`.
 
 Entry point: `#open-weak-cases` button in the selection toolbar (next to Timer, always visible). Settings persist at `rs-weak-settings-v1`. No new drill/batch code — this module is pure case selection.
+
+## Account system + cloud sync (optional, lazy-loaded)
+Optional Supabase-backed sync for `rs-stats-v2` (drill + SRS state) and `rs-sessions-v1` (timer sessions + solves). When `supabase-config.js`'s `SUPABASE_URL` and `SUPABASE_ANON_KEY` are empty, the entire account UI is hidden and the app behaves identically to the no-account version — zero regression for users who never sign in. The moment both values are filled in, a **Sign in** chip activates next to the ⚙ gear and `cloud-sync.init()` wires up.
+
+**Files**:
+- `supabase-config.js` — `SUPABASE_URL` + `SUPABASE_ANON_KEY` exports; `CLOUD_ENABLED` derived. Both the new `sb_publishable_...` keys (Supabase 2024+ format) and legacy `eyJ...` JWT-style anon keys are accepted by supabase-js v2.
+- `auth.js` — singleton client + thin wrappers (`signInWithMagicLink`, `signInWithGoogle`, `signOut`, `currentUser`, `onAuthChange`, `boot`). Lazy-loads the UMD bundle at `vendor/supabase.js` via injected `<script>` (NOT `type=module` — the UMD wraps `var supabase = (function(){...})()` which only attaches to `window.supabase` when run as a classic script). Persists session in localStorage with `detectSessionInUrl:true` so magic-link returns + OAuth returns just work.
+- `auth-ui.js` — sign-in modal (email magic-link form + Google button) + first-login conflict prompt. Built on existing `modal.js`. Inline Google "G" SVG so the button renders offline.
+- `cloud-sync.js` — hooks `stats.subscribe()` and `sessions.subscribe()`, diffs against last-pushed snapshot, pushes deltas with a 250ms debounce. Failed or offline pushes queue to `rs-sync-queue-v1` and flush on the next `online` event. Owns the `applyingRemote` flag to suppress feedback loops when applying pulled data locally.
+- `vendor/supabase.js` — UMD bundle of `@supabase/supabase-js@2` (~200KB raw, ~50KB gz). Committed to the repo so the PWA is fully offline-capable with no CDN runtime dependency. Re-download: `curl -sSL -o vendor/supabase.js https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js`.
+
+**Postgres schema** (full version with RLS policies in `SETUP.md`):
+- `case_stats(user_id, category, case_id, drill, recog, srs, updated_at)` PK `(user_id, category, case_id)` — mirrors `rs-stats-v2`.
+- `sessions(user_id, id, name, created_at, is_active, updated_at)` PK `(user_id, id)`. The `id` is TEXT (not uuid) so local session ids like `"default"` and base36 random strings round-trip without conversion.
+- `solves(user_id, id, session_id, time_ms, scramble, phases, penalty, inspection_penalty, comment, date, updated_at)` PK `(user_id, id)`, FK `(user_id, session_id) → sessions ON DELETE CASCADE`. Session delete cascades to solves server-side, so client doesn't need to manually delete solves first.
+- `user_prefs(user_id, prefs, updated_at)` — top-level `{phaseConfig, inspection, inspectionDurationSec, activeSessionId}` as jsonb.
+- All four tables have RLS enabled with policy `auth.uid() = user_id` (both USING and WITH CHECK) — each user reads/writes only their own rows. The Supabase anon key is publishable; RLS is what actually enforces isolation.
+
+**Sync model: local-first, cloud-mirror**. localStorage stays the working copy (reads instant, offline-safe). When signed in, every local `save()` pushes a diff up. On sign-in, `startForUser` compares local vs cloud presence:
+- local empty + cloud has data → silent pull (apply cloud to local).
+- local has data + cloud empty → silent upload.
+- both non-empty → modal `askConflict` asks **Use this device's data** / **Use the cloud data** / **Cancel**. Cancel calls `signOut`.
+- both empty → no-op.
+
+Diff tracking uses per-row `JSON.stringify` against `lastStats` / `lastSessions` / `lastSolves` / `lastPrefs` snapshots, seeded from local state right after the initial reconcile. This keeps ongoing pushes minimal — only rows that genuinely changed get upserted. Diff loop also detects deletions (key in last-snapshot but not in current state) and queues server-side deletes.
+
+**Additive exports `stats.replaceAll(cases)` / `sessions.replaceAll(state)`** were added to each module so `cloud-sync.js` can apply a pulled snapshot wholesale. They go through the existing `save()` path (so listeners fire and the UI re-renders), and `cloud-sync` sets `applyingRemote=true` around the call so its own subscribe-listener doesn't push the freshly-pulled rows right back up.
+
+**Critical Supabase dashboard setup** (must do or sign-in breaks silently): Authentication → URL Configuration:
+- **Site URL** = production URL (e.g. `https://sawmint.github.io/rubiks-storage/`). New projects default to `http://localhost:3000`.
+- **Redirect URLs** allow-list — paste each line:
+  ```
+  https://sawmint.github.io/rubiks-storage/**
+  https://*.pages.dev/**
+  http://localhost:8000/**
+  http://localhost:8765/**
+  ```
+Without this, Supabase ignores the `redirectTo` we pass from `signInWith*` and falls back to Site URL, so both Google OAuth return and the magic-link landing fail with `ERR_CONNECTION_REFUSED` on the wrong port.
+
+**Google OAuth requires its own setup** (~10 min in https://console.cloud.google.com): OAuth consent screen + Web application credential. Authorized JavaScript origins must include the prod URL(s) + `http://localhost:8000`; authorized redirect URI must be Supabase's `https://<project>.supabase.co/auth/v1/callback`. Client ID + secret then go into Supabase Authentication → Providers → Google. Magic-link works with zero extra config (Supabase ships a default `noreply@mail.app.supabase.io` sender).
+
+**Out of scope for v1**: Supabase realtime `postgres_changes` subscription (so other devices' writes appear without a refresh). Single-device usage dominates and refresh-to-pull works; adding it later is one `client.channel(...).on('postgres_changes', ...).subscribe()` call inside `startForUser`.
 
 ## Deploy
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.
