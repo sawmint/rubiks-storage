@@ -20,6 +20,8 @@
 
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
+import * as auth from "./auth.js";
+import * as cloudSync from "./cloud-sync.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const DATA_URL = "rubiks-cube-algorithms.json";
@@ -241,10 +243,54 @@ async function init() {
   bindSelectionToolbar();
   bindSettings();
   bindOpenTimer();
+  bindAccount();
   selection.subscribe(updateSelectionUI);
   // Re-render cards when stats change so the badges stay fresh
   stats.subscribe(() => render());
   selectCategory(state.category);
+}
+
+/* ---------- account / cloud sync ----------
+ * The account button lives next to the settings gear. When cloud sync isn't
+ * configured (supabase-config.js placeholders still empty), the button
+ * stays hidden — the app behaves identically to the no-account version.
+ * Otherwise we boot the auth client + cloud-sync layer, and the button
+ * reflects current auth state. */
+function bindAccount() {
+  if (!auth.isCloudEnabled()) return;     // no UI when not configured
+  auth.boot();
+  cloudSync.init();
+
+  const btn = document.getElementById("open-account");
+  if (!btn) return;
+  btn.classList.remove("hidden");
+  btn.addEventListener("click", async () => {
+    const user = auth.currentUser();
+    if (user) {
+      // Already signed in — surface the settings popover, which has the
+      // sign-out button. Keeps the header chip click action consistent
+      // (click → see account info).
+      toggleSettingsPopover(document.getElementById("open-settings"));
+    } else {
+      const mod = await import("./auth-ui.js");
+      mod.openSignIn();
+    }
+  });
+
+  auth.onAuthChange((user) => {
+    const label = btn.querySelector(".account-btn-label");
+    if (user) {
+      // Use the part before the @ as a short identifier
+      const short = (user.email || "").split("@")[0] || "Account";
+      btn.title = user.email || "Account";
+      if (label) label.textContent = short;
+      btn.classList.add("signed-in");
+    } else {
+      btn.title = "Sign in";
+      if (label) label.textContent = "Sign in";
+      btn.classList.remove("signed-in");
+    }
+  });
 }
 
 function bindSettings() {
@@ -291,6 +337,42 @@ function toggleSettingsPopover(anchor) {
     }
   });
   pop.appendChild(resetBtn);
+
+  // Account section (only when cloud sync is configured)
+  if (auth.isCloudEnabled()) {
+    const hr2 = document.createElement("hr");
+    hr2.className = "header-settings-divider";
+    pop.appendChild(hr2);
+
+    const user = auth.currentUser();
+    if (user) {
+      const who = document.createElement("div");
+      who.className = "header-settings-row header-settings-info";
+      who.textContent = "Signed in as " + (user.email || "(unknown)");
+      pop.appendChild(who);
+
+      const outBtn = document.createElement("button");
+      outBtn.type = "button";
+      outBtn.className = "header-settings-action";
+      outBtn.textContent = "Sign out";
+      outBtn.addEventListener("click", async () => {
+        await auth.signOut();
+        pop.remove();
+      });
+      pop.appendChild(outBtn);
+    } else {
+      const inBtn = document.createElement("button");
+      inBtn.type = "button";
+      inBtn.className = "header-settings-action";
+      inBtn.textContent = "Sign in / create account";
+      inBtn.addEventListener("click", async () => {
+        pop.remove();
+        const mod = await import("./auth-ui.js");
+        mod.openSignIn();
+      });
+      pop.appendChild(inBtn);
+    }
+  }
 
   // Click outside to close
   const onDocClick = (e) => {
@@ -571,8 +653,8 @@ function renderCard(it, cat) {
       const row = document.createElement("div");
       row.className = "card-stats";
       const parts = [];
-      if (drill) parts.push(`<span title="Best drill time of ${drill.n} attempts">⏱ ${stats.fmtTime(drill.best)}</span>`);
-      if (recog) parts.push(`<span title="Recognition accuracy over ${recog.n} attempts">🎯 ${stats.fmtAccuracy(recog)}</span>`);
+      if (drill) parts.push(`<span title="Best drill time of ${drill.n} attempts">best ${stats.fmtTime(drill.best)}</span>`);
+      if (recog) parts.push(`<span title="Recognition accuracy over ${recog.n} attempts">${stats.fmtAccuracy(recog)} recog</span>`);
       const resetBtn = `<button class="card-stats-reset" type="button" title="Reset stats for this case" data-key="${selection.key(cat.key, it.id)}">↺</button>`;
       row.innerHTML = parts.join(" · ") + " " + resetBtn;
       const resetEl = row.querySelector(".card-stats-reset");

@@ -183,7 +183,7 @@ function buildBody() {
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
   nextBtn.className = "btn btn-small";
-  nextBtn.textContent = "↻ New scramble";
+  nextBtn.textContent = "New scramble";
   nextBtn.addEventListener("click", () => loadNextScramble(true));
   scrambleRow.appendChild(nextBtn);
 

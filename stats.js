@@ -190,6 +190,14 @@ export function resetAll() {
   save();
 }
 
+/* Wholesale replacement — used by cloud-sync to apply a pulled snapshot.
+ * Going through save() still fires listeners (so the UI re-renders); the
+ * sync layer guards against feedback loops via its own applyingRemote flag. */
+export function replaceAll(cases) {
+  cache = { schema: SCHEMA, cases: cases || {} };
+  save();
+}
+
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);

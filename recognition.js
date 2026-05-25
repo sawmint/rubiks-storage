@@ -394,10 +394,10 @@ function timeExpired() {
   stopCountdown();
   // Count as wrong; show correct answer
   finalize(false);
-  // Replace the "✗ " prefix with "⏱ Time's up. " — touching only the prefix
+  // Replace the "Wrong:" prefix with "Time's up." — touching only the prefix
   // span leaves the alg's colored HTML intact (no innerHTML regex round-trip).
   const prefix = session.ui.feedback?.querySelector(".recog-feedback-prefix");
-  if (prefix) prefix.textContent = "⏱ Time's up. ";
+  if (prefix) prefix.textContent = "Time's up. ";
 }
 
 function updateScore() {
@@ -540,7 +540,7 @@ function finalize(correct) {
   f.replaceChildren();
   const prefixSpan = document.createElement("span");
   prefixSpan.className = "recog-feedback-prefix";
-  prefixSpan.textContent = correct ? "✓ Correct: " : "✗ ";
+  prefixSpan.textContent = correct ? "Correct: " : "Wrong: ";
   f.appendChild(prefixSpan);
   f.appendChild(document.createTextNode(item.name));
   if (session.settings.showAlgInFeedback && item.algorithm) {

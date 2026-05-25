@@ -359,6 +359,31 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 
+/* Wholesale replacement — used by cloud-sync to apply a pulled snapshot.
+ * Mirrors stats.replaceAll. Validates invariants the same way load() does
+ * (activeSessionId points to a real session; phaseConfig/inspection
+ * defaults if missing) so a partial cloud row can't break the timer. */
+export function replaceAll(next) {
+  if (!next || typeof next !== "object") return;
+  const out = {
+    schema: SCHEMA,
+    activeSessionId: next.activeSessionId || "default",
+    phaseConfig: next.phaseConfig || { count: 1, labels: ["Solve"] },
+    inspection: typeof next.inspection === "boolean" ? next.inspection : true,
+    inspectionDurationSec: typeof next.inspectionDurationSec === "number" && next.inspectionDurationSec > 0
+      ? next.inspectionDurationSec : 15,
+    sessions: next.sessions && typeof next.sessions === "object" ? next.sessions : {},
+  };
+  if (!out.sessions[out.activeSessionId]) {
+    if (!out.sessions.default) {
+      out.sessions.default = { id: "default", name: "Default", createdAt: Date.now(), solves: [] };
+    }
+    out.activeSessionId = "default";
+  }
+  cache = out;
+  save();
+}
+
 /* ---------- WCA stats ---------- */
 
 /* Effective time of a solve, stacking BOTH penalty sources:

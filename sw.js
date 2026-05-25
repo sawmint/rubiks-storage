@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v45";
+const CACHE_VERSION = "rs-v46";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -29,6 +29,11 @@ const CORE_ASSETS = [
   "./batch.js",
   "./alg-color.js",
   "./weak-cases.js",
+  "./auth.js",
+  "./auth-ui.js",
+  "./cloud-sync.js",
+  "./supabase-config.js",
+  "./vendor/supabase.js",
   "./pll-compose.json",
   "./rubiks-cube-algorithms.json",
   "./manifest.webmanifest",
