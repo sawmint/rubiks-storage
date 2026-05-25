@@ -159,6 +159,7 @@ async function init() {
   bindLoadAll();
   bindSelectionToolbar();
   bindResetStats();
+  bindOpenTimer();
   selection.subscribe(updateSelectionUI);
   // Re-render cards when stats change so the badges stay fresh
   stats.subscribe(() => render());
@@ -170,6 +171,13 @@ function bindResetStats() {
     if (confirm("Reset all drill + recognition stats? This cannot be undone.")) {
       stats.resetAll();
     }
+  });
+}
+
+function bindOpenTimer() {
+  document.getElementById("open-timer")?.addEventListener("click", async () => {
+    const mod = await import("./timer.js");
+    mod.openTimer();
   });
 }
 
