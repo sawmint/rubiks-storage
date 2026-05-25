@@ -47,7 +47,7 @@ Extension hooks:
 
 **Selection toolbar** (always visible — Timer needs to always be reachable): Timer button | divider | drillable-only group (Select all, Clear, count, Drill, Batch (5), Train recognition). The drillable-only group hides when the current tab isn't drillable (F2L tabs).
 
-**Mobile (≤640px)**: header wraps to two rows — brand+gear on row 1, the 4 tabs as a full-width segmented bar on row 2. Each tab gets ~85px so all 4 fit without scrolling. Filter chips switch to a single horizontal-scroll row. Cards compact: image max-height 110px, tighter padding, ~300px total height (vs ~400+ on desktop).
+**Mobile (≤640px)**: header wraps to two rows — brand+gear on row 1, the 5 tabs as a full-width row 2 with horizontal scroll + fade mask. Filter chips switch to a single horizontal-scroll row. Cards compact: image max-height 88px, tighter padding (`var(--space-2)` everywhere), ~13px font, alg-block at 12px. **Grid is two columns** on portrait phones (`repeat(2, minmax(0, 1fr))`) so a glance shows multiple cases at once — at 375px that's ~172px per card. **Landscape phones (orientation landscape AND max-height 500)** bump to **three columns** (~252px each at 844 wide); card padding/font stay at desktop sizing since each card is still wide enough.
 
 ## Drill + recognition data model
 Each PLL and OLL entry carries a precomputed `setup` field (forward-applied to a solved cube produces the case state in canonical orientation; rotation tokens at the end cancel any net rotation from the alg). Each OLL also has `recognitionGroup` — a canonicalized hash of the U-layer yellow pattern under all 4 y-rotations, so recognition-trainer distractors avoid rotationally-equivalent cases.
@@ -194,6 +194,8 @@ Entry point: `#open-weak-cases` button in the selection toolbar (next to Timer, 
 
 ## Deploy
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.
+
+**Cloudflare Pages mirror**: the repo is also connected to Cloudflare Pages (configured by the user separately, lives at a `*.pages.dev` URL). Cloudflare watches the GitHub repo server-side and auto-rebuilds on every push to `master` — **no separate deploy step is needed from this side**. A single `git push` triggers both GitHub Pages AND Cloudflare Pages rebuilds. Useful because the user's work computer blocks `github.io` but allows `pages.dev`. If the user reports the Cloudflare URL is stale while GitHub is fresh, check whether the Cloudflare deployment failed at https://dash.cloudflare.com.
 
 **PWA cache version**: when changing any file in `sw.js`'s `CORE_ASSETS` array, bump `const CACHE_VERSION = "rs-vN"` so installed PWAs refresh on next open. The deploy skill handles this automatically. If a user reports "I pushed but my phone shows old code," check whether CACHE_VERSION was bumped.
 

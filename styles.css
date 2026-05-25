@@ -993,7 +993,9 @@ a:hover { text-decoration: underline; }
 
   .main { padding: var(--space-3) var(--space-3) var(--space-6); }
   .stats { margin-left: 0; font-size: 11px; }
-  .grid { grid-template-columns: 1fr; gap: var(--space-3); }
+  /* Portrait phones: 2 cards per row so a quick scan shows multiple
+     perms / OLLs at once, instead of a single big card per screen-height. */
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 
   /* Selection toolbar: stack and grow buttons */
   .selection-toolbar { padding: var(--space-2) var(--space-3) var(--space-3); }
@@ -1020,19 +1022,31 @@ a:hover { text-decoration: underline; }
   /* Card stats */
   .card-stats { font-size: 11px; padding: 3px 8px; }
 
-  /* Compact cards on mobile so more fit per screen */
-  .card { padding: var(--space-3) var(--space-3) var(--space-2); gap: var(--space-2); }
-  .card-img-wrap { min-height: 120px; padding: var(--space-2); }
-  .card-img { max-height: 110px; }
-  .card-title { font-size: 14px; }
-  .card-id { font-size: 10px; padding: 1px 6px; }
-  .badge { font-size: 10px; padding: 1px 6px; }
-  .card-meta { font-size: 12px; }
-  .card-head { gap: var(--space-2); }
+  /* Compact cards on mobile so more fit per screen — narrower because
+     we now show two per row (each ~170px wide on a 375 viewport). */
+  .card { padding: var(--space-2) var(--space-2) var(--space-2); gap: var(--space-2); }
+  .card-img-wrap { min-height: 90px; padding: var(--space-1); }
+  .card-img { max-height: 88px; }
+  .card-title { font-size: 13px; }
+  .card-id { font-size: 10px; padding: 1px 5px; }
+  .badge { font-size: 10px; padding: 1px 5px; }
+  .card-meta { font-size: 11px; }
+  .card-head { gap: var(--space-1); flex-wrap: wrap; }
+  .alg-block { font-size: 12px; padding: 6px 8px; }
+  .alg-row { gap: var(--space-1); flex-wrap: wrap; }
+  .copy-btn { padding: 4px 8px; font-size: 11px; }
 
   /* Settings: stack rows on very narrow screens */
   .settings-row { flex-direction: column; align-items: stretch; gap: var(--space-2); }
   .radio-group { align-self: flex-start; }
+}
+
+/* Landscape phones (height ≤ 500 — same threshold as the timer landscape
+   override). At ~844px wide we have room for 3 cards instead of the 2 that
+   the desktop auto-fill (min 300px) would land on. Card padding/font stay
+   at desktop sizing since each card is still ~270px wide. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
 }
 
 /* Tablet (641px-1024px): tighten tab padding so all 4 fit inline at iPad portrait widths */
