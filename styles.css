@@ -1044,7 +1044,19 @@ a:hover { text-decoration: underline; }
   .card-id { font-size: 10px; padding: 1px 5px; }
   .badge { font-size: 10px; padding: 1px 5px; }
   .card-head { gap: var(--space-1); flex-wrap: wrap; align-items: center; }
-  .card-meta { display: none; }
+  /* Show recognition / description in a compact 2-line clamp; full text
+     is available via the title attribute (tap-and-hold) so a long
+     description doesn't make one card balloon vertically while its
+     neighbor stays small. */
+  .card-meta {
+    font-size: 10.5px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text-muted);
+  }
   .alg-block { font-size: 12px; padding: 6px 8px; line-height: 1.45; }
   .alg-row { gap: var(--space-1); flex-wrap: wrap; }
   .copy-btn { padding: 4px 8px; font-size: 11px; }

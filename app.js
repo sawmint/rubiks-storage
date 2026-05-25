@@ -554,10 +554,13 @@ function renderCard(it, cat) {
     card.appendChild(algRow(it.algorithm));
   }
 
-  // meta rows
+  // meta rows. The full text also goes into the title attribute so the
+  // CSS line-clamp on mobile portrait (2 lines + ellipsis) doesn't hide
+  // info — tap-and-hold reveals the rest in the browser's native tooltip.
   for (const m of cat.metaRows(it) || []) {
     const div = document.createElement("div");
     div.className = "card-meta";
+    div.title = `${m.label}: ${m.value}`;
     div.innerHTML = `<strong>${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`;
     card.appendChild(div);
   }
