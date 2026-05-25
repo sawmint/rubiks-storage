@@ -44,17 +44,23 @@ function saveSettings(s) {
 let session = null;
 
 export function start(data) {
-  session = {
+  // Capture a local handle so the onClose for THIS modal doesn't null out
+  // a newer session if start() is invoked twice rapidly. modal.open()
+  // internally calls modal.close() which fires the PRIOR onClose — without
+  // this guard, that fire happens after `session = mySession` and would
+  // null the new instance, crashing the renderList() below.
+  const mySession = {
     data,
     settings: loadSettings(),
     currentTop: [],
     ui: {},
   };
+  session = mySession;
   const body = buildBody();
   modal.open({
     title: "Today's drill — weak cases",
     body,
-    onClose: () => { session = null; },
+    onClose: () => { if (session === mySession) session = null; },
   });
   renderList();
 }

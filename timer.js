@@ -37,31 +37,37 @@ let unsubSessions = null;
 let unsubStatus = null;
 let activeCommentPopover = null; // { pop, anchor, solveId, close } | null
 
-/* Pairs a popover element with an outside-click + scroll handler so all
- * dismissal paths (click-outside, Save, Cancel, Esc, etc.) detach the same
- * document listener when they remove the pop. Without this, every popover
- * opened in a session leaks one document listener until the next outside
- * click. Returns `{ close }` — call it from every close path.
+/* Pairs a popover element with an outside-click handler so every dismissal
+ * path (click-outside, Save, Cancel, etc.) detaches the same document
+ * listener when it removes the pop. Without this, popovers leak listeners.
+ * Returns `{ close }` — call it from every close path.
  *
- * Scroll-close: when the popover is body-anchored at fixed position, scrolling
- * its anchor out of view leaves it floating. Closing on any ancestor scroll
- * keeps it sensible without re-position math.
+ * No scroll-close: both current callers (session-manager + settings popover)
+ * are anchored inside the timer modal panel, which itself scrolls on small
+ * viewports. A capture-phase scroll listener fires for the panel's internal
+ * scroll, which would snap-close the popover on any modal-content scroll.
+ *
+ * setTimeout-with-closed-guard: the addEventListener is deferred so the
+ * click that OPENED the popover doesn't immediately re-trigger close.
+ * If `close()` runs before the timer fires, we must NOT add the listener
+ * (the matching removeEventListener has already run and the orphan would
+ * leak forever).
  */
 function attachPopoverDismiss(pop, anchor) {
   let closed = false;
   function close() {
     if (closed) return;
     closed = true;
-    pop.remove();
     document.removeEventListener("click", onDocClick);
-    window.removeEventListener("scroll", onScroll, true);
+    pop.remove();
   }
   function onDocClick(e) {
     if (!pop.contains(e.target) && e.target !== anchor) close();
   }
-  function onScroll() { close(); }
-  setTimeout(() => document.addEventListener("click", onDocClick), 0);
-  window.addEventListener("scroll", onScroll, true);
+  setTimeout(() => {
+    if (closed) return;
+    document.addEventListener("click", onDocClick);
+  }, 0);
   return { close };
 }
 
@@ -444,9 +450,17 @@ function openCommentPopover(anchor, solve) {
     }
   });
 
-  // Backdrop click = close; clicks bubbling from the card itself don't
+  // Backdrop click closes — but only if the click STARTED on the backdrop
+  // too. Without this, a text-selection drag that begins in the textarea
+  // and releases over the backdrop fires a click on the backdrop and the
+  // user loses their unsaved typing.
+  let downOnBackdrop = false;
+  backdrop.addEventListener("mousedown", (e) => {
+    downOnBackdrop = e.target === backdrop;
+  });
   backdrop.addEventListener("click", (e) => {
-    if (e.target === backdrop) closeAndForget();
+    if (e.target === backdrop && downOnBackdrop) closeAndForget();
+    downOnBackdrop = false;
   });
 
   // Top-level Esc handler in case focus isn't in the textarea

@@ -18,18 +18,20 @@
  *   3. wide notation (Rw)  → kind: "move", head=Rw
  *   4. single-char move    → kind: "move", head=R|r|M|x|...
  *      ...followed by optional modifier: '', "'", "2", or "2'"
- *      ...then a negative lookahead so adjoining letters don't get
- *         partially colored (e.g. "fix" should NOT color "f", and
- *         "Right" should NOT color "R"). Algorithm strings in the
- *         dataset are whitespace-separated, so this just makes the
- *         tokenizer ignore prose if it ever sneaks in.
+ *      ...then a negative lookahead so a move-letter directly followed
+ *         by another letter isn't colored (e.g. "Right" — the R isn't a
+ *         move). The corresponding lookBEHIND is done MANUALLY in the
+ *         loop below: regex literals with `(?<=...)` are a SyntaxError
+ *         on iOS Safari < 16.4, which would kill the entire module at
+ *         parse time and cascade-blank the whole PWA on older phones.
  *
- * Anything not matched (commas, brackets, unknown letters) falls
- * through as raw text so callers can pass arbitrary notation without
- * crashing the renderer.
+ * Anything not matched falls through as raw text so callers can pass
+ * arbitrary notation without crashing the renderer.
  */
 const TOKEN_RE =
-  /(\s+)|([()])|(?<![A-Za-z])(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])((?:'|2'?)?)(?![A-Za-z])/g;
+  /(\s+)|([()])|(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])((?:'|2'?)?)(?![A-Za-z])/g;
+
+const IS_LETTER_RE = /[A-Za-z]/;
 
 export function tokenize(s) {
   const tokens = [];
@@ -39,6 +41,16 @@ export function tokenize(s) {
   let m;
   TOKEN_RE.lastIndex = 0;
   while ((m = TOKEN_RE.exec(str)) !== null) {
+    // Manual lookbehind: if this match is a move (m[3]) and the immediately
+    // preceding char is a letter, treat the move-letter as raw and resume
+    // scanning one char past its start. This catches cases like "Right"
+    // where R is preceded by nothing initially but later matched
+    // mid-word — without this guard the regex would happily color the "y"
+    // at the end of "slowly".
+    if (m[3] != null && m.index > 0 && IS_LETTER_RE.test(str[m.index - 1])) {
+      TOKEN_RE.lastIndex = m.index + 1;
+      continue;
+    }
     if (m.index > last) {
       tokens.push({ kind: "raw", text: str.slice(last, m.index) });
     }

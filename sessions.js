@@ -196,6 +196,7 @@ export function exportSession(id) {
     schema: SCHEMA,
     exportedAt: new Date().toISOString(),
     phaseConfig: cache.phaseConfig,
+    inspection: cache.inspection,
     session: sess,
   };
   return JSON.stringify(payload, null, 2);
