@@ -55,6 +55,22 @@
   /* shadow */
   --shadow-sm: 0 1px 2px rgba(20, 25, 50, 0.05);
   --shadow: 0 4px 16px rgba(20, 25, 50, 0.08);
+
+  /* algorithm move colors — light theme (palette tuned for the
+     light alg-block background; L is dark-gray here so the
+     conceptual "white" letter is actually readable). */
+  --move-D: #16a34a;  /* green   */
+  --move-R: #ea580c;  /* orange  */
+  --move-U: #2563eb;  /* blue    */
+  --move-L: #374151;  /* "white" → dark gray for readability */
+  --move-F: #b45309;  /* yellow  → mustard for readability   */
+  --move-B: #6b21a8;  /* purple  */
+  --move-M: #0e7490;  /* turquoise */
+  --move-E: #a855f7;  /* lavender (lighter purple, distinct from B) */
+  --move-S: #b91c1c;  /* scarlet (deeper than x) */
+  --move-x: #dc2626;  /* red     */
+  --move-y: #db2777;  /* pink    */
+  --move-z: #92400e;  /* brown   */
 }
 
 [data-theme="dark"] {
@@ -71,6 +87,21 @@
   --accent-strong: #94a6ff;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+
+  /* algorithm move colors — dark theme (brighter so they pop on the
+     dark alg-block bg; L becomes near-white as originally intended). */
+  --move-D: #22c55e;
+  --move-R: #fb923c;
+  --move-U: #60a5fa;
+  --move-L: #f3f4f6;
+  --move-F: #facc15;
+  --move-B: #c084fc;
+  --move-M: #22d3ee;
+  --move-E: #d8b4fe;
+  --move-S: #ef4444;
+  --move-x: #f87171;
+  --move-y: #f472b6;
+  --move-z: #d97706;
 }
 
 /* ----- reset-ish ----- */
@@ -790,6 +821,22 @@ a:hover { text-decoration: underline; }
   word-break: break-word;
   position: relative;
 }
+
+/* Algorithm move coloring — applied wherever cube notation is rendered
+   (card alg-block, batch alg, drill/timer scrambles, recognition feedback). */
+.move-D { color: var(--move-D); }
+.move-R { color: var(--move-R); }
+.move-U { color: var(--move-U); }
+.move-L { color: var(--move-L); }
+.move-F { color: var(--move-F); }
+.move-B { color: var(--move-B); }
+.move-M { color: var(--move-M); }
+.move-E { color: var(--move-E); }
+.move-S { color: var(--move-S); }
+.move-x { color: var(--move-x); }
+.move-y { color: var(--move-y); }
+.move-z { color: var(--move-z); }
+.move-paren { color: var(--text-faint); }
 .alg-row {
   display: flex;
   align-items: center;

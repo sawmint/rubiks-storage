@@ -15,6 +15,7 @@ import * as selection from "./selection.js";
 import * as stats from "./stats.js";
 import { randomAUF } from "./cube-notation.js";
 import { vcImage } from "./app.js";
+import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const RECOG_CATEGORIES = new Set(["pll", "oll"]);
 const SETTINGS_KEY = "rs-recog-settings-v1";
@@ -393,9 +394,12 @@ function timeExpired() {
   stopCountdown();
   // Count as wrong; show correct answer
   finalize(false);
-  // Override feedback prefix to say "time's up"
+  // Prepend "time's up" indicator while preserving the colored alg HTML.
   const f = session.ui.feedback;
-  if (f) f.textContent = "⏱ Time's up. " + f.textContent.replace(/^✗\s*/, "");
+  if (f) {
+    f.innerHTML = f.innerHTML.replace(/^✗\s*/, "");
+    f.innerHTML = "⏱ Time's up. " + f.innerHTML;
+  }
 }
 
 function updateScore() {
@@ -528,14 +532,12 @@ function finalize(correct) {
   // Feedback
   const f = session.ui.feedback;
   const showAlg = session.settings.showAlgInFeedback;
-  const algPart = showAlg ? ` · ${item.algorithm}` : "";
-  if (correct) {
-    f.textContent = `✓ Correct: ${item.name}${algPart}`;
-    f.className = "recog-feedback ok";
-  } else {
-    f.textContent = `✗ ${item.name}${algPart}`;
-    f.className = "recog-feedback bad";
-  }
+  const algPart = showAlg && item.algorithm
+    ? ` · ${colorizeAlg(item.algorithm)}`
+    : "";
+  const prefix = correct ? "✓ Correct: " : "✗ ";
+  f.innerHTML = escapeHtmlRecog(prefix + item.name) + algPart;
+  f.className = "recog-feedback " + (correct ? "ok" : "bad");
   // Disable PLL input if still there
   for (const input of session.ui.answer.querySelectorAll("input")) input.disabled = true;
   for (const btn of session.ui.answer.querySelectorAll("button[type=submit]")) btn.disabled = true;
@@ -551,6 +553,12 @@ function finalize(correct) {
       if (session) nextQuestion();
     }, session.settings.autoDelayMs);
   }
+}
+
+function escapeHtmlRecog(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
 
 function shuffle(arr) {

@@ -19,6 +19,7 @@
 import * as modal from "./modal.js";
 import * as selection from "./selection.js";
 import { vcImage } from "./app.js";
+import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const BATCH_SIZE = 5;
 const DRILLABLE = new Set(["pll"]); // OLLs not supported in chained batch (yet)
@@ -130,7 +131,11 @@ function buildBody() {
 
   const scramble = document.createElement("div");
   scramble.className = "batch-initial-scramble";
-  scramble.textContent = session.initialScramble || "(already solved — re-roll the batch)";
+  if (session.initialScramble) {
+    scramble.innerHTML = colorizeAlg(session.initialScramble);
+  } else {
+    scramble.textContent = "(already solved — re-roll the batch)";
+  }
   scrambleWrap.appendChild(scramble);
 
   const preview = document.createElement("img");
@@ -203,7 +208,11 @@ function renderCurrent() {
   const pick = queue[currentIdx];
   session.ui.status.textContent = `Alg ${currentIdx + 1} of ${BATCH_SIZE}`;
   session.ui.caseInfo.textContent = `PLL ${pick.item.id} · ${pick.item.name}`;
-  session.ui.alg.textContent = pick.item.algorithm || "(no algorithm)";
+  if (pick.item.algorithm) {
+    session.ui.alg.innerHTML = colorizeAlg(pick.item.algorithm);
+  } else {
+    session.ui.alg.textContent = "(no algorithm)";
+  }
 }
 
 function renderQueue() {

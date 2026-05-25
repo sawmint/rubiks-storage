@@ -20,6 +20,7 @@
 
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
+import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const DATA_URL = "rubiks-cube-algorithms.json";
 const VISUALCUBE_BASE = "https://visualcube.api.cubing.net/visualcube.php";
@@ -588,7 +589,7 @@ function algRow(algStr) {
 
   const code = document.createElement("code");
   code.className = "alg-block";
-  code.textContent = algStr;
+  code.innerHTML = colorizeAlg(algStr);
   row.appendChild(code);
 
   const btn = document.createElement("button");

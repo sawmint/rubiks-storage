@@ -14,6 +14,7 @@ import * as selection from "./selection.js";
 import * as stats from "./stats.js";
 import { buildScramble } from "./cube-notation.js";
 import { vcImage } from "./app.js";
+import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 let session = null;
 
@@ -186,7 +187,7 @@ function next() {
 
   // Scramble = random AUF + random y + setup
   const scr = buildScramble(item.setup);
-  session.ui.scramble.textContent = scr;
+  session.ui.scramble.innerHTML = colorizeAlg(scr);
 }
 
 /* Shuffled-bag draw: refills with a Fisher-Yates shuffle on exhaustion so

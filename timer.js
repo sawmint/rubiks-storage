@@ -23,6 +23,7 @@ import * as modal from "./modal.js";
 import * as sessions from "./sessions.js";
 import * as scrambler from "./scramble-3x3.js";
 import { vcImage } from "./app.js";
+import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const HOLD_ARM_MS = 300;          // how long space must be held to arm
 const INSPECTION_TOTAL_MS = 15000;
@@ -322,7 +323,7 @@ async function loadNextScramble(force = false) {
     const scr = await scrambler.nextScramble();
     if (!session) return; // closed mid-load
     session.currentScramble = scr;
-    session.ui.scramble.textContent = scr;
+    session.ui.scramble.innerHTML = colorizeAlg(scr);
     // Render preview via VisualCube. The 3x3 stage "image" gives a full cube view.
     // WCA scheme: white-up, red-right, green-front, yellow-down, orange-left, blue-back
     const url = vcImage({ setup: scr, view: "trans", size: 140, sch: "wrgyob" });
