@@ -233,6 +233,10 @@ a:hover { text-decoration: underline; }
   scrollbar-width: none;
   flex: 1;
   min-width: 0;
+  -webkit-overflow-scrolling: touch;
+  /* Soft fade on edges so users see there's more to scroll horizontally */
+  mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
 }
 .tabs.tabs-inline::-webkit-scrollbar { display: none; }
 .tab {
@@ -330,7 +334,7 @@ a:hover { text-decoration: underline; }
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-4);
 }
 .empty {
@@ -900,19 +904,20 @@ a:hover { text-decoration: underline; }
 @media (max-width: 640px) {
   /* Header / layout */
   .header-inner { padding: 0 var(--space-3); height: 56px; gap: var(--space-2); }
-  .brand-title { font-size: 16px; }
-  .brand-mark { width: 30px; height: 30px; }
+  .brand-title { font-size: 15px; }
+  .brand-mark { width: 28px; height: 28px; }
+  .brand { gap: var(--space-2); }
   .header-actions .btn { padding: 6px 10px; font-size: 12px; }
 
-  .toolbar-inner { padding: var(--space-3) var(--space-3); }
+  .toolbar-inner { padding: var(--space-3) var(--space-3); gap: var(--space-2); }
   .main { padding: var(--space-4) var(--space-3) var(--space-6); }
   .stats { margin-left: 0; }
   .grid { grid-template-columns: 1fr; gap: var(--space-3); }
 
   /* Tabs: smaller padding so they fit inline with logo */
   .tabs.tabs-inline { gap: 0; }
-  .tab { padding: 0 var(--space-2); font-size: 13px; }
-  .tab .tab-count { margin-left: 4px; padding: 1px 5px; }
+  .tab { padding: 0 10px; font-size: 13px; }
+  .tab .tab-count { margin-left: 4px; padding: 1px 5px; font-size: 10px; }
 
   /* Selection toolbar: stack and grow buttons */
   .selection-toolbar { padding: var(--space-2) var(--space-3) var(--space-3); }
@@ -944,11 +949,23 @@ a:hover { text-decoration: underline; }
   .radio-group { align-self: flex-start; }
 }
 
-/* Larger tap targets on touch devices */
+/* Tablet (641px-1024px): tighten tab padding so all 4 fit inline at iPad portrait widths */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tab { padding: 0 var(--space-2); font-size: 13px; }
+  .tab .tab-count { margin-left: 4px; padding: 1px 6px; }
+}
+
+/* Larger tap targets on touch devices (phones, iPads) */
 @media (hover: none) and (pointer: coarse) {
   .btn, .tab, .radio-btn, .card-checkbox, .recog-name-btn { min-height: 44px; }
-  .card-checkbox { width: 20px; height: 20px; }
-  .copy-btn { padding: 8px 12px; }
+  .btn-small { min-height: 36px; padding: 8px 12px; }
+  .btn-icon { min-width: 44px; min-height: 44px; }
+  .card-checkbox { width: 22px; height: 22px; }
+  .copy-btn { padding: 8px 12px; min-height: 36px; }
+  /* Pills inside the timer modal need to be tappable too */
+  .timer-pill { min-height: 32px; padding: 4px 10px; }
+  /* Avoid the iOS "tap → 16px font auto-zoom" by ensuring search input is ≥16px */
+  #search { font-size: 16px; }
 }
 
 /* ============================================================
