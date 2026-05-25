@@ -257,12 +257,15 @@ export function trimmedAverage(solves, n) {
   return sum / trimmed.length;
 }
 
-/* Mean of all solves in the array. DNFs make the mean DNF (Infinity). */
+/* Mean of all solves in the array, skipping DNFs. Returns DNF (Infinity)
+   only if every solve is a DNF — otherwise a single bad solve doesn't
+   poison the whole session view. (Strict WCA mo3 would make any DNF
+   poison the mean; this matches cstimer's session-mean behavior.) */
 export function mean(solves) {
   if (!solves || solves.length === 0) return null;
-  const times = solves.map(effectiveMs);
-  if (times.some((t) => !isFinite(t))) return Infinity;
-  return times.reduce((a, b) => a + b, 0) / times.length;
+  const finite = solves.map(effectiveMs).filter((t) => isFinite(t));
+  if (finite.length === 0) return Infinity;
+  return finite.reduce((a, b) => a + b, 0) / finite.length;
 }
 
 /* Best single in the array (ignores DNFs). */
