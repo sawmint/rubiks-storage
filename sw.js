@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v19";
+const CACHE_VERSION = "rs-v21";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -27,6 +27,7 @@ const CORE_ASSETS = [
   "./scramble-3x3.js",
   "./sessions.js",
   "./batch.js",
+  "./pll-compose.json",
   "./rubiks-cube-algorithms.json",
   "./manifest.webmanifest",
   "./icon.svg",

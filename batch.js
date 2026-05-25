@@ -1,10 +1,16 @@
 /* =========================================================
- * batch.js — 5 short-scramble drills under one continuous timer.
+ * batch.js — chained PLL batch with SHORT equivalent scramble.
  *
- * Each round is a single case with its own SHORT scramble
- * (random y + AUF + setup, ~10-20 moves). After each solve,
- * the next round's scramble appears; the timer doesn't stop
- * until all 5 are done. Per-round splits + total shown at end.
+ * Pick 5 random PLL cases (OLLs ignored for now). The composition
+ * of their 5 setups always lands in one of 288 reachable last-layer
+ * states (each representable as a PLL × AUF × y-rotation variant).
+ * We precompute that map in `pll-compose.json` and ship it; in the
+ * client we walk a small composition table to find the equivalent
+ * state and use its SHORT scramble (~10-20 moves) as the initial
+ * scramble, instead of concatenating all 5 setups (~100 moves).
+ *
+ * The user applies that one short scramble, then executes the 5
+ * algs in queue order; the cube ends solved.
  *
  * State machine:
  *   idle → armed (hold space) → running (release) → split×5 → done
@@ -12,16 +18,26 @@
 
 import * as modal from "./modal.js";
 import * as selection from "./selection.js";
-import { buildScramble } from "./cube-notation.js";
 import { vcImage } from "./app.js";
 
 const BATCH_SIZE = 5;
-const DRILLABLE = new Set(["pll", "oll"]);
+const DRILLABLE = new Set(["pll"]); // OLLs not supported in chained batch (yet)
 
 let session = null;
 let rafId = null;
+let composeData = null; // lazy-loaded pll-compose.json
 
-export function start(data, keys) {
+async function loadCompose() {
+  if (composeData) return composeData;
+  const res = await fetch("./pll-compose.json");
+  composeData = await res.json();
+  // Build an id → index map for fast lookup
+  composeData.pllIndex = Object.fromEntries(composeData.plls.map((p, i) => [p, i]));
+  return composeData;
+}
+
+export async function start(data, keys) {
+  // Filter to PLL-only with setups
   const resolved = keys
     .map((k) => selection.resolve(k, data))
     .filter(Boolean)
@@ -30,15 +46,33 @@ export function start(data, keys) {
   if (resolved.length === 0) {
     modal.open({
       title: "Batch mode",
-      body: messageBody("Select at least one PLL or OLL case to batch-drill."),
+      body: messageBody("Select at least one PLL case. (OLL batch coming later.)"),
     });
     return;
   }
 
   const queue = pickQueue(resolved, BATCH_SIZE);
 
+  // Load the composition table (lazily, cached after first load)
+  const compose = await loadCompose();
+
+  // Walk the table to find the equivalent state.
+  // Chained scramble = setup_5 · setup_4 · ... · setup_1, so apply in REVERSE
+  // queue order against the solved state.
+  let stateId = compose.solved;
+  for (const p of queue.slice().reverse()) {
+    const idx = compose.pllIndex[p.item.id];
+    if (idx == null) {
+      // Shouldn't happen for PLLs in our dataset
+      break;
+    }
+    stateId = compose.table[stateId][idx];
+  }
+  const initialScramble = compose.scrambles[stateId];
+
   session = {
     queue,
+    initialScramble,
     currentIdx: 0,
     splits: [],
     timer: { state: "idle", startMs: 0, lastSplitMs: 0, elapsedMs: 0 },
@@ -48,7 +82,7 @@ export function start(data, keys) {
 
   const body = buildBody();
   modal.open({
-    title: `Batch mode — ${BATCH_SIZE} cases`,
+    title: `Batch mode — ${BATCH_SIZE} chained algs`,
     body,
     onClose: endSession,
   });
@@ -87,6 +121,31 @@ function buildBody() {
   const root = document.createElement("div");
   root.className = "batch-body";
 
+  const scrambleWrap = document.createElement("div");
+  scrambleWrap.className = "batch-initial-wrap";
+  const scrambleLabel = document.createElement("div");
+  scrambleLabel.className = "batch-initial-label";
+  scrambleLabel.textContent = "Apply this scramble to a solved cube:";
+  scrambleWrap.appendChild(scrambleLabel);
+
+  const scramble = document.createElement("div");
+  scramble.className = "batch-initial-scramble";
+  scramble.textContent = session.initialScramble || "(already solved — re-roll the batch)";
+  scrambleWrap.appendChild(scramble);
+
+  const preview = document.createElement("img");
+  preview.className = "batch-initial-preview";
+  preview.alt = "Scrambled state preview";
+  preview.src = vcImage({
+    setup: session.initialScramble,
+    view: "trans",
+    size: 110,
+    sch: "wrgyob",
+  });
+  scrambleWrap.appendChild(preview);
+
+  root.appendChild(scrambleWrap);
+
   const status = document.createElement("div");
   status.className = "batch-status";
   session.ui.status = status;
@@ -97,15 +156,10 @@ function buildBody() {
   session.ui.caseInfo = caseInfo;
   root.appendChild(caseInfo);
 
-  const image = document.createElement("div");
-  image.className = "batch-image";
-  session.ui.image = image;
-  root.appendChild(image);
-
-  const scramble = document.createElement("div");
-  scramble.className = "batch-scramble";
-  session.ui.scramble = scramble;
-  root.appendChild(scramble);
+  const algBox = document.createElement("div");
+  algBox.className = "batch-alg";
+  session.ui.alg = algBox;
+  root.appendChild(algBox);
 
   const timer = document.createElement("div");
   timer.className = "batch-timer";
@@ -115,7 +169,7 @@ function buildBody() {
 
   const hint = document.createElement("div");
   hint.className = "batch-hint";
-  hint.textContent = "Apply the scramble, then hold space to arm. Press space after each solve.";
+  hint.textContent = "Apply the scramble above, then hold space to arm. Press space after each alg.";
   session.ui.hint = hint;
   root.appendChild(hint);
 
@@ -147,23 +201,9 @@ function renderCurrent() {
   const { queue, currentIdx } = session;
   if (currentIdx >= queue.length) return;
   const pick = queue[currentIdx];
-
-  session.ui.status.textContent = `Case ${currentIdx + 1} of ${BATCH_SIZE}`;
-  const catLabel = pick.category === "pll" ? "PLL" : "OLL";
-  const idStr = pick.category === "pll" ? pick.item.id : `#${pick.item.id}`;
-  session.ui.caseInfo.textContent = `${catLabel} ${idStr} · ${pick.item.name}`;
-
-  // Per-case short scramble: random y + AUF + setup.
-  const scr = buildScramble(pick.item.setup);
-  session.ui.scramble.textContent = scr;
-
-  const stage = pick.category === "pll" ? "pll" : "oll";
-  const url = vcImage({ setup: pick.item.setup, stage, view: "plan", size: 180 });
-  const img = new Image();
-  img.alt = pick.item.name;
-  img.className = "batch-cube";
-  img.src = url;
-  session.ui.image.replaceChildren(img);
+  session.ui.status.textContent = `Alg ${currentIdx + 1} of ${BATCH_SIZE}`;
+  session.ui.caseInfo.textContent = `PLL ${pick.item.id} · ${pick.item.name}`;
+  session.ui.alg.textContent = pick.item.algorithm || "(no algorithm)";
 }
 
 function renderQueue() {
@@ -174,9 +214,7 @@ function renderQueue() {
     pip.className = "batch-pip";
     if (i < session.currentIdx) pip.classList.add("done");
     else if (i === session.currentIdx) pip.classList.add("current");
-    const pick = session.queue[i];
-    const label = pick.category === "pll" ? pick.item.id : `#${pick.item.id}`;
-    pip.textContent = label;
+    pip.textContent = session.queue[i].item.id;
     session.ui.queue.appendChild(pip);
   }
 }
@@ -196,9 +234,7 @@ function renderSplits(total) {
   for (let i = 0; i < session.splits.length; i++) {
     const row = document.createElement("div");
     row.className = "batch-split-row";
-    const pick = session.queue[i];
-    const label = pick.category === "pll" ? pick.item.name : `OLL #${pick.item.id}`;
-    row.innerHTML = `<span>${i + 1}. ${escapeHtml(label)}</span><span class="batch-split-time">${(session.splits[i] / 1000).toFixed(2)}s</span>`;
+    row.innerHTML = `<span>${i + 1}. ${escapeHtml(session.queue[i].item.name)}</span><span class="batch-split-time">${(session.splits[i] / 1000).toFixed(2)}s</span>`;
     list.appendChild(row);
   }
   wrap.appendChild(list);
@@ -224,7 +260,7 @@ function startTimer() {
   session.timer.lastSplitMs = session.timer.startMs;
   session.ui.timer.classList.remove("armed");
   session.ui.timer.classList.add("running");
-  session.ui.hint.textContent = "Press space after each solve.";
+  session.ui.hint.textContent = "Execute the alg, then press space.";
   tick();
 }
 
@@ -263,10 +299,9 @@ function finish(stopMs) {
   session.ui.timer.classList.remove("running");
   session.ui.timer.classList.add("stopped");
   session.ui.timer.textContent = (total / 1000).toFixed(2);
+  session.ui.caseInfo.textContent = "Cube should be solved!";
+  session.ui.alg.textContent = "";
   session.ui.status.textContent = "Done";
-  session.ui.caseInfo.textContent = "Batch complete!";
-  session.ui.scramble.textContent = "";
-  session.ui.image.replaceChildren();
   session.ui.hint.textContent = "Close the modal or run another batch.";
   renderQueue();
   renderSplits(total);
