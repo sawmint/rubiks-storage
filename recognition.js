@@ -13,7 +13,7 @@
 import * as modal from "./modal.js";
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
-import { buildScramble } from "./cube-notation.js";
+import { randomAUF } from "./cube-notation.js";
 import { vcImage } from "./app.js";
 
 const RECOG_CATEGORIES = new Set(["pll", "oll"]);
@@ -292,9 +292,13 @@ function nextQuestion() {
   session.current = pick;
   session.askedAt = performance.now();
 
-  // Image: render the case with random AUF + y so the angle varies
+  // Image: always rotate the cube so the case never appears in its canonical
+  // orientation — forces the user to recognize from any angle, like real solves.
+  const NON_IDENTITY_YS = ["y", "y2", "y'"];
+  const y = NON_IDENTITY_YS[Math.floor(Math.random() * NON_IDENTITY_YS.length)];
+  const auf = randomAUF();
+  const scrambledSetup = [y, auf, pick.item.setup].filter(Boolean).join(" ");
   const stage = pick.category === "pll" ? "pll" : "oll";
-  const scrambledSetup = buildScramble(pick.item.setup);
   const img = new Image();
   img.alt = `${pick.category.toUpperCase()} case`;
   img.className = "recog-cube";
