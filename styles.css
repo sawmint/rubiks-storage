@@ -1538,6 +1538,61 @@ a:hover { text-decoration: underline; }
   .timer-scramble { font-size: 14px; }
 }
 
+/* Landscape phones (iPhone landscape ~ 844x390). Viewport is wide but very
+   short, so the standard mobile single-column layout makes the timer feel
+   cramped — scramble + main + footer + solves don't all fit comfortably.
+   Re-use the side-by-side preview/timer layout and shrink vertical padding
+   so the big time display + footer + a few solve rows all stay on screen.
+   Triggered on EITHER true mobile landscape (short height) or any short
+   viewport — so foldables and zoomed laptop windows benefit too. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .modal-panel.timer-modal {
+    padding: var(--space-2);
+    max-height: 100vh;
+  }
+  .timer-body {
+    gap: var(--space-2);
+    min-height: 0;
+  }
+  .timer-scramble-row { padding: var(--space-2); }
+  .timer-scramble { font-size: 13px; }
+  .timer-main {
+    grid-template-columns: 120px 1fr;
+    min-height: 0;
+    gap: var(--space-2);
+  }
+  .timer-preview {
+    padding: var(--space-1);
+    min-height: 0;
+    max-height: none;
+  }
+  .timer-preview-img { max-height: 28vh; }
+  .timer-tapzone {
+    padding: var(--space-2);
+    min-height: 0;
+  }
+  /* VH-scaled timer text — uses available vertical space rather than width */
+  .timer-time { font-size: clamp(56px, 22vh, 140px); }
+  .timer-hint { font-size: 11px; }
+  .timer-stats-footer {
+    grid-template-columns: repeat(8, 1fr);
+    gap: var(--space-1);
+    padding: var(--space-2);
+  }
+  .timer-stat-val { font-size: 12px; }
+  .timer-stat-label { font-size: 9px; }
+  /* Solves list compressed so the timer area dominates the viewport */
+  .timer-solves { max-height: 130px; }
+  .timer-solves-header,
+  .timer-solve-row {
+    grid-template-columns: 28px 1fr 56px 56px auto;
+    padding: 4px var(--space-2);
+    font-size: 12px;
+  }
+  .timer-solve-time { font-size: 13px; }
+  .timer-topbar { gap: var(--space-2); }
+}
+
 /* ============================================================
    Weak cases ("Today's drill") modal
    ============================================================ */
