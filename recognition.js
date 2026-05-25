@@ -193,6 +193,8 @@ function makeRadioGroup(name, options, initial, onChange) {
 function startSession(data, resolved, settings) {
   session = {
     items: resolved,
+    bag: [],          // shuffled queue of indexes into items; refilled on exhaustion
+    lastIdx: -1,      // avoid two of the same case in a row when refilling
     data,
     settings,
     current: null,
@@ -284,20 +286,46 @@ function buildBody() {
 
 let stateCounts = { right: 0, wrong: 0 };
 
+/* Shuffled-bag random picker. Refills with a Fisher-Yates shuffle of all
+   item indexes whenever empty; ensures every case appears once before any
+   repeats, and avoids back-to-back repeats across refills. */
+function drawFromBag() {
+  if (!session) return 0;
+  if (session.bag.length === 0) {
+    const n = session.items.length;
+    const idxs = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    }
+    // If only one item, no choice. If >1 and the new first item equals the
+    // last drawn (would feel like a repeat), swap it with another.
+    if (n > 1 && idxs[0] === session.lastIdx) {
+      const swap = 1 + Math.floor(Math.random() * (n - 1));
+      [idxs[0], idxs[swap]] = [idxs[swap], idxs[0]];
+    }
+    session.bag = idxs;
+  }
+  return session.bag.shift();
+}
+
 function nextQuestion() {
   if (!session) return;
   if (session.advanceTimer) { clearTimeout(session.advanceTimer); session.advanceTimer = null; }
   stopCountdown();
-  const pick = session.items[Math.floor(Math.random() * session.items.length)];
+  const idx = drawFromBag();
+  const pick = session.items[idx];
+  session.lastIdx = idx;
   session.current = pick;
   session.askedAt = performance.now();
 
   // Image: always rotate the cube so the case never appears in its canonical
-  // orientation — forces the user to recognize from any angle, like real solves.
+  // orientation. Rotation goes AT THE END so it's a pure viewer-angle change
+  // (the case state stays the same, just viewed from a different side).
   const NON_IDENTITY_YS = ["y", "y2", "y'"];
   const y = NON_IDENTITY_YS[Math.floor(Math.random() * NON_IDENTITY_YS.length)];
   const auf = randomAUF();
-  const scrambledSetup = [y, auf, pick.item.setup].filter(Boolean).join(" ");
+  const scrambledSetup = [pick.item.setup, auf, y].filter(Boolean).join(" ");
   const stage = pick.category === "pll" ? "pll" : "oll";
   const img = new Image();
   img.alt = `${pick.category.toUpperCase()} case`;

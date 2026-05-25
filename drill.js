@@ -39,6 +39,8 @@ export function start(data, keys) {
 
   session = {
     items: resolved,
+    bag: [],
+    lastIdx: -1,
     autoAdvance: true,
     current: null,
     timer: { state: "idle", startMs: 0, elapsedMs: 0, last: null },
@@ -160,7 +162,9 @@ function messageBody(text) {
 function next() {
   if (!session) return;
   resetTimerState();
-  const { category, item } = pickRandom(session.items);
+  const idx = drawFromBag();
+  const { category, item } = session.items[idx];
+  session.lastIdx = idx;
   session.current = { category, item };
 
   // Case info
@@ -185,8 +189,24 @@ function next() {
   session.ui.scramble.textContent = scr;
 }
 
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
+/* Shuffled-bag draw: refills with a Fisher-Yates shuffle on exhaustion so
+   every case appears once before repeats, and avoids back-to-back repeats. */
+function drawFromBag() {
+  if (!session) return 0;
+  if (session.bag.length === 0) {
+    const n = session.items.length;
+    const idxs = Array.from({ length: n }, (_, i) => i);
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    }
+    if (n > 1 && idxs[0] === session.lastIdx) {
+      const swap = 1 + Math.floor(Math.random() * (n - 1));
+      [idxs[0], idxs[swap]] = [idxs[swap], idxs[0]];
+    }
+    session.bag = idxs;
+  }
+  return session.bag.shift();
 }
 
 /* ---------- timer ---------- */
