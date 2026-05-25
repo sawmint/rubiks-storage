@@ -4,13 +4,16 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 
 ## Files
 - `index.html` · `styles.css` — shell, theming, mobile responsive
-- `app.js` — main render loop, CATEGORIES table, image loading, theme toggle
+- `app.js` — main render loop, CATEGORIES table, image loading, theme toggle, header buttons
 - `selection.js` — cross-tab multi-select state
-- `modal.js` — overlay/escape/scroll-lock used by drill + recognition
+- `modal.js` — overlay/escape/scroll-lock used by drill, recognition, and timer
 - `cube-notation.js` — random AUF/Y, scramble builder
 - `stats.js` — localStorage (`rs-stats-v2`) per-case stats with reset
 - `drill.js` — drill mode (cstimer-style spacebar timer; tap-to-start fallback on touch)
 - `recognition.js` — recognition trainer with settings screen, time limit, name-button picker
+- `timer.js` — CSTimer-style speedcubing timer (header button → fullscreen modal)
+- `sessions.js` — timer sessions + solves persistence; WCA stats helpers (ao5/ao12/mean/best)
+- `scramble-3x3.js` — random-move 3x3 scramble generator with prefetch hooks
 - `rubiks-cube-algorithms.json` — dataset (PLL/OLL include `setup` and OLL has `recognitionGroup`)
 - `scripts/compute-setups.py` — one-time pycuber script that generated setup + recognitionGroup
 - `sw.js` · `manifest.webmanifest` · `icon.svg` — PWA: offline support, installable
@@ -35,6 +38,10 @@ Each PLL and OLL entry carries a precomputed `setup` field (forward-applied to a
 
 Drill scrambles = `randomY + randomAUF + setup` (cube-notation.js). The setup field means the user gets a clean, executable scramble regardless of whether the original solution alg contains `x`, `y`, wide, or slice moves.
 
+Recognition images use `setup + randomAUF + nonIdentityY` (rotation appended at end, in recognition.js). The terminal y is always one of `y / y2 / y'` — never identity — so the case is never displayed in canonical orientation. Rotation at the end is a pure viewer-angle change (case state unchanged, just rotated for display) so headlights/bars visibly land on different sides each draw.
+
+**Case picker** (both drill + recognition): shuffled-bag, not naive `Math.random()`. `drawFromBag()` Fisher-Yates-shuffles the index list on exhaustion and swaps the first slot if it would duplicate the previous draw. Guarantees every case appears once before repeats; eliminates back-to-back duplicates.
+
 Stats schema (`rs-stats-v2` in localStorage):
 ```js
 { schema: 2, cases: { "pll/Aa": { drill: {n,best,times,lastAt}, recog: {n,correct,avgMs,lastAt} } } }
@@ -56,6 +63,34 @@ F2L algorithms sourced from **rubiksplace.com** (algdb.net was down at generatio
 
 ## Images
 Case visualizations come from VisualCube at `https://visualcube.api.cubing.net/visualcube.php`. URL is built in `vcImage()` (app.js). For PLL/OLL, pass `setup` (forward-applied via `alg=` param). For F2L, pass `caseAlg` (inverse-applied via `case=` param — no setup precomputed because F2L isn't drillable). Click-to-load with retry to avoid flooding the API.
+
+`vcImage` also accepts an optional `sch` param (6-letter VisualCube color scheme, order **U R F D L B**). Timer scramble preview passes `sch: "wrgyob"` to render with white-on-top WCA orientation (white up, red right, green front, yellow down, orange left, blue back) — matching how a cuber physically holds the cube while scrambling. PLL/OLL/F2L cards leave `sch` unset and use the VisualCube default (yellow-up) since the existing card visuals were designed against that.
+
+## Timer
+Header **Timer** button (`#open-timer`) lazy-imports `timer.js` and opens a fullscreen modal — that's why `index.html`'s modal-panel grows a `.timer-modal` class when the timer is up (added inside `timer.js` via `queueMicrotask` after `modal.open`). The timer is independent of the algorithm browser and the per-case stats store.
+
+State machine (in `timer.js`): `idle → preInspectArm → inspecting → arming → armed → running → stopped`. `idle` enters `preInspectArm` on space-down if WCA inspection is enabled (default on); otherwise skips straight to `arming`. `armed` requires `HOLD_ARM_MS = 300ms` of space hold; release fires `startRun`. During `running`, each space press records a phase split via `splitOrStop`; the press that triggers the last phase stops the timer. Any non-space key during running also stops (cstimer behavior). ESC cancels at any pre-stop stage without recording.
+
+Inspection uses `setInterval(100ms)` not RAF, because RAF gets throttled when the tab is unfocused — `+2` at 15s and auto-DNF at 17s must still fire so the user can't game inspection by alt-tabbing. The run-time counter still uses RAF (it's display-only; the recorded time always comes from `performance.now()` at stop).
+
+Scrambles: `scramble-3x3.js` generates random-move sequences with same-face and same-axis-triple cancellation guards (`R R'` and `R L R` forbidden). The plan originally called for cubing.js WCA random-state scrambles via CDN, but the WASM worker init failed under cross-origin loading in our environment. Random-move scrambles produce fully-scrambled states; the file API is stable so a future swap to a Kociemba JS port is a drop-in.
+
+Stats schema (`rs-sessions-v1` in localStorage):
+```js
+{
+  schema: 1,
+  activeSessionId: "default",
+  phaseConfig: { count: 1, labels: ["Solve"] },   // global, applies to all new solves
+  inspection: true,                               // global
+  sessions: {
+    "default": {
+      id, name, createdAt,
+      solves: [{ id, timeMs, scramble, phases: [cumMs, ...], penalty: null|"+2"|"DNF", date, comment }]
+    }
+  }
+}
+```
+WCA averages computed in `sessions.js`: `trimmedAverage(solves, n)` (drop best+worst, mean middle; ≥2 DNFs in window → DNF), `mean(solves)` (any DNF → DNF), `bestSingle`, `bestAverage(solves, n)`. `effectiveMs(solve)` applies the +2 penalty (`Infinity` for DNF). Display via `fmtMs`/`fmtSolve`. The reset-stats header button only touches `rs-stats-v2`, not `rs-sessions-v1` — they're independent stores.
 
 ## Preferences
 - Honest uncertainty: flag stuff rather than guess silently.
