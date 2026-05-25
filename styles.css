@@ -710,6 +710,11 @@ a:hover { text-decoration: underline; }
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  /* Clip the absolute-positioned ::before accent stripe to the card's
+     rounded corners. Without this the 3px stripe extends straight from
+     top to bottom edge while the card itself curves — leaving a visible
+     gap where the stripe sticks past the rounded corner. */
+  overflow: hidden;
   transition: transform 120ms, box-shadow 120ms, border-color 120ms;
 }
 .card:hover {
@@ -723,7 +728,8 @@ a:hover { text-decoration: underline; }
   left: 0; top: 0; bottom: 0;
   width: 3px;
   background: var(--card-accent, var(--accent));
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  /* No border-radius needed — the parent's overflow:hidden + border-radius
+     clips this stripe to match the card's rounded corners exactly. */
   opacity: 0.85;
 }
 .card-head {
