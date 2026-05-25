@@ -136,13 +136,21 @@ function sessionRow(sess, isActive) {
 }
 
 function solveRow(solve, sessionId) {
+  // Defensive cast: time_ms is `int` in Postgres but local solves authored
+  // before the addSolve rounding fix may still carry sub-ms floats from
+  // performance.now(). Sending one trips Postgres 22P02 and pushOrQueue
+  // drops the op (400s aren't retried). Math.round here ensures every
+  // upload path — schedulePush diff + uploadAllLocal — sends ints, so a
+  // sign-out/sign-in cycle with "use this device's data" recovers any
+  // stranded solves. Phases gets the same treatment for consistency
+  // (jsonb accepts floats but keeping types tidy avoids future surprises).
   return {
     user_id: userId,
     id: solve.id,
     session_id: sessionId,
-    time_ms: solve.timeMs,
+    time_ms: Math.round(solve.timeMs),
     scramble: solve.scramble || "",
-    phases: solve.phases || [],
+    phases: (solve.phases || []).map((p) => Math.round(p)),
     penalty: solve.penalty,
     inspection_penalty: solve.inspectionPenalty,
     comment: solve.comment || "",

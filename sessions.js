@@ -159,11 +159,18 @@ export function addSolve({ timeMs, scramble, phases, penalty = null, inspectionP
   const s = load();
   const sess = s.sessions[s.activeSessionId];
   if (!sess) return;
+  // Round to integer ms. performance.now() returns sub-ms floats; the cloud
+  // schema's time_ms column is int. Without rounding, a stray .5 trips
+  // Postgres error 22P02 (invalid_text_representation) and the push silently
+  // drops. Display only uses .toFixed(2) on (timeMs/1000) anyway, so sub-ms
+  // precision was never user-visible — just a foot-gun for the sync path.
+  const tMs = Math.round(timeMs);
+  const phasesRounded = (phases || [tMs]).map((p) => Math.round(p));
   const solve = {
     id: newId(),
-    timeMs,
+    timeMs: tMs,
     scramble,
-    phases: phases || [timeMs],
+    phases: phasesRounded,
     penalty,                 // user-controlled portion (OK / +2 / DNF pills)
     inspectionPenalty,       // locked, set at solve time from inspection overrun
     date: Date.now(),
