@@ -20,7 +20,7 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `pll-compose.json` — precomputed PLL composition lookup (288 LL states × 21 PLLs); generated server-side by pycuber
 - `rubiks-cube-algorithms.json` — dataset (PLL/OLL include `setup` and OLL has `recognitionGroup`). No `alternates` field — those were removed after a data-quality audit showed 48/66 alternates didn't actually solve their case; only `algorithm` is trusted
 - `scripts/compute-setups.py` — one-time pycuber script that generated setup + recognitionGroup
-- `sw.js` · `manifest.webmanifest` · `logo.png` — PWA: offline support, installable. `logo.png` is the brand mark (rendered in the header via `.brand-logo`), favicon, and apple-touch-icon. Replaced the old CSS conic-gradient brand square + the old `icon.svg`
+- `sw.js` · `manifest.webmanifest` · `logo.png` · `logo-cube.png` — PWA: offline support, installable. `logo.png` is the full brand asset (cube + "rubik's storage" text below). `logo-cube.png` is the cropped cube-only variant used in the header alongside HTML/CSS-rendered themed text (so dark mode can flip text color via `var(--text)` — the original PNG's locked-black text was unreadable on dark bg). The cube image is also the favicon, apple-touch-icon, and PWA install icon. Both replaced the old CSS conic-gradient brand square + `icon.svg`
 - `.claude/skills/deploy/SKILL.md` — deploy workflow skill (auto-loaded each session)
 - `rubiks-cube-storage-prompt.md` — original generation prompt
 
@@ -29,6 +29,8 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 
 ## Architecture
 Single `CATEGORIES` table in `app.js` drives tabs, search, filters, cards, and **feature gating** via per-category flags (`drillable`, `recognitionMode`). Adding a category (ZBLL, COLL, scrambles, etc.) = one new row + matching data in the JSON.
+
+The **Notation** tab is a reference grid built off the same machinery — it has its own row in `CATEGORIES` (`key: "notation"`, `drillable: false`) and pulls items from a hardcoded `NOTATION_DATA` array in `app.js` instead of the JSON dataset. Each notation entry is shaped like a regular algorithm item (`id`, `name`, `algorithm`, `setup`), so the existing card renderer + colorizer work without changes — the move letter renders with the same face-coloring used everywhere, and the cube preview shows the state after applying the move from solved (WCA scheme). Entries are tagged with `category: "Face turn" | "Wide" | "Slice" | "Rotation" | "Modifier"`, which drives a single filter chip group at the top of the grid.
 
 Extension hooks:
 - `extraBadges` / `metaRows` / `filterFacets` per category

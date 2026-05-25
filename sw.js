@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v33";
+const CACHE_VERSION = "rs-v34";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -33,6 +33,7 @@ const CORE_ASSETS = [
   "./rubiks-cube-algorithms.json",
   "./manifest.webmanifest",
   "./logo.png",
+  "./logo-cube.png",
 ];
 
 const VISUALCUBE_ORIGIN = "https://visualcube.api.cubing.net";

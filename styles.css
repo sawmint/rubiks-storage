@@ -25,6 +25,7 @@
   --bad: #c8362d;
 
   /* per-category accents — used for tab underline + card stripes */
+  --cat-notation: #0e9488;
   --cat-pll: #4b6bff;
   --cat-oll: #ff8a3d;
   --cat-f2l-adv: #21a47a;
@@ -143,13 +144,22 @@ a:hover { text-decoration: underline; }
 .brand {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
   flex-shrink: 0;
   padding: var(--space-2) 0;
 }
 .brand-logo {
-  height: 48px;
+  height: 56px;
   width: auto;
   display: block;
+}
+.brand-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  line-height: 1;
 }
 .header-actions {
   display: flex;
@@ -943,11 +953,14 @@ a:hover { text-decoration: underline; }
     gap: 0;
     row-gap: var(--space-1);
   }
-  .brand { flex: 1 1 auto; min-width: 0; padding: var(--space-1) 0; }
-  .brand-logo { height: 36px; }
+  .brand { flex: 1 1 auto; min-width: 0; padding: var(--space-1) 0; gap: var(--space-2); }
+  .brand-logo { height: 40px; }
+  .brand-text { font-size: 17px; }
   .header-actions { flex: 0 0 auto; }
 
-  /* Tabs take their own row, full width, no horizontal scroll required */
+  /* Tabs take their own row, full width. With 5 tabs at narrow widths we
+     fall back to horizontal scroll + the desktop fade mask so the user
+     sees there's more to scroll. */
   .tabs.tabs-inline {
     order: 3;
     flex: 1 0 100%;
@@ -956,17 +969,14 @@ a:hover { text-decoration: underline; }
     padding: 0 var(--space-3);
     border-top: 1px solid var(--border);
     height: 44px;
-    /* No fade mask on mobile — all 4 tabs should fit comfortably */
-    mask-image: none;
-    -webkit-mask-image: none;
   }
   .tab {
-    flex: 1 1 0;
+    flex: 0 0 auto;
     justify-content: center;
-    padding: 0;
+    padding: 0 var(--space-3);
     font-size: 13px;
     text-align: center;
-    min-width: 0;
+    min-width: 60px;
   }
   .tab-label-full { display: none; }
   .tab-label-short { display: inline; }

@@ -10,8 +10,8 @@
   "theme_color": "#4b6bff",
   "icons": [
     {
-      "src": "./logo.png",
-      "sizes": "660x356",
+      "src": "./logo-cube.png",
+      "sizes": "227x265",
       "type": "image/png",
       "purpose": "any"
     }

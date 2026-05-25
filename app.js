@@ -51,9 +51,87 @@ export function vcImage({ setup, caseAlg, stage, view, size = 140, sch }) {
   return `${VISUALCUBE_BASE}?${params.toString()}`;
 }
 
+/* ---------- notation reference data ----------
+ * Static dataset used by the Notation tab. Each entry is shaped like a
+ * regular algorithm item (id/name/algorithm/setup) so the existing card
+ * renderer works as-is — the only difference is `drillable: false` on
+ * the category. The `algorithm` field flows through `algRow()` so the
+ * letter renders with the same colorizer used everywhere else (R is
+ * orange, x is red, etc.). The `setup` field drives the VisualCube
+ * preview, which shows the cube state AFTER applying the move from
+ * solved (WCA scheme so colors land in their conventional positions).
+ */
+const NOTATION_DATA = [
+  // ----- Face turns -----
+  { id: "R", name: "Right", algorithm: "R", setup: "R", category: "Face turn",
+    description: "Turn the right face 90° clockwise (looking at the right side)." },
+  { id: "L", name: "Left", algorithm: "L", setup: "L", category: "Face turn",
+    description: "Turn the left face 90° clockwise (looking at the left side)." },
+  { id: "U", name: "Up", algorithm: "U", setup: "U", category: "Face turn",
+    description: "Turn the top face 90° clockwise (looking down at it)." },
+  { id: "D", name: "Down", algorithm: "D", setup: "D", category: "Face turn",
+    description: "Turn the bottom face 90° clockwise (looking up at it)." },
+  { id: "F", name: "Front", algorithm: "F", setup: "F", category: "Face turn",
+    description: "Turn the front face 90° clockwise." },
+  { id: "B", name: "Back", algorithm: "B", setup: "B", category: "Face turn",
+    description: "Turn the back face 90° clockwise (looking from behind)." },
+
+  // ----- Wide moves (two layers) -----
+  { id: "Rw", name: "Right wide (r)", algorithm: "Rw", setup: "Rw", category: "Wide",
+    description: "Turn the right TWO layers in the R direction. Often written lowercase as r." },
+  { id: "Lw", name: "Left wide (l)", algorithm: "Lw", setup: "Lw", category: "Wide",
+    description: "Turn the left TWO layers in the L direction. Often written as l." },
+  { id: "Uw", name: "Up wide (u)", algorithm: "Uw", setup: "Uw", category: "Wide",
+    description: "Turn the top TWO layers in the U direction. Often written as u." },
+  { id: "Dw", name: "Down wide (d)", algorithm: "Dw", setup: "Dw", category: "Wide",
+    description: "Turn the bottom TWO layers in the D direction. Often written as d." },
+  { id: "Fw", name: "Front wide (f)", algorithm: "Fw", setup: "Fw", category: "Wide",
+    description: "Turn the front TWO layers in the F direction. Often written as f." },
+  { id: "Bw", name: "Back wide (b)", algorithm: "Bw", setup: "Bw", category: "Wide",
+    description: "Turn the back TWO layers in the B direction. Often written as b." },
+
+  // ----- Slice moves (middle layer only) -----
+  { id: "M", name: "Middle slice", algorithm: "M", setup: "M", category: "Slice",
+    description: "Turn the middle slice (between L and R) in the L direction." },
+  { id: "E", name: "Equatorial slice", algorithm: "E", setup: "E", category: "Slice",
+    description: "Turn the equator slice (between U and D) in the D direction." },
+  { id: "S", name: "Standing slice", algorithm: "S", setup: "S", category: "Slice",
+    description: "Turn the standing slice (between F and B) in the F direction." },
+
+  // ----- Cube rotations (whole cube, no permutation change) -----
+  { id: "x", name: "x rotation", algorithm: "x", setup: "x", category: "Rotation",
+    description: "Rotate the entire cube around the L-R axis, in the R direction." },
+  { id: "y", name: "y rotation", algorithm: "y", setup: "y", category: "Rotation",
+    description: "Rotate the entire cube around the U-D axis, in the U direction." },
+  { id: "z", name: "z rotation", algorithm: "z", setup: "z", category: "Rotation",
+    description: "Rotate the entire cube around the F-B axis, in the F direction." },
+
+  // ----- Modifiers (shown via example) -----
+  { id: "prime", name: "Apostrophe ( ' )", algorithm: "R'", setup: "R'", category: "Modifier",
+    description: "Inverts the move (counter-clockwise / opposite direction). Example: R' is the inverse of R." },
+  { id: "double", name: "Double ( 2 )", algorithm: "R2", setup: "R2", category: "Modifier",
+    description: "Half turn (180°). Same end result regardless of direction. Example: R2 = R + R." },
+];
+
 /* ---------- category configuration ---------- */
 
 const CATEGORIES = [
+  {
+    key: "notation",
+    label: "Notation",
+    accent: "var(--cat-notation)",
+    getItems: () => NOTATION_DATA,
+    titleOf: (it) => it.name,
+    idOf: (it) => it.algorithm,
+    searchFields: ["id", "name", "category", "description", "algorithm"],
+    filterFacets: [
+      { key: "category", label: "Category", from: (it) => it.category },
+    ],
+    extraBadges: (it) => [{ label: it.category, className: "badge" }],
+    metaRows: (it) => [{ label: "Description", value: it.description }],
+    imageUrl: (it) => vcImage({ setup: it.setup, view: "trans", size: 140, sch: "wrgyob" }),
+    drillable: false,
+  },
   {
     key: "pll",
     label: "PLL",
