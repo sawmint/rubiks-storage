@@ -17,13 +17,19 @@
  *   2. parenthesis         → kind: "paren"
  *   3. wide notation (Rw)  → kind: "move", head=Rw
  *   4. single-char move    → kind: "move", head=R|r|M|x|...
- *      ...followed by optional modifier(s): ', 2, or 2'
- * Anything not matched (commas, brackets, unknown letters)
- * falls through as raw text so callers can pass arbitrary
- * notation without crashing the renderer.
+ *      ...followed by optional modifier: '', "'", "2", or "2'"
+ *      ...then a negative lookahead so adjoining letters don't get
+ *         partially colored (e.g. "fix" should NOT color "f", and
+ *         "Right" should NOT color "R"). Algorithm strings in the
+ *         dataset are whitespace-separated, so this just makes the
+ *         tokenizer ignore prose if it ever sneaks in.
+ *
+ * Anything not matched (commas, brackets, unknown letters) falls
+ * through as raw text so callers can pass arbitrary notation without
+ * crashing the renderer.
  */
 const TOKEN_RE =
-  /(\s+)|([()])|(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])([2']*)/g;
+  /(\s+)|([()])|(?<![A-Za-z])(Rw|Lw|Uw|Dw|Fw|Bw|[RLUDFBrludfbMESxyz])((?:'|2'?)?)(?![A-Za-z])/g;
 
 export function tokenize(s) {
   const tokens = [];

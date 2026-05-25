@@ -394,12 +394,10 @@ function timeExpired() {
   stopCountdown();
   // Count as wrong; show correct answer
   finalize(false);
-  // Prepend "time's up" indicator while preserving the colored alg HTML.
-  const f = session.ui.feedback;
-  if (f) {
-    f.innerHTML = f.innerHTML.replace(/^✗\s*/, "");
-    f.innerHTML = "⏱ Time's up. " + f.innerHTML;
-  }
+  // Replace the "✗ " prefix with "⏱ Time's up. " — touching only the prefix
+  // span leaves the alg's colored HTML intact (no innerHTML regex round-trip).
+  const prefix = session.ui.feedback?.querySelector(".recog-feedback-prefix");
+  if (prefix) prefix.textContent = "⏱ Time's up. ";
 }
 
 function updateScore() {
@@ -529,14 +527,21 @@ function finalize(correct) {
   if (correct) stateCounts.right++;
   else         stateCounts.wrong++;
 
-  // Feedback
+  // Feedback — built as structured DOM (prefix span + name + alg span) so the
+  // time-up path can replace just the prefix without regex-parsing innerHTML.
   const f = session.ui.feedback;
-  const showAlg = session.settings.showAlgInFeedback;
-  const algPart = showAlg && item.algorithm
-    ? ` · ${colorizeAlg(item.algorithm)}`
-    : "";
-  const prefix = correct ? "✓ Correct: " : "✗ ";
-  f.innerHTML = escapeHtmlRecog(prefix + item.name) + algPart;
+  f.replaceChildren();
+  const prefixSpan = document.createElement("span");
+  prefixSpan.className = "recog-feedback-prefix";
+  prefixSpan.textContent = correct ? "✓ Correct: " : "✗ ";
+  f.appendChild(prefixSpan);
+  f.appendChild(document.createTextNode(item.name));
+  if (session.settings.showAlgInFeedback && item.algorithm) {
+    f.appendChild(document.createTextNode(" · "));
+    const algSpan = document.createElement("span");
+    algSpan.innerHTML = colorizeAlg(item.algorithm);
+    f.appendChild(algSpan);
+  }
   f.className = "recog-feedback " + (correct ? "ok" : "bad");
   // Disable PLL input if still there
   for (const input of session.ui.answer.querySelectorAll("input")) input.disabled = true;
@@ -553,12 +558,6 @@ function finalize(correct) {
       if (session) nextQuestion();
     }, session.settings.autoDelayMs);
   }
-}
-
-function escapeHtmlRecog(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
 }
 
 function shuffle(arr) {

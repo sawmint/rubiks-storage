@@ -35,6 +35,35 @@ let rafId = null;
 let inspectionIntervalId = null;
 let unsubSessions = null;
 let unsubStatus = null;
+let activeCommentPopover = null; // { pop, anchor, solveId, close } | null
+
+/* Pairs a popover element with an outside-click + scroll handler so all
+ * dismissal paths (click-outside, Save, Cancel, Esc, etc.) detach the same
+ * document listener when they remove the pop. Without this, every popover
+ * opened in a session leaks one document listener until the next outside
+ * click. Returns `{ close }` — call it from every close path.
+ *
+ * Scroll-close: when the popover is body-anchored at fixed position, scrolling
+ * its anchor out of view leaves it floating. Closing on any ancestor scroll
+ * keeps it sensible without re-position math.
+ */
+function attachPopoverDismiss(pop, anchor) {
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    pop.remove();
+    document.removeEventListener("click", onDocClick);
+    window.removeEventListener("scroll", onScroll, true);
+  }
+  function onDocClick(e) {
+    if (!pop.contains(e.target) && e.target !== anchor) close();
+  }
+  function onScroll() { close(); }
+  setTimeout(() => document.addEventListener("click", onDocClick), 0);
+  window.addEventListener("scroll", onScroll, true);
+  return { close };
+}
 
 /* ---------- public entry ---------- */
 
@@ -84,6 +113,11 @@ function closeTimer() {
   }
   if (unsubSessions) { unsubSessions(); unsubSessions = null; }
   if (unsubStatus) { unsubStatus(); unsubStatus = null; }
+  // Close any open popovers so their body-attached DOM nodes don't outlive
+  // the modal, and so their dismiss listeners are removed.
+  if (activeCommentPopover) { activeCommentPopover.close(); activeCommentPopover = null; }
+  if (activeSessionPop)     { activeSessionPop.close();     activeSessionPop = null; }
+  if (activeSettingsPop)    { activeSettingsPop.close();    activeSettingsPop = null; }
   session = null;
 }
 
@@ -290,7 +324,7 @@ function renderSolvesList() {
     const noteBtn = document.createElement("button");
     noteBtn.type = "button";
     noteBtn.className = "timer-pill timer-pill-note" + (s.comment ? " active" : "");
-    noteBtn.textContent = "✎"; // ✎
+    noteBtn.textContent = "✎";
     noteBtn.title = s.comment ? `Edit note: ${s.comment}` : "Add note";
     noteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -312,12 +346,14 @@ function renderSolvesList() {
 /* ---------- per-solve comment popover ---------- */
 
 function openCommentPopover(anchor, solve) {
-  // Close any existing popover first (also closes if user re-clicks the same pill)
-  const existing = document.querySelector(".timer-comment-pop");
-  if (existing) {
-    const wasSameAnchor = existing.dataset.solveId === solve.id;
-    existing.remove();
-    if (wasSameAnchor) return;
+  // Re-clicking the same pill toggles closed; clicking a different pill closes
+  // the previous popover before opening the new one. Either way the prior
+  // dismiss listeners are cleaned up by close().
+  if (activeCommentPopover) {
+    const wasSame = activeCommentPopover.solveId === solve.id;
+    activeCommentPopover.close();
+    activeCommentPopover = null;
+    if (wasSame) return;
   }
 
   const pop = document.createElement("div");
@@ -344,20 +380,20 @@ function openCommentPopover(anchor, solve) {
   const actions = document.createElement("div");
   actions.className = "timer-comment-actions";
 
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "btn btn-small";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => closeAndForget());
+
   const saveBtn = document.createElement("button");
   saveBtn.type = "button";
   saveBtn.className = "btn btn-primary btn-small";
   saveBtn.textContent = "Save";
   saveBtn.addEventListener("click", () => {
     sessions.setSolveComment(solve.id, textarea.value.trim());
-    pop.remove();
+    closeAndForget();
   });
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "btn btn-small";
-  cancelBtn.textContent = "Cancel";
-  cancelBtn.addEventListener("click", () => pop.remove());
 
   actions.append(cancelBtn, saveBtn);
   pop.appendChild(actions);
@@ -369,21 +405,42 @@ function openCommentPopover(anchor, solve) {
       saveBtn.click();
     } else if (e.key === "Escape") {
       e.preventDefault();
-      pop.remove();
+      closeAndForget();
     }
   });
 
-  // Click outside to close
-  const onDocClick = (e) => {
-    if (!pop.contains(e.target) && e.target !== anchor) {
-      pop.remove();
-      document.removeEventListener("click", onDocClick);
-    }
-  };
-  setTimeout(() => document.addEventListener("click", onDocClick), 0);
+  // Body-attached + fixed positioning, so a session re-render (which does
+  // `solves-list.innerHTML = ""` on every solve/penalty change) doesn't nuke
+  // the popover and lose the user's unsaved typing.
+  document.body.appendChild(pop);
+  positionCommentPopover(pop, anchor);
 
-  anchor.insertAdjacentElement("afterend", pop);
+  const dismiss = attachPopoverDismiss(pop, anchor);
+  const handle = { pop, anchor, solveId: solve.id, close: dismiss.close };
+  activeCommentPopover = handle;
+
+  function closeAndForget() {
+    if (activeCommentPopover === handle) activeCommentPopover = null;
+    handle.close();
+  }
+
   setTimeout(() => textarea.focus(), 0);
+}
+
+/* Place the popover near the anchor pencil pill. Right-align to the pill,
+ * drop below; clamp horizontally inside the viewport. Vertical clamping
+ * keeps it on-screen if the row is near the modal's bottom edge. */
+function positionCommentPopover(pop, anchor) {
+  const r = anchor.getBoundingClientRect();
+  const popW = pop.offsetWidth || 320;
+  const popH = pop.offsetHeight || 180;
+  let left = r.right - popW;
+  if (left < 8) left = 8;
+  if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+  let top = r.bottom + 4;
+  if (top + popH > window.innerHeight - 8) top = Math.max(8, r.top - popH - 4);
+  pop.style.left = left + "px";
+  pop.style.top = top + "px";
 }
 
 function mkPenaltyBtn(label, value, s) {
@@ -704,6 +761,9 @@ function attachWindowBlur() {
 }
 
 function attachSessionsListener() {
+  // Idempotent: drop any prior subscription before resubscribing so opening
+  // the timer multiple times can't stack renderAll callbacks.
+  if (unsubSessions) unsubSessions();
   unsubSessions = sessions.subscribe(() => renderAll());
 }
 
@@ -737,10 +797,15 @@ function onTouchEnd(e) {
 
 /* ---------- session manager popover ---------- */
 
+let activeSessionPop = null; // { close } | null
+
 function openSessionManager() {
-  // Tiny inline popover anchored under the button.
-  const existing = document.querySelector(".timer-session-pop");
-  if (existing) { existing.remove(); return; }
+  // Toggle: re-clicking the label while open just closes.
+  if (activeSessionPop) {
+    activeSessionPop.close();
+    activeSessionPop = null;
+    return;
+  }
 
   const pop = document.createElement("div");
   pop.className = "timer-session-pop";
@@ -758,7 +823,7 @@ function openSessionManager() {
     name.textContent = s.name + ` (${s.solves.length})`;
     name.addEventListener("click", () => {
       sessions.setActiveSession(s.id);
-      pop.remove();
+      closeAndForget();
     });
     row.appendChild(name);
 
@@ -779,7 +844,7 @@ function openSessionManager() {
     del.addEventListener("click", () => {
       if (confirm(`Delete "${s.name}" and all its solves?`)) {
         sessions.deleteSession(s.id);
-        pop.remove();
+        closeAndForget();
       }
     });
     row.appendChild(del);
@@ -795,28 +860,32 @@ function openSessionManager() {
     const name = prompt("Session name:", "New session");
     if (name != null && name.trim()) {
       sessions.createSession(name.trim());
-      pop.remove();
+      closeAndForget();
     }
   });
   pop.appendChild(newBtn);
 
-  // Click outside to close
-  const onDocClick = (e) => {
-    if (!pop.contains(e.target) && e.target !== session.ui.sessionLabel) {
-      pop.remove();
-      document.removeEventListener("click", onDocClick);
-    }
-  };
-  setTimeout(() => document.addEventListener("click", onDocClick), 0);
-
   session.ui.sessionLabel.insertAdjacentElement("afterend", pop);
+  const dismiss = attachPopoverDismiss(pop, session.ui.sessionLabel);
+  activeSessionPop = { close: dismiss.close };
+
+  function closeAndForget() {
+    if (activeSessionPop && activeSessionPop.close === dismiss.close) activeSessionPop = null;
+    dismiss.close();
+  }
 }
 
 /* ---------- settings panel ---------- */
 
+let activeSettingsPop = null; // { close } | null
+
 function openSettingsPanel() {
-  const existing = document.querySelector(".timer-settings-pop");
-  if (existing) { existing.remove(); return; }
+  // Toggle off on re-open
+  if (activeSettingsPop) {
+    activeSettingsPop.close();
+    activeSettingsPop = null;
+    return;
+  }
 
   const cfg = sessions.getPhaseConfig();
 
@@ -849,7 +918,7 @@ function openSettingsPanel() {
     b.addEventListener("click", () => {
       const labels = defaultLabelsFor(n);
       sessions.setPhaseConfig(n, labels);
-      pop.remove();
+      closeAndForget();
       openSettingsPanel(); // re-open to refresh
     });
     phaseGroup.appendChild(b);
@@ -874,18 +943,18 @@ function openSettingsPanel() {
     pop.appendChild(row);
   }
 
-  // Click outside to close
-  const onDocClick = (e) => {
-    if (!pop.contains(e.target)) {
-      pop.remove();
-      document.removeEventListener("click", onDocClick);
-    }
-  };
-  setTimeout(() => document.addEventListener("click", onDocClick), 0);
-
-  // Anchor: append to topbar (right side)
+  // Anchor: append to topbar (right side). Use the gear button as anchor for
+  // outside-click detection so clicks on the gear (re-toggle) don't auto-close.
   const topbar = document.querySelector(".timer-topbar");
   if (topbar) topbar.appendChild(pop);
+  const gearBtn = topbar?.querySelector(".timer-icon-btn");
+  const dismiss = attachPopoverDismiss(pop, gearBtn || pop);
+  activeSettingsPop = { close: dismiss.close };
+
+  function closeAndForget() {
+    if (activeSettingsPop && activeSettingsPop.close === dismiss.close) activeSettingsPop = null;
+    dismiss.close();
+  }
 }
 
 function defaultLabelsFor(n) {

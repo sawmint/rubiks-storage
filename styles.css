@@ -1267,19 +1267,18 @@ a:hover { text-decoration: underline; }
   border-color: var(--warn);
 }
 
-/* Per-solve comment popover (anchored to the ✎ pill in the solves table). */
-.timer-solve-menu { position: relative; }
+/* Per-solve comment popover. Attached to document.body (not the row) so
+   re-renders of the solves list don't nuke the popover and the user's
+   unsaved typing. JS sets `left`/`top` via getBoundingClientRect; the
+   popover stays put if the modal scrolls (closes on any ancestor scroll). */
 .timer-comment-pop {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 4px;
+  position: fixed;
   background: var(--bg-elev);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: var(--space-3);
-  z-index: 20;
+  z-index: 200;
   width: 320px;
   max-width: calc(100vw - var(--space-4));
   display: flex;
