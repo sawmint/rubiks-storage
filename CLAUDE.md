@@ -89,7 +89,11 @@ Header **Timer** button (`#open-timer`) lazy-imports `timer.js` and opens a full
 
 State machine (in `timer.js`): `idle → preInspectArm → inspecting → arming → armed → running → stopped`. `idle` enters `preInspectArm` on space-down if WCA inspection is enabled (default on); otherwise skips straight to `arming`. `armed` requires `HOLD_ARM_MS = 300ms` of space hold; release fires `startRun`. During `running`, each space press records a phase split via `splitOrStop`; the press that triggers the last phase stops the timer. Any non-space key during running also stops (cstimer behavior). ESC cancels at any pre-stop stage without recording.
 
-Inspection uses `setInterval(100ms)` not RAF, because RAF gets throttled when the tab is unfocused — `+2` at 15s and auto-DNF at 17s must still fire so the user can't game inspection by alt-tabbing. The run-time counter still uses RAF (it's display-only; the recorded time always comes from `performance.now()` at stop).
+Inspection uses `setInterval(100ms)` not RAF, because RAF gets throttled when the tab is unfocused — `+2` at the limit and auto-DNF at limit+2s must still fire so the user can't game inspection by alt-tabbing. The run-time counter still uses RAF (it's display-only; the recorded time always comes from `performance.now()` at stop).
+
+**Inspection ticker keeps firing through the entire pre-solve cycle** (preInspectArm/inspecting/arming/armed), not just "inspecting". Two reasons: (1) the displayed countdown stays visible while the user holds space to arm, and (2) the +2/DNF threshold checks still fire during hold — otherwise a user holding past the DNF threshold would silently bypass the penalty. The className is gated by state so the green arm color from the state-transition handler isn't overwritten; only `textContent` updates every tick.
+
+**Inspection duration is configurable**: `inspectionDurationSec` in the sessions schema (default 15). UI exposes 8/15/30/60s pills below the inspection checkbox in the timer settings popover. Thresholds derive from the configured duration (`+2` at `duration*1000`, DNF at `duration*1000 + 2000`); warn/bad color bands scale to it as well.
 
 Scrambles: `scramble-3x3.js` generates random-move sequences with same-face and same-axis-triple cancellation guards (`R R'` and `R L R` forbidden). The plan originally called for cubing.js WCA random-state scrambles via CDN, but the WASM worker init failed under cross-origin loading in our environment. Random-move scrambles produce fully-scrambled states; the file API is stable so a future swap to a Kociemba JS port is a drop-in.
 
@@ -100,6 +104,7 @@ Stats schema (`rs-sessions-v1` in localStorage):
   activeSessionId: "default",
   phaseConfig: { count: 1, labels: ["Solve"] },   // global, applies to all new solves
   inspection: true,                               // global
+  inspectionDurationSec: 15,                      // global; 8/15/30/60 selectable
   sessions: {
     "default": {
       id, name, createdAt,
@@ -140,14 +145,14 @@ To regenerate `pll-compose.json` (if PLL setups change or new ones are added), s
 - `x` red, `y` pink, `z` brown
 - Lowercase wide moves (r, l, u, d, f, b) share the color of their uppercase face.
 
-Tokenizer regex uses lookbehind + lookahead so prose like "fix" or "Right" doesn't get partially colored. Whitespace, parens, and unknown chars fall through as raw escaped text.
+Tokenizer uses a regex negative lookahead `(?![A-Za-z])` plus a MANUAL lookbehind (index check inside the tokenize loop) so prose like "fix" or "Right" doesn't get partially colored. Regex literals with `(?<=...)` are a SyntaxError on iOS Safari < 16.4 — using one would kill the module at parse time and cascade-blank the whole PWA on older phones, so the lookbehind is done in JS. The post-modifier lookahead is also dropped when a non-empty modifier matched (`'` and `2` are unambiguous move terminators), so `R'U` tokenizes cleanly as `R'` + `U` even without a space. Whitespace, parens, and unknown chars fall through as raw escaped text.
 
 ## Per-solve comments
 ✎ pill in each timer-solves row opens a backdrop-overlaid editor card (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` with z-index 1000, sitting above the timer modal. The card shows the solve's time, the colored scramble (clearly labeled), and a multi-line textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes. Comment persists at `sess.solves[i].comment` (schema was already in place).
 
-Key architectural note: the editor lives on `document.body`, NOT inside the solves list. The timer's sessions listener runs `renderSolvesList` (which does `list.innerHTML = ""`) on every solve/penalty/comment change — if the editor were inside the list, it would be wiped along with the user's in-progress typing. Same reason any popover spawned from inside the timer modal should follow this pattern.
+Key architectural note: the editor lives on `document.body`, NOT inside the solves list. The timer's sessions listener runs `renderSolvesList` (which does `list.innerHTML = ""`) on every solve/penalty/comment change — if the editor were inside the list, it would be wiped along with the user's in-progress typing. Same reason any popover spawned from inside the timer modal should follow this pattern. The backdrop also tracks `mousedown` target: it only closes on click if BOTH mousedown and click landed on the backdrop, so a text-selection drag from the textarea to outside the card doesn't throw away the user's typing.
 
-`attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")` and a scroll-close, returning a `close()` function used by every dismissal path. Applied to comment, session-manager, and settings popovers — without it the document-level click listeners leaked.
+`attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")`, returning a `close()` function used by every dismissal path. Applied to session-manager and settings popovers (the comment editor uses backdrop-click only) — without it the document-level click listeners leaked. The setTimeout-deferred `addEventListener` checks a `closed` flag before adding, so a popover dismissed in the same tick doesn't leak the listener. No scroll-close: the modal panel scrolls internally on small viewports, so a scroll-close handler would snap-close the popover the moment the user scrolled the modal content underneath.
 
 ## Session export
 `sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, and an `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all. Import path not built yet — the envelope schema makes future import straightforward.
