@@ -27,6 +27,7 @@
 
 import * as modal from "./modal.js";
 import * as selection from "./selection.js";
+import { simplifyMoves } from "./cube-notation.js";
 import { vcImage } from "./app.js";
 
 const BATCH_SIZE = 5;
@@ -51,12 +52,14 @@ export function start(data, keys) {
 
   const queue = pickQueue(resolved, BATCH_SIZE);
   // Chained initial scramble: setups in REVERSE order so the user's algs in
-  // FORWARD order cancel them one by one.
-  const initialScramble = queue
+  // FORWARD order cancel them one by one. Then simplify consecutive same-face
+  // moves so the seams between setups collapse (e.g. trailing x' meets leading x).
+  const rawScramble = queue
     .slice()
     .reverse()
     .map((p) => p.item.setup)
     .join(" ");
+  const initialScramble = simplifyMoves(rawScramble);
 
   session = {
     queue,
