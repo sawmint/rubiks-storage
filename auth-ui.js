@@ -139,25 +139,29 @@ export function askConflict(resolve) {
   p.textContent = "We found existing data on this device AND data already in your account. Which one should win?";
   body.appendChild(p);
 
+  // modal.close() triggers onClose, which resolves with "cancel". So we
+  // resolve with the real choice BEFORE close() — once a Promise settles,
+  // further resolve() calls are no-ops, so the onClose-fired "cancel"
+  // becomes harmless.
   const uploadBtn = document.createElement("button");
   uploadBtn.type = "button";
   uploadBtn.className = "btn auth-btn-choice";
   uploadBtn.innerHTML = `<strong>Use this device's data</strong><span>Upload local stats and solves into the cloud, overwriting what's there.</span>`;
-  uploadBtn.addEventListener("click", () => { modal.close(); resolve("upload"); });
+  uploadBtn.addEventListener("click", () => { resolve("upload"); modal.close(); });
   body.appendChild(uploadBtn);
 
   const cloudBtn = document.createElement("button");
   cloudBtn.type = "button";
   cloudBtn.className = "btn auth-btn-choice";
   cloudBtn.innerHTML = `<strong>Use the cloud data</strong><span>Replace this device's local data with what's already in your account.</span>`;
-  cloudBtn.addEventListener("click", () => { modal.close(); resolve("cloud"); });
+  cloudBtn.addEventListener("click", () => { resolve("cloud"); modal.close(); });
   body.appendChild(cloudBtn);
 
   const cancelBtn = document.createElement("button");
   cancelBtn.type = "button";
   cancelBtn.className = "btn auth-btn-choice auth-btn-cancel";
   cancelBtn.innerHTML = `<strong>Cancel</strong><span>Sign out and decide later.</span>`;
-  cancelBtn.addEventListener("click", () => { modal.close(); resolve("cancel"); });
+  cancelBtn.addEventListener("click", () => { resolve("cancel"); modal.close(); });
   body.appendChild(cancelBtn);
 
   modal.open({
