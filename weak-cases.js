@@ -69,6 +69,7 @@ export function start(data) {
 
 function gatherCandidates(categories) {
   const all = stats.getAll();
+  const nowSec = Math.floor(Date.now() / 1000);
   const out = [];
   for (const cat of categories) {
     const items = cat === "pll" ? session.data.pll : session.data.oll;
@@ -76,13 +77,22 @@ function gatherCandidates(categories) {
     for (const item of items) {
       // Skip cases without a setup — they're not drillable from this app
       if (typeof item.setup !== "string") continue;
-      const drill = all[`${cat}/${item.id}`]?.drill;
+      const slot = all[`${cat}/${item.id}`];
+      const drill = slot?.drill;
+      const srs = slot?.srs;
+      const isUnpracticed = !drill || drill.n === 0;
+      const isDue = !!srs && srs.dueAt > 0 && srs.dueAt <= nowSec;
       out.push({
         category: cat,
         item,
         key: selection.key(cat, item.id),
         drill,
-        isUnpracticed: !drill || drill.n === 0,
+        srs,
+        isUnpracticed,
+        isDue,
+        // Negative if overdue (most overdue = most negative); used to sort
+        // due cases by "most overdue first".
+        dueDelta: srs?.dueAt ? srs.dueAt - nowSec : null,
         best: drill?.best ?? null,
         n: drill?.n ?? 0,
         lastAt: drill?.lastAt ?? 0,
@@ -92,14 +102,25 @@ function gatherCandidates(categories) {
   return out;
 }
 
+/* Three-tier ranking, weakest first:
+ *   1. Due-now cases (have an SRS schedule and dueAt has passed),
+ *      sorted by most-overdue first.
+ *   2. Never-drilled cases, sorted by id for deterministic order.
+ *   3. Practiced but not yet due, sorted by slowest best descending
+ *      (tiebreak oldest lastAt) — the original "weak cases" heuristic
+ *      remains the baseline when nothing is explicitly due.
+ */
 function rankWeak(candidates) {
+  const due = candidates
+    .filter((c) => c.isDue)
+    .sort((a, b) => (a.dueDelta ?? 0) - (b.dueDelta ?? 0));
   const unpracticed = candidates
-    .filter((c) => c.isUnpracticed)
+    .filter((c) => c.isUnpracticed && !c.isDue)
     .sort((a, b) => String(a.item.id).localeCompare(String(b.item.id)));
-  const practiced = candidates
-    .filter((c) => !c.isUnpracticed)
+  const future = candidates
+    .filter((c) => !c.isUnpracticed && !c.isDue)
     .sort((a, b) => (b.best - a.best) || (a.lastAt - b.lastAt));
-  return [...unpracticed, ...practiced];
+  return [...due, ...unpracticed, ...future];
 }
 
 /* ---------- UI ---------- */
@@ -110,7 +131,8 @@ function buildBody() {
 
   const blurb = document.createElement("div");
   blurb.className = "weak-blurb";
-  blurb.textContent = "Cases you've never drilled come first, then the slowest you have drilled. Use this as a focused warm-up.";
+  session.ui.blurb = blurb;
+  // Updated dynamically by renderList so it shows live "X due, Y new" counts.
   root.appendChild(blurb);
 
   root.appendChild(makeToggleRow("Categories", [
@@ -241,6 +263,19 @@ function renderList() {
   const top = ranked.slice(0, session.settings.count);
   session.currentTop = top;
 
+  // Blurb counts reflect the FULL candidate pool (not just the displayed top
+  // N) so the user sees how much work is actually queued, not just what fits.
+  const dueCount = candidates.filter((c) => c.isDue).length;
+  const newCount = candidates.filter((c) => c.isUnpracticed && !c.isDue).length;
+  const total = candidates.length;
+  const parts = [];
+  if (dueCount > 0) parts.push(`${dueCount} due now`);
+  if (newCount > 0) parts.push(`${newCount} never drilled`);
+  parts.push(`${total} total in selected categories`);
+  session.ui.blurb.textContent =
+    parts.join(" · ") +
+    ". Ranking: SR-overdue first, then never-drilled, then slowest by best time.";
+
   const host = session.ui.list;
   host.innerHTML = "";
 
@@ -256,7 +291,8 @@ function renderList() {
     const e = top[i];
     const row = document.createElement("div");
     row.className = "weak-list-row";
-    if (e.isUnpracticed) row.classList.add("unpracticed");
+    if (e.isDue) row.classList.add("due");
+    else if (e.isUnpracticed) row.classList.add("unpracticed");
 
     const rank = document.createElement("div");
     rank.className = "weak-rank";
@@ -276,18 +312,47 @@ function renderList() {
 
     const meta = document.createElement("div");
     meta.className = "weak-meta";
-    if (e.isUnpracticed) {
+    if (e.isDue) {
+      const tag = document.createElement("span");
+      tag.className = "weak-tag weak-tag-due";
+      tag.textContent = dueLabel(e.dueDelta, e.srs?.box);
+      meta.appendChild(tag);
+    } else if (e.isUnpracticed) {
       const tag = document.createElement("span");
       tag.className = "weak-tag weak-tag-new";
       tag.textContent = "never drilled";
       meta.appendChild(tag);
     } else {
-      meta.textContent = `best ${stats.fmtTime(e.best)} · ${humanAgo(e.lastAt)} · n=${e.n}`;
+      // Practiced but not yet due: show best + SRS state if we have it
+      let txt = `best ${stats.fmtTime(e.best)} · ${humanAgo(e.lastAt)} · n=${e.n}`;
+      if (e.srs && e.dueDelta != null) {
+        txt += ` · next ${humanIn(e.dueDelta)}`;
+      }
+      meta.textContent = txt;
     }
     row.appendChild(meta);
 
     host.appendChild(row);
   }
+}
+
+/* "due now" if delta is essentially 0; "due Xd ago" otherwise. Box info
+ * is appended so the user sees how many reps they've stacked on the case. */
+function dueLabel(deltaSec, box) {
+  const overdueDays = Math.max(0, Math.floor((-(deltaSec || 0)) / 86400));
+  const boxStr = box ? ` · box ${box}` : "";
+  if (overdueDays === 0) return "due now" + boxStr;
+  if (overdueDays === 1) return "due 1d ago" + boxStr;
+  return `due ${overdueDays}d ago` + boxStr;
+}
+
+/* "next X" formatter — only used for practiced+future cases */
+function humanIn(deltaSec) {
+  if (!deltaSec || deltaSec <= 0) return "now";
+  const days = Math.ceil(deltaSec / 86400);
+  if (days >= 1) return `${days}d`;
+  const hours = Math.ceil(deltaSec / 3600);
+  return `${hours}h`;
 }
 
 function humanAgo(lastAtSec) {

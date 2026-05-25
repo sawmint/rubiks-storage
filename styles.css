@@ -1343,6 +1343,19 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.4px;
   line-height: 1.5;
 }
+.timer-comment-preview-wrap {
+  display: flex;
+  justify-content: center;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+.timer-comment-preview {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
 .timer-comment-textarea {
   resize: vertical;
   min-height: 120px;
@@ -1560,6 +1573,9 @@ a:hover { text-decoration: underline; }
 .weak-list-row.unpracticed {
   background: linear-gradient(to right, var(--accent-weak) 0%, transparent 60%);
 }
+.weak-list-row.due {
+  background: linear-gradient(to right, rgba(192, 128, 0, 0.18) 0%, transparent 60%);
+}
 .weak-rank {
   font-family: var(--font-sans);
   font-variant-numeric: tabular-nums;
@@ -1600,6 +1616,12 @@ a:hover { text-decoration: underline; }
   background: var(--accent-weak);
   color: var(--accent-strong);
   border: 1px solid var(--accent);
+}
+.weak-tag.weak-tag-due {
+  background: rgba(192, 128, 0, 0.18);
+  color: var(--warn);
+  border-color: var(--warn);
+  font-weight: 600;
 }
 .weak-actions {
   display: flex;

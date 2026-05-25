@@ -8,7 +8,7 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `selection.js` — cross-tab multi-select state
 - `modal.js` — overlay/escape/scroll-lock used by drill, recognition, and timer
 - `cube-notation.js` — random AUF/Y, scramble builder
-- `stats.js` — localStorage (`rs-stats-v2`) per-case stats with reset
+- `stats.js` — localStorage (`rs-stats-v2`) per-case stats + Leitner spaced repetition scheduler
 - `drill.js` — drill mode (cstimer-style spacebar timer; tap-to-start fallback on touch)
 - `recognition.js` — recognition trainer with settings screen, time limit, name-button picker
 - `timer.js` — CSTimer-style speedcubing timer (header gear → Timer button → fullscreen modal)
@@ -58,9 +58,20 @@ Recognition images use `setup + randomAUF + nonIdentityY` (rotation appended at 
 
 Stats schema (`rs-stats-v2` in localStorage):
 ```js
-{ schema: 2, cases: { "pll/Aa": { drill: {n,best,times,lastAt}, recog: {n,correct,avgMs,lastAt} } } }
+{
+  schema: 2,
+  cases: {
+    "pll/Aa": {
+      drill: {n,best,times,lastAt},
+      recog: {n,correct,avgMs,lastAt},
+      srs:   {box,lastAt,dueAt}   // spaced repetition state (see below)
+    }
+  }
+}
 ```
 Per-case reset via the ↺ button on the card badge; reset-all via header button. All reads wrapped in try/catch.
+
+**Spaced repetition** (Leitner, 5 boxes — `stats.js`): every drill rep calls `updatedSrs(prevSrs, seconds, prevBest)` which (1) auto-rates the rep from time vs prior personal best (`<= 1.3x` best = "easy", `> 3x` best = "again", else "good"), (2) advances the box (`good` +1, `easy` +2, `again` resets to 1), (3) schedules `dueAt` from the new box's interval — 1/3/7/14/30 days for boxes 1-5. First-ever drill always lands in box 1 regardless of rating so a single fast first rep can't shortcut to box 3. Box advancement is capped at `SRS_MAX_BOX = 5`. Day math uses epoch-second arithmetic with a `DAY_SEC = 86400` multiplier (DST-safe; we never read wall-clock dates). `stats.getSrs(category, id)` is the read accessor.
 
 ## Recognition trainer
 Clicking "Train recognition" opens a settings screen FIRST, not the trainer. Settings persist at `rs-recog-settings-v1`:
@@ -147,23 +158,27 @@ To regenerate `pll-compose.json` (if PLL setups change or new ones are added), s
 
 Tokenizer uses a regex negative lookahead `(?![A-Za-z])` plus a MANUAL lookbehind (index check inside the tokenize loop) so prose like "fix" or "Right" doesn't get partially colored. Regex literals with `(?<=...)` are a SyntaxError on iOS Safari < 16.4 — using one would kill the module at parse time and cascade-blank the whole PWA on older phones, so the lookbehind is done in JS. The post-modifier lookahead is also dropped when a non-empty modifier matched (`'` and `2` are unambiguous move terminators), so `R'U` tokenizes cleanly as `R'` + `U` even without a space. Whitespace, parens, and unknown chars fall through as raw escaped text.
 
-## Per-solve comments
-✎ pill in each timer-solves row opens a backdrop-overlaid editor card (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` with z-index 1000, sitting above the timer modal. The card shows the solve's time, the colored scramble (clearly labeled), and a multi-line textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes. Comment persists at `sess.solves[i].comment` (schema was already in place).
+## Solve info editor (per-row "info" pill)
+`info` text pill in each timer-solves row opens a backdrop-overlaid editor card (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` with z-index 1000, sitting above the timer modal. The card title is `Solve info · 12.34s`. Three sections: the colored scramble notation, a VisualCube preview of the scrambled state (white-on-top WCA orientation), and a multi-line note textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes. The note persists at `sess.solves[i].comment` (schema was already in place); pill gets an `.active` class when a note exists.
 
 Key architectural note: the editor lives on `document.body`, NOT inside the solves list. The timer's sessions listener runs `renderSolvesList` (which does `list.innerHTML = ""`) on every solve/penalty/comment change — if the editor were inside the list, it would be wiped along with the user's in-progress typing. Same reason any popover spawned from inside the timer modal should follow this pattern. The backdrop also tracks `mousedown` target: it only closes on click if BOTH mousedown and click landed on the backdrop, so a text-selection drag from the textarea to outside the card doesn't throw away the user's typing.
 
 `attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")`, returning a `close()` function used by every dismissal path. Applied to session-manager and settings popovers (the comment editor uses backdrop-click only) — without it the document-level click listeners leaked. The setTimeout-deferred `addEventListener` checks a `closed` flag before adding, so a popover dismissed in the same tick doesn't leak the listener. No scroll-close: the modal panel scrolls internally on small viewports, so a scroll-close handler would snap-close the popover the moment the user scrolled the modal content underneath.
 
-## Session export
-`sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, and an `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all. Import path not built yet — the envelope schema makes future import straightforward.
+## Session export + import
+`sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all.
+
+`sessions.importJson(text)` is the counterpart, triggered by the `Import` footer button (hidden file input). Validates the envelope (must be `rs-session-export` or `rs-sessions-export` with matching schema version), then **non-destructively** adds each imported session with a fresh ID — never overwrites existing sessions. Imported solve IDs are also regenerated so they can't collide. Returns `{ok:true,count}` or `{ok:false,error}`; the UI alerts on error. Imported session names get a ` (imported)` suffix to make the source obvious.
 
 ## Weak cases ("Today's drill")
-`weak-cases.js` is a small modal that surfaces drillable cases the user has practiced least or is slowest on, using `stats.getAll()`. Ranking:
-1. Unpracticed cases first (no drill record or n=0), sorted by id.
-2. Then practiced, sorted by slowest `best` descending.
-3. Tiebreak: oldest `lastAt` first.
+`weak-cases.js` is a small modal that surfaces drillable cases the user should practice next. It reads `stats.getAll()` for both per-case drill data and SRS state, then ranks in three tiers:
+1. **SR-overdue** (`srs.dueAt <= now`), sorted by most-overdue first.
+2. **Never drilled** (no SRS record), sorted by id.
+3. **Practiced but not yet due**, sorted by slowest `best` descending (tiebreak oldest `lastAt`).
 
-UI: category toggles (PLL/OLL — both default on), count selector (5/10/20, default 10), ranked list with name + cat tag + meta ("best 2.34s · 5d ago · n=12" or "never drilled"). Two action buttons:
+Each row shows a status badge: `due Xd ago · box N` for overdue, `never drilled` for new, `best 2.34s · 5d ago · n=12 · next 3d` for future. Due rows get a warn-tinted row background; new rows get an accent-tinted one. The blurb at the top of the modal counts the FULL candidate pool (`X due now · Y never drilled · N total in selected categories`) so the user sees the actual queue depth, not just the displayed top N.
+
+UI: category toggles (PLL/OLL — both default on), count selector (5/10/20, default 10). Two action buttons:
 - `Drill these` — passes the ranked keys to `drill.start(data, keys)`.
 - `Batch (5)` — filters to PLL-only keys and passes to `batch.start`.
 

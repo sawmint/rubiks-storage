@@ -20,6 +20,63 @@ const KEY = "rs-stats-v2";
 const SCHEMA = 2;
 const MAX_TIMES = 50;
 
+/* Spaced repetition: Leitner-box schedule, 5 boxes, day-based intervals.
+ * Each box's interval is "how long to wait before showing this case again
+ * after a successful drill in that box." Box 1 = drill it tomorrow, box 5
+ * = comes back roughly monthly.
+ *
+ * The box advances on "good" reps, double-jumps on "easy" reps, and resets
+ * to box 1 on "again" reps. Auto-rating is derived from drill time vs the
+ * user's previous best for that case (see rateDrill below) — no manual
+ * "good/again" button needed.
+ *
+ * Day in seconds = 86400; epoch-seconds math is DST-safe (we never look
+ * at wall-clock dates, just elapsed seconds since the unix epoch).
+ */
+const SRS_BOX_INTERVAL_DAYS = [null, 1, 3, 7, 14, 30]; // 1-indexed; box 0 unused
+const SRS_MIN_BOX = 1;
+const SRS_MAX_BOX = 5;
+const DAY_SEC = 86400;
+
+// Auto-rating thresholds. Tuned conservatively: "again" only fires when
+// the rep was DRAMATICALLY worse than the user's best (3x slower), and
+// "easy" requires the rep to be within 30% of best. Everything in
+// between is "good", which is the most common outcome.
+const SRS_AGAIN_RATIO = 3.0;
+const SRS_EASY_RATIO  = 1.3;
+
+function nowSec() { return Math.floor(Date.now() / 1000); }
+
+function rateDrill(seconds, prevBest) {
+  if (prevBest == null || !isFinite(prevBest) || prevBest <= 0) return "good";
+  if (seconds > prevBest * SRS_AGAIN_RATIO) return "again";
+  if (seconds <= prevBest * SRS_EASY_RATIO) return "easy";
+  return "good";
+}
+
+function nextBox(currentBox, rating) {
+  // First drill ever (no prior SRS state) → start at box 1 regardless of
+  // rating. This prevents a fast first rep from launching straight to
+  // box 3 with no calibration.
+  if (!currentBox || currentBox < SRS_MIN_BOX) return SRS_MIN_BOX;
+  if (rating === "again") return SRS_MIN_BOX;
+  if (rating === "easy")  return Math.min(currentBox + 2, SRS_MAX_BOX);
+  return Math.min(currentBox + 1, SRS_MAX_BOX);
+}
+
+function updatedSrs(prevSrs, drillSeconds, prevBest) {
+  const prevBox = prevSrs?.box || 0;
+  const rating = rateDrill(drillSeconds, prevBest);
+  const box = nextBox(prevBox, rating);
+  const intervalDays = SRS_BOX_INTERVAL_DAYS[box] || 1;
+  const now = nowSec();
+  return {
+    box,
+    lastAt: now,
+    dueAt: now + intervalDays * DAY_SEC,
+  };
+}
+
 let cache = null;
 const listeners = new Set();
 
@@ -73,13 +130,21 @@ export function recordDrill(category, id, seconds) {
   const k = caseKey(category, id);
   const slot = ensure(k);
   const d = slot.drill || { n: 0, best: null, times: [], lastAt: 0 };
+  const prevBest = d.best; // capture BEFORE this rep updates best, for SRS rating
   d.n += 1;
   d.best = d.best == null ? seconds : Math.min(d.best, seconds);
   d.times.push(seconds);
   if (d.times.length > MAX_TIMES) d.times = d.times.slice(-MAX_TIMES);
   d.lastAt = Math.floor(Date.now() / 1000);
   slot.drill = d;
+  // SRS update piggybacks on every drill — auto-rated, no extra UI required.
+  slot.srs = updatedSrs(slot.srs, seconds, prevBest);
   save();
+}
+
+export function getSrs(category, id) {
+  load();
+  return cache.cases[caseKey(category, id)]?.srs || null;
 }
 
 export function getDrill(category, id) {

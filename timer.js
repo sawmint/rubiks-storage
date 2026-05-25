@@ -333,8 +333,10 @@ function renderSolvesList() {
     const noteBtn = document.createElement("button");
     noteBtn.type = "button";
     noteBtn.className = "timer-pill timer-pill-note" + (s.comment ? " active" : "");
-    noteBtn.textContent = "✎";
-    noteBtn.title = s.comment ? `Edit note: ${s.comment}` : "Add note";
+    noteBtn.textContent = "info";
+    noteBtn.title = s.comment
+      ? `Solve info — note: ${s.comment}`
+      : "Solve info — view scramble, add note";
     noteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       openCommentPopover(noteBtn, s);
@@ -382,18 +384,18 @@ function openCommentPopover(anchor, solve) {
   head.className = "timer-comment-head";
   const headTitle = document.createElement("div");
   headTitle.className = "timer-comment-title";
-  headTitle.textContent = `Note for solve · ${sessions.fmtSolve(solve)}`;
+  headTitle.textContent = `Solve info · ${sessions.fmtSolve(solve)}`;
   head.appendChild(headTitle);
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
   closeBtn.className = "timer-comment-close";
-  closeBtn.setAttribute("aria-label", "Close note editor");
+  closeBtn.setAttribute("aria-label", "Close solve info");
   closeBtn.textContent = "×";
   closeBtn.addEventListener("click", () => closeAndForget());
   head.appendChild(closeBtn);
   card.appendChild(head);
 
-  // Scramble section with explicit label so user knows what they're looking at
+  // Scramble section: notation + cube-state preview
   const scrambleLabel = document.createElement("div");
   scrambleLabel.className = "timer-comment-section-label";
   scrambleLabel.textContent = "Scramble";
@@ -404,6 +406,25 @@ function openCommentPopover(anchor, solve) {
     ? colorizeAlg(solve.scramble)
     : '<span style="color:var(--text-faint)">(no scramble recorded)</span>';
   card.appendChild(scrambleRow);
+
+  if (solve.scramble) {
+    const previewWrap = document.createElement("div");
+    previewWrap.className = "timer-comment-preview-wrap";
+    const previewImg = document.createElement("img");
+    previewImg.className = "timer-comment-preview";
+    previewImg.alt = "Scrambled cube state";
+    previewImg.loading = "lazy";
+    previewImg.decoding = "async";
+    // White-on-top WCA orientation, same as the timer's main scramble preview.
+    previewImg.src = vcImage({
+      setup: solve.scramble,
+      view: "trans",
+      size: 160,
+      sch: "wrgyob",
+    });
+    previewWrap.appendChild(previewImg);
+    card.appendChild(previewWrap);
+  }
 
   // Note section
   const noteLabel = document.createElement("div");
@@ -978,6 +999,39 @@ function openSessionManager() {
     downloadJson(json, `rubiks-storage-sessions-${dateStamp()}.json`);
   });
   footer.appendChild(exportAllBtn);
+
+  // Import: hidden file input + visible button that triggers it. Imports
+  // are non-destructive — added as new sessions, never overwrite existing.
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.accept = "application/json,.json";
+  importInput.style.display = "none";
+  importInput.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const result = sessions.importJson(text);
+      if (!result.ok) {
+        alert("Import failed: " + result.error);
+      } else {
+        alert(`Imported ${result.count} session${result.count === 1 ? "" : "s"}.`);
+        closeAndForget();
+      }
+    } catch (e) {
+      alert("Couldn't read the file: " + e.message);
+    }
+    importInput.value = ""; // allow re-selecting the same file later
+  });
+  footer.appendChild(importInput);
+
+  const importBtn = document.createElement("button");
+  importBtn.type = "button";
+  importBtn.className = "btn btn-small";
+  importBtn.textContent = "Import";
+  importBtn.title = "Load sessions from a previously-exported JSON file";
+  importBtn.addEventListener("click", () => importInput.click());
+  footer.appendChild(importBtn);
 
   pop.appendChild(footer);
 

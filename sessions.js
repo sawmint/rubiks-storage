@@ -227,9 +227,64 @@ export function exportAll() {
     exportedAt: new Date().toISOString(),
     phaseConfig: cache.phaseConfig,
     inspection: cache.inspection,
+    inspectionDurationSec: cache.inspectionDurationSec,
     sessions: cache.sessions,
   };
   return JSON.stringify(payload, null, 2);
+}
+
+/* Import a JSON export (single session or all-sessions envelope). Imported
+ * sessions are added with fresh IDs so they can't collide with existing
+ * data — the user keeps their current sessions and gets the imported ones
+ * alongside. The imported solve IDs are also regenerated.
+ *
+ * Returns { ok: true, count } on success or { ok: false, error } on failure.
+ * Doesn't merge or replace anything destructively. */
+export function importJson(jsonText) {
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (e) {
+    return { ok: false, error: "File isn't valid JSON" };
+  }
+  if (!parsed || typeof parsed !== "object") {
+    return { ok: false, error: "File isn't a Rubik's Storage export" };
+  }
+  if (parsed.kind !== "rs-session-export" && parsed.kind !== "rs-sessions-export") {
+    return { ok: false, error: "File isn't a Rubik's Storage session export" };
+  }
+  if (parsed.schema !== SCHEMA) {
+    return {
+      ok: false,
+      error: `Export is from schema v${parsed.schema}; this app uses v${SCHEMA}`,
+    };
+  }
+  const sourceSessions = parsed.session
+    ? [parsed.session]
+    : (parsed.sessions ? Object.values(parsed.sessions) : []);
+  if (sourceSessions.length === 0) {
+    return { ok: false, error: "No sessions found in file" };
+  }
+
+  load();
+  let count = 0;
+  for (const src of sourceSessions) {
+    if (!src || !Array.isArray(src.solves)) continue;
+    const id = newId();
+    cache.sessions[id] = {
+      id,
+      name: (src.name || "Imported") + " (imported)",
+      createdAt: Date.now(),
+      solves: src.solves.map((s) => ({
+        ...s,
+        id: newId(), // fresh ID so it can't collide with anything existing
+      })),
+    };
+    count++;
+  }
+  if (count === 0) return { ok: false, error: "No valid sessions in file" };
+  save();
+  return { ok: true, count };
 }
 
 export function clearActiveSession() {
