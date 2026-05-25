@@ -275,6 +275,7 @@ function renderSolvesList() {
       t.title = s.phases.map((cum, idx) => `${labelForPhaseIndex(idx)}: ${(cum / 1000).toFixed(2)}`).join("\n");
     }
     t.title = (t.title ? t.title + "\n\n" : "") + `Scramble: ${s.scramble}`;
+    if (s.comment) t.title += `\n\nNote: ${s.comment}`;
     row.appendChild(t);
 
     const a5 = document.createElement("div"); a5.textContent = ao5; row.appendChild(a5);
@@ -286,17 +287,103 @@ function renderSolvesList() {
     const okBtn = mkPenaltyBtn("OK", null, s);
     const p2Btn = mkPenaltyBtn("+2", "+2", s);
     const dnfBtn = mkPenaltyBtn("DNF", "DNF", s);
+    const noteBtn = document.createElement("button");
+    noteBtn.type = "button";
+    noteBtn.className = "timer-pill timer-pill-note" + (s.comment ? " active" : "");
+    noteBtn.textContent = "✎"; // ✎
+    noteBtn.title = s.comment ? `Edit note: ${s.comment}` : "Add note";
+    noteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openCommentPopover(noteBtn, s);
+    });
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "timer-pill timer-pill-del";
     delBtn.textContent = "×";
     delBtn.title = "Delete this solve";
     delBtn.addEventListener("click", () => sessions.deleteSolve(s.id));
-    menuWrap.append(okBtn, p2Btn, dnfBtn, delBtn);
+    menuWrap.append(okBtn, p2Btn, dnfBtn, noteBtn, delBtn);
     row.appendChild(menuWrap);
 
     list.appendChild(row);
   }
+}
+
+/* ---------- per-solve comment popover ---------- */
+
+function openCommentPopover(anchor, solve) {
+  // Close any existing popover first (also closes if user re-clicks the same pill)
+  const existing = document.querySelector(".timer-comment-pop");
+  if (existing) {
+    const wasSameAnchor = existing.dataset.solveId === solve.id;
+    existing.remove();
+    if (wasSameAnchor) return;
+  }
+
+  const pop = document.createElement("div");
+  pop.className = "timer-comment-pop";
+  pop.dataset.solveId = solve.id;
+
+  const head = document.createElement("div");
+  head.className = "timer-comment-head";
+  head.textContent = `Note · ${sessions.fmtSolve(solve)}`;
+  pop.appendChild(head);
+
+  const scrambleRow = document.createElement("div");
+  scrambleRow.className = "timer-comment-scramble";
+  scrambleRow.innerHTML = colorizeAlg(solve.scramble || "");
+  pop.appendChild(scrambleRow);
+
+  const textarea = document.createElement("textarea");
+  textarea.className = "timer-comment-textarea";
+  textarea.rows = 3;
+  textarea.placeholder = "Note for this solve (e.g. \"messed up PLL recognition\")";
+  textarea.value = solve.comment || "";
+  pop.appendChild(textarea);
+
+  const actions = document.createElement("div");
+  actions.className = "timer-comment-actions";
+
+  const saveBtn = document.createElement("button");
+  saveBtn.type = "button";
+  saveBtn.className = "btn btn-primary btn-small";
+  saveBtn.textContent = "Save";
+  saveBtn.addEventListener("click", () => {
+    sessions.setSolveComment(solve.id, textarea.value.trim());
+    pop.remove();
+  });
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.type = "button";
+  cancelBtn.className = "btn btn-small";
+  cancelBtn.textContent = "Cancel";
+  cancelBtn.addEventListener("click", () => pop.remove());
+
+  actions.append(cancelBtn, saveBtn);
+  pop.appendChild(actions);
+
+  // Ctrl/Cmd+Enter to save, Esc to cancel
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      saveBtn.click();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      pop.remove();
+    }
+  });
+
+  // Click outside to close
+  const onDocClick = (e) => {
+    if (!pop.contains(e.target) && e.target !== anchor) {
+      pop.remove();
+      document.removeEventListener("click", onDocClick);
+    }
+  };
+  setTimeout(() => document.addEventListener("click", onDocClick), 0);
+
+  anchor.insertAdjacentElement("afterend", pop);
+  setTimeout(() => textarea.focus(), 0);
 }
 
 function mkPenaltyBtn(label, value, s) {

@@ -173,6 +173,15 @@ export function deleteSolve(solveId) {
   save();
 }
 
+export function setSolveComment(solveId, comment) {
+  const sess = getActiveSession();
+  if (!sess) return;
+  const sv = sess.solves.find((x) => x.id === solveId);
+  if (!sv) return;
+  sv.comment = typeof comment === "string" ? comment : "";
+  save();
+}
+
 export function clearActiveSession() {
   const sess = getActiveSession();
   if (!sess) return;
