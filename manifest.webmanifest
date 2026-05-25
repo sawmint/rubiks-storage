@@ -10,8 +10,14 @@
   "theme_color": "#4b6bff",
   "icons": [
     {
-      "src": "./logo-cube.png",
-      "sizes": "227x265",
+      "src": "./favicon.png",
+      "sizes": "265x265",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     }

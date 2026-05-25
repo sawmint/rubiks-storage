@@ -1471,6 +1471,38 @@ a:hover { text-decoration: underline; }
   gap: 4px;
   flex-wrap: wrap;
 }
+.timer-settings-duration-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.timer-settings-duration-custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.timer-settings-duration-input {
+  width: 56px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.timer-settings-duration-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+.timer-settings-duration-unit {
+  font-size: 12px;
+  color: var(--text-muted);
+}
 .timer-settings-input {
   flex: 1;
   background: var(--bg-sunken);

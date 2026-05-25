@@ -1113,30 +1113,86 @@ function openSettingsPanel() {
   inspectLabel.appendChild(document.createTextNode(" WCA inspection"));
   pop.appendChild(inspectLabel);
 
-  // Inspection duration selector (only meaningful when inspection is on)
+  // Inspection duration selector (only meaningful when inspection is on).
+  // Preset pills cover the common values (8/15/30/60). The number input
+  // accepts any positive integer for custom durations (e.g. 45s, 90s).
+  // Typing in the input saves on change; clicking a pill fills the input
+  // and marks that pill active.
   const durationRow = document.createElement("div");
   durationRow.className = "timer-settings-row";
   durationRow.style.display = sessions.getInspection() ? "" : "none";
   const durationLabel = document.createElement("span");
   durationLabel.textContent = "Inspection duration";
   durationRow.appendChild(durationLabel);
+
+  const durationControls = document.createElement("div");
+  durationControls.className = "timer-settings-duration-controls";
+
+  const currentDuration = sessions.getInspectionDurationSec();
+  const PRESETS = [8, 15, 30, 60];
   const durationGroup = document.createElement("div");
   durationGroup.className = "timer-settings-pill-group";
-  const currentDuration = sessions.getInspectionDurationSec();
-  for (const sec of [8, 15, 30, 60]) {
+
+  // Custom number input first so the pill handlers can reference it
+  const customInput = document.createElement("input");
+  customInput.type = "number";
+  customInput.min = "1";
+  customInput.max = "999";
+  customInput.step = "1";
+  customInput.className = "timer-settings-duration-input";
+  customInput.value = String(currentDuration);
+  customInput.title = "Custom inspection duration in seconds (1-999)";
+  customInput.setAttribute("aria-label", "Custom inspection duration in seconds");
+
+  function syncPillActive(value) {
+    for (const pb of durationGroup.querySelectorAll(".timer-pill")) {
+      pb.classList.toggle("active", parseInt(pb.dataset.sec, 10) === value);
+    }
+  }
+
+  for (const sec of PRESETS) {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "timer-pill" + (sec === currentDuration ? " active" : "");
+    b.dataset.sec = String(sec);
     b.textContent = sec + "s";
     b.addEventListener("click", () => {
       sessions.setInspectionDurationSec(sec);
-      for (const pb of durationGroup.querySelectorAll(".timer-pill")) {
-        pb.classList.toggle("active", parseInt(pb.textContent, 10) === sec);
-      }
+      customInput.value = String(sec);
+      syncPillActive(sec);
     });
     durationGroup.appendChild(b);
   }
-  durationRow.appendChild(durationGroup);
+  durationControls.appendChild(durationGroup);
+
+  // Save on change/blur AND on Enter. Clamp to [1, 999]; reject non-numeric.
+  const commitCustom = () => {
+    const n = parseInt(customInput.value, 10);
+    if (!isFinite(n) || n < 1) {
+      // restore previous valid value rather than persisting garbage
+      customInput.value = String(sessions.getInspectionDurationSec());
+      return;
+    }
+    const clamped = Math.min(n, 999);
+    if (String(clamped) !== customInput.value) customInput.value = String(clamped);
+    sessions.setInspectionDurationSec(clamped);
+    syncPillActive(clamped);
+  };
+  customInput.addEventListener("change", commitCustom);
+  customInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); commitCustom(); customInput.blur(); }
+  });
+
+  const sLabel = document.createElement("span");
+  sLabel.className = "timer-settings-duration-unit";
+  sLabel.textContent = "s";
+
+  const customWrap = document.createElement("span");
+  customWrap.className = "timer-settings-duration-custom";
+  customWrap.append(customInput, sLabel);
+  durationControls.appendChild(customWrap);
+
+  durationRow.appendChild(durationControls);
   pop.appendChild(durationRow);
 
   const phaseLabel = document.createElement("div");
