@@ -468,24 +468,6 @@ function renderCard(it, cat) {
     card.appendChild(algRow(it.algorithm));
   }
 
-  // alternates
-  if (Array.isArray(it.alternates) && it.alternates.length) {
-    const det = document.createElement("details");
-    det.className = "alternates";
-    const sum = document.createElement("summary");
-    sum.textContent = `Show ${it.alternates.length} alternate${it.alternates.length === 1 ? "" : "s"}`;
-    det.appendChild(sum);
-    const ul = document.createElement("ul");
-    ul.className = "alt-list";
-    for (const alt of it.alternates) {
-      const li = document.createElement("li");
-      li.appendChild(algRow(alt));
-      ul.appendChild(li);
-    }
-    det.appendChild(ul);
-    card.appendChild(det);
-  }
-
   // meta rows
   for (const m of cat.metaRows(it) || []) {
     const div = document.createElement("div");

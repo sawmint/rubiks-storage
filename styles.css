@@ -817,27 +817,6 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
 }
 
-details.alternates {
-  font-size: 13px;
-}
-details.alternates summary {
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 12px;
-  user-select: none;
-  padding: 2px 0;
-}
-details.alternates summary:hover { color: var(--text); }
-details.alternates[open] summary { color: var(--text); }
-.alt-list {
-  margin: var(--space-2) 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
 /* ----- recognition settings screen ----- */
 .recog-settings {
   display: flex;

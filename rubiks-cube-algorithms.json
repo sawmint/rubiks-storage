@@ -5,10 +5,6 @@
       "name": "A-perm (a)",
       "group": "corners-only",
       "algorithm": "x R' U R' D2 R U' R' D2 R2 x'",
-      "alternates": [
-        "y x' R2 D2 R' U' R D2 R' U R'",
-        "R' F R' B2 R F' R' B2 R2"
-      ],
       "recognition": "Three-corner cycle clockwise; headlights on the back",
       "auf": "none",
       "setup": "x R2 D2 R U R' D2 R U' R x'"
@@ -18,10 +14,6 @@
       "name": "A-perm (b)",
       "group": "corners-only",
       "algorithm": "x R2 D2 R U R' D2 R U' R x'",
-      "alternates": [
-        "x' R2 D2 R' U' R D2 R' U R'",
-        "R B' R F2 R' B R F2 R2"
-      ],
       "recognition": "Three-corner cycle counter-clockwise; headlights on the back",
       "auf": "none",
       "setup": "x R' U R' D2 R U' R' D2 R2 x'"
@@ -31,9 +23,6 @@
       "name": "E-perm",
       "group": "diagonal",
       "algorithm": "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
-      "alternates": [
-        "x' L' U L D' L' U' L D L' U' L D' L' U L D"
-      ],
       "recognition": "Two diagonal corner swaps; no headlights, opposite colors on adjacent corners",
       "auf": "none",
       "setup": "x' D R U R' D' R U' R' D R U' R' D' R U R' x"
@@ -43,9 +32,6 @@
       "name": "F-perm",
       "group": "corners+edges",
       "algorithm": "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R",
-      "alternates": [
-        "R' U R U' R2 F' U' F U R F R' F' R2"
-      ],
       "recognition": "Front edge and two corners swap; headlights on left, front edge swap",
       "auf": "none",
       "setup": "R' U' R U' R' U R U R2 F' R U R U' R' F U R"
@@ -55,9 +41,6 @@
       "name": "G-perm (a)",
       "group": "corners+edges",
       "algorithm": "R2 U R' U R' U' R U' R2 U' D R' U R D'",
-      "alternates": [
-        "R2 u R' U R' U' R u' R2 y' R' U R"
-      ],
       "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise",
       "auf": "none",
       "setup": "D R' U' R D' U R2 U R' U R U' R U' R2"
@@ -67,9 +50,6 @@
       "name": "G-perm (b)",
       "group": "corners+edges",
       "algorithm": "R' U' R U D' R2 U R' U R U' R U' R2 D",
-      "alternates": [
-        "F' U' F R2 u R' U R U' R u' R2"
-      ],
       "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (mirror of Ga)",
       "auf": "none",
       "setup": "D' R2 U R' U R' U' R U' R2 D U' R' U R"
@@ -79,9 +59,6 @@
       "name": "G-perm (c)",
       "group": "corners+edges",
       "algorithm": "R2 U' R U' R U R' U R2 U D' R U' R' D",
-      "alternates": [
-        "R2 u' R U' R U R' u R2 y R U' R'"
-      ],
       "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (different angle)",
       "auf": "none",
       "setup": "D' R U R' D U' R2 U' R U' R' U R' U R2"
@@ -91,9 +68,6 @@
       "name": "G-perm (d)",
       "group": "corners+edges",
       "algorithm": "R U R' U' D R2 U' R U' R' U R' U R2 D'",
-      "alternates": [
-        "f R f' R2 u' R U' R' U R' u R2"
-      ],
       "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise (different angle)",
       "auf": "none",
       "setup": "D R2 U' R U' R U R' U R2 D' U R U' R'"
@@ -103,9 +77,6 @@
       "name": "H-perm",
       "group": "edges-only",
       "algorithm": "M2 U M2 U2 M2 U M2",
-      "alternates": [
-        "R2 U2 R U2 R2 U2 R2 U2 R U2 R2"
-      ],
       "recognition": "Two opposite edge pairs swap; all four corners solved, all edges show opposite colors",
       "auf": "none",
       "setup": "M2 U' M2 U2 M2 U' M2"
@@ -115,10 +86,6 @@
       "name": "J-perm (a)",
       "group": "corners+edges",
       "algorithm": "x R2 F R F' R U2 r' U r U2 x'",
-      "alternates": [
-        "L' U' L F L' U' L U L F' L2 U L",
-        "R' U L' U2 R U' R' U2 R L"
-      ],
       "recognition": "Adjacent corner+edge swap on left side; headlights on right",
       "auf": "none",
       "setup": "x U2 r' U' r U2 R' F R' F' R2 x'"
@@ -128,9 +95,6 @@
       "name": "J-perm (b)",
       "group": "corners+edges",
       "algorithm": "R U R' F' R U R' U' R' F R2 U' R'",
-      "alternates": [
-        "R U2 R' U' R U2 L' U R' U' L"
-      ],
       "recognition": "Adjacent corner+edge swap on right side; headlights on left",
       "auf": "none",
       "setup": "R U R2 F' R U R U' R' F R U' R'"
@@ -140,9 +104,6 @@
       "name": "N-perm (a)",
       "group": "diagonal",
       "algorithm": "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'",
-      "alternates": [
-        "L U' R U2 L' U R' L U' R U2 L' U R'"
-      ],
       "recognition": "Diagonal corner+edge swap; pair of headlights on opposite sides",
       "auf": "none",
       "setup": "R U R' U2 R U R2 F' R U R U' R' F R U' R' U' R U' R'"
@@ -152,9 +113,6 @@
       "name": "N-perm (b)",
       "group": "diagonal",
       "algorithm": "R' U R U' R' F' U' F R U R' F R' F' R U' R",
-      "alternates": [
-        "r' D' F r U' r' F' D r2 U r' U' r' F r F'"
-      ],
       "recognition": "Diagonal corner+edge swap; mirror of Na",
       "auf": "none",
       "setup": "R' U R' F R F' R U' R' F' U F R U R' U' R"
@@ -164,9 +122,6 @@
       "name": "R-perm (a)",
       "group": "corners+edges",
       "algorithm": "R U' R' U' R U R D R' U' R D' R' U2 R'",
-      "alternates": [
-        "L U2 L' U2 L F' L' U' L U L F L2"
-      ],
       "recognition": "Two adjacent edges + two adjacent corners; bookends on right",
       "auf": "none",
       "setup": "R U2 R D R' U R D' R' U' R' U R U R'"
@@ -176,9 +131,6 @@
       "name": "R-perm (b)",
       "group": "corners+edges",
       "algorithm": "R' U2 R U2 R' F R U R' U' R' F' R2",
-      "alternates": [
-        "R2 F R U R U' R' F' R U2 R' U2 R"
-      ],
       "recognition": "Two adjacent edges + two adjacent corners; bookends on left",
       "auf": "none",
       "setup": "R2 F R U R U' R' F' R U2 R' U2 R"
@@ -188,7 +140,6 @@
       "name": "T-perm",
       "group": "corners+edges",
       "algorithm": "R U R' U' R' F R2 U' R' U' R U R' F'",
-      "alternates": [],
       "recognition": "Adjacent corner swap (right side) + adjacent edge swap (right side); headlights on left",
       "auf": "none",
       "setup": "F R U' R' U R U R2 F' R U R U' R'"
@@ -198,10 +149,6 @@
       "name": "U-perm (a)",
       "group": "edges-only",
       "algorithm": "R U' R U R U R U' R' U' R2",
-      "alternates": [
-        "M2 U M U2 M' U M2",
-        "y2 R2 U' R' U' R U R U R U' R"
-      ],
       "recognition": "Three-edge cycle counter-clockwise; headlights match on three sides",
       "auf": "none",
       "setup": "R2 U R U R' U' R' U' R' U R'"
@@ -211,10 +158,6 @@
       "name": "U-perm (b)",
       "group": "edges-only",
       "algorithm": "R2 U R U R' U' R' U' R' U R'",
-      "alternates": [
-        "M2 U' M U2 M' U' M2",
-        "y2 R' U R' U' R' U' R' U R U R2"
-      ],
       "recognition": "Three-edge cycle clockwise; headlights match on three sides",
       "auf": "none",
       "setup": "R U' R U R U R U' R' U' R2"
@@ -224,9 +167,6 @@
       "name": "V-perm",
       "group": "diagonal",
       "algorithm": "y' R' U R' U' y R' F' R2 U' R' U R' F R F",
-      "alternates": [
-        "y' R' U R' d' R' F' R2 U' R' U R' F R F"
-      ],
       "recognition": "Diagonal corner swap + adjacent edge swap (front+left)",
       "auf": "none",
       "setup": "F' R' F' R U' R U R2 F R y' U R U' R y"
@@ -236,7 +176,6 @@
       "name": "Y-perm",
       "group": "diagonal",
       "algorithm": "F R U' R' U' R U R' F' R U R' U' R' F R F'",
-      "alternates": [],
       "recognition": "Diagonal corner swap + adjacent edge swap (front+right)",
       "auf": "none",
       "setup": "F R' F' R U R U' R' F R U' R' U R U R' F'"
@@ -246,10 +185,6 @@
       "name": "Z-perm",
       "group": "edges-only",
       "algorithm": "M2 U M2 U M' U2 M2 U2 M'",
-      "alternates": [
-        "M' U M2 U M2 U M' U2 M2",
-        "R U R' U R' U' R' U R U' R' U' R2 U R"
-      ],
       "recognition": "Two adjacent edge pairs swap; checkered edge pattern, all corners solved",
       "auf": "none",
       "setup": "M U2 M2 U2 M U' M2 U' M2"
@@ -261,7 +196,6 @@
       "name": "Runway / Dot",
       "shape": "dot",
       "algorithm": "R U2 R2 F R F' U2 R' F R F'",
-      "alternates": [],
       "recognition": "Dot case; two yellow stickers facing front and back on the U-layer corners' edges",
       "setup": "F R' F' R U2 F R' F' R2 U2 R'",
       "recognitionGroup": "....Y.....Y.YYY.Y.YYY"
@@ -271,9 +205,6 @@
       "name": "Zamboni / Dot",
       "shape": "dot",
       "algorithm": "F R U R' U' F' f R U R' U' f'",
-      "alternates": [
-        "r U r' U2 r U2 R' U2 R U' r'"
-      ],
       "recognition": "Dot case; yellow stickers face out on left and right corner-edges",
       "setup": "f U R U' R' f' F U R U' R' F'",
       "recognitionGroup": "....Y.....Y.YY.YYY.YY"
@@ -283,7 +214,6 @@
       "name": "Anti-Nazi / Dot",
       "shape": "dot",
       "algorithm": "f R U R' U' f' U' F R U R' U' F'",
-      "alternates": [],
       "recognition": "Dot case; yellow bar offset from F/B by U' position",
       "setup": "F U R U' R' F' U f U R U' R' f'",
       "recognitionGroup": "....Y...Y.Y..YY.YY.YY"
@@ -293,7 +223,6 @@
       "name": "Nazi / Dot",
       "shape": "dot",
       "algorithm": "f R U R' U' f' U F R U R' U' F'",
-      "alternates": [],
       "recognition": "Dot case; mirror of OLL 3",
       "setup": "F U R U' R' F' U' f U R U' R' f'",
       "recognitionGroup": "....Y...YYY..Y.YY.YY."
@@ -303,7 +232,6 @@
       "name": "Lightning / Square (a)",
       "shape": "square",
       "algorithm": "r' U2 R U R' U r",
-      "alternates": [],
       "recognition": "Square shape on top-left; mirror of OLL 6",
       "setup": "r' U' R U' R' U2 r",
       "recognitionGroup": "....YY.YY.....Y.YY.YY"
@@ -313,7 +241,6 @@
       "name": "Lightning / Square (b)",
       "shape": "square",
       "algorithm": "r U2 R' U' R U' r'",
-      "alternates": [],
       "recognition": "Square shape on top-right",
       "setup": "r U R' U R U2 r'",
       "recognitionGroup": "....YY.YYY.....YY.YY."
@@ -323,9 +250,6 @@
       "name": "Small Lightning Bolt (a)",
       "shape": "small-lightning",
       "algorithm": "r U R' U R U2 r'",
-      "alternates": [
-        "L' U2 L U2 L F' L' F"
-      ],
       "recognition": "Lightning bolt pointing into front-right",
       "setup": "r U2 R' U' R U' r'",
       "recognitionGroup": "...YY..YY....YY.YY..Y"
@@ -335,9 +259,6 @@
       "name": "Small Lightning Bolt (b)",
       "shape": "small-lightning",
       "algorithm": "r' U' R U' R' U2 r",
-      "alternates": [
-        "R U2 R' U2 R' F R F'"
-      ],
       "recognition": "Lightning bolt pointing into front-left; mirror of OLL 7",
       "setup": "r' U2 R U R' U r",
       "recognitionGroup": "....YYYY....Y..YY.YY."
@@ -347,7 +268,6 @@
       "name": "Fish (a)",
       "shape": "fish",
       "algorithm": "R U R' U' R' F R2 U R' U' F'",
-      "alternates": [],
       "recognition": "Fish shape; sune-like but with edge flipped",
       "setup": "F U R U' R2 F' R U R U' R'",
       "recognitionGroup": "..YYY..Y.Y..YY..Y.Y.."
@@ -357,7 +277,6 @@
       "name": "Fish (b)",
       "shape": "fish",
       "algorithm": "R U R' U R' F R F' R U2 R'",
-      "alternates": [],
       "recognition": "Fish shape; mirror of OLL 9",
       "setup": "R U2 R' F R' F' R U' R U' R'",
       "recognitionGroup": "..YYY..Y...Y.Y..YY..Y"
@@ -367,9 +286,6 @@
       "name": "Small Lightning Bolt (c)",
       "shape": "small-lightning",
       "algorithm": "r U R' U R' F R F' R U2 r'",
-      "alternates": [
-        "r' R2 U R' U R U2 R' U M'"
-      ],
       "recognition": "Lightning shape variant",
       "setup": "r U2 R' F R' F' R U' R U' r'",
       "recognitionGroup": "....YYYY...Y..Y.YY.Y."
@@ -379,9 +295,6 @@
       "name": "Small Lightning Bolt (d)",
       "shape": "small-lightning",
       "algorithm": "F R U R' U' F' U F R U R' U' F'",
-      "alternates": [
-        "M' R' U' R U' R' U2 R U' R r'"
-      ],
       "recognition": "Lightning shape variant; mirror of OLL 11",
       "setup": "F U R U' R' F' U' F U R U' R' F'",
       "recognitionGroup": "...YY..YYY...Y.YY.Y.."
@@ -391,9 +304,6 @@
       "name": "Knight Move Shape (a)",
       "shape": "knight",
       "algorithm": "r U' r' U' r U r' F' U F",
-      "alternates": [
-        "F U R U' R2 F' R U R U' R'"
-      ],
       "recognition": "Knight-move arrangement of yellow stickers",
       "setup": "F' U' F r U' r' U r U r'",
       "recognitionGroup": "...YYYY...YY..Y.YY..."
@@ -403,9 +313,6 @@
       "name": "Knight Move Shape (b)",
       "shape": "knight",
       "algorithm": "R' F R U R' F' R F U' F'",
-      "alternates": [
-        "l' U l U l' U' l F U' F'"
-      ],
       "recognition": "Knight-move arrangement; mirror of OLL 13",
       "setup": "F U F' R' F R U' R' F' R",
       "recognitionGroup": "...YYY..YYY....YY.Y.."
@@ -415,9 +322,6 @@
       "name": "Knight Move Shape (c)",
       "shape": "knight",
       "algorithm": "r' U' r R' U' R U r' U r",
-      "alternates": [
-        "l' U' l L' U' L U l' U l"
-      ],
       "recognition": "Knight-move arrangement, third orientation",
       "setup": "r' U' r U' R' U R r' U r",
       "recognitionGroup": "...YYY..Y.Y...Y.YY..Y"
@@ -427,7 +331,6 @@
       "name": "Knight Move Shape (d)",
       "shape": "knight",
       "algorithm": "r U r' R U R' U' r U' r'",
-      "alternates": [],
       "recognition": "Knight-move arrangement; mirror of OLL 15",
       "setup": "r U r' U R U' R' r U' r'",
       "recognitionGroup": "...YYYY...Y.Y..YY.Y.."
@@ -437,9 +340,6 @@
       "name": "Awkward / Dot (a)",
       "shape": "dot",
       "algorithm": "R U R' U R' F R F' U2 R' F R F'",
-      "alternates": [
-        "F R' F' R U S' R U' R' S"
-      ],
       "recognition": "Dot case with two diagonally-opposed yellow corners",
       "setup": "F R' F' R U2 F R' F' R U' R U' R'",
       "recognitionGroup": "..Y.Y.Y...Y.YY..YY.Y."
@@ -449,9 +349,6 @@
       "name": "Awkward / Dot (b)",
       "shape": "dot",
       "algorithm": "r U R' U R U2 r' r' U' R U' R' U2 r",
-      "alternates": [
-        "F R U R' U y' R' U2 R' F R F'"
-      ],
       "recognition": "Dot case; chair-like distribution",
       "setup": "r' U2 R U R' U r r U2 R' U' R U' r'",
       "recognitionGroup": "....Y.Y.Y.Y..Y.YYY.Y."
@@ -461,9 +358,6 @@
       "name": "Awkward (a)",
       "shape": "awkward",
       "algorithm": "M U R U R' U' M' R' F R F'",
-      "alternates": [
-        "r' R U R U R' U' r R2 F R F'"
-      ],
       "recognition": "Awkward shape; needs M-slice or wide-r",
       "setup": "F R' F' R M U R U' R' U' M'",
       "recognitionGroup": "....Y.Y.Y.Y..YY.Y.YY."
@@ -473,9 +367,6 @@
       "name": "Awkward / H",
       "shape": "awkward",
       "algorithm": "M U R U R' U' M2 U R U' r'",
-      "alternates": [
-        "r U R' U' M2 U R U' R' U' M'"
-      ],
       "recognition": "Awkward shape with H-like symmetry",
       "setup": "r U R' U' M2 U R U' R' U' M'",
       "recognitionGroup": "Y.Y.Y.Y.Y.Y..Y..Y..Y."
@@ -485,10 +376,6 @@
       "name": "Cross / H (a)",
       "shape": "cross",
       "algorithm": "R U2 R' U' R U R' U' R U' R'",
-      "alternates": [
-        "F R U R' U' R U R' U' R U R' U' F'",
-        "y R U R' U R U' R' U R U2 R'"
-      ],
       "recognition": "Cross with all 4 corners unoriented in H symmetry",
       "setup": "R U R' U R U' R' U R U2 R'",
       "recognitionGroup": ".Y.YYY.Y....Y.Y...Y.Y"
@@ -498,9 +385,6 @@
       "name": "Cross / Pi",
       "shape": "cross",
       "algorithm": "R U2 R2 U' R2 U' R2 U2 R",
-      "alternates": [
-        "f R U R' U' f' F R U R' U' R U R' U' F'"
-      ],
       "recognition": "Cross with Pi corner orientation; two opposite corners face out same way",
       "setup": "R' U2 R2 U R2 U R2 U2 R'",
       "recognitionGroup": ".Y.YYY.Y....Y..Y.Y..Y"
@@ -510,7 +394,6 @@
       "name": "Cross / Headlights",
       "shape": "cross",
       "algorithm": "R2 D R' U2 R D' R' U2 R'",
-      "alternates": [],
       "recognition": "Cross + two corners oriented + two adjacent corners with headlights",
       "setup": "R U2 R D R' U2 R D' R2",
       "recognitionGroup": ".Y.YYYYYY......Y.Y..."
@@ -520,9 +403,6 @@
       "name": "Cross / Chameleon",
       "shape": "cross",
       "algorithm": "r U R' U' r' F R F'",
-      "alternates": [
-        "x' R U R' D R U' R' D'"
-      ],
       "recognition": "Cross + two oriented corners + chameleon corner pattern",
       "setup": "F R' F' r U R U' r'",
       "recognitionGroup": ".Y.YYYYYY.....Y...Y.."
@@ -532,9 +412,6 @@
       "name": "Cross / Bowtie",
       "shape": "cross",
       "algorithm": "F' r U R' U' r' F R",
-      "alternates": [
-        "x' R U' R' D R U R' D'"
-      ],
       "recognition": "Cross with bowtie corner pattern",
       "setup": "R' F' r U R U' r' F",
       "recognitionGroup": ".YYYYYYY....Y....Y..."
@@ -544,9 +421,6 @@
       "name": "Cross / Anti-Sune",
       "shape": "cross",
       "algorithm": "R U2 R' U' R U' R'",
-      "alternates": [
-        "L' U' L U' L' U2 L"
-      ],
       "recognition": "Cross + 1 oriented corner; anti-sune pattern",
       "setup": "R U R' U R U2 R'",
       "recognitionGroup": ".Y.YYY.YYY.....Y..Y.."
@@ -556,9 +430,6 @@
       "name": "Cross / Sune",
       "shape": "cross",
       "algorithm": "R U R' U R U2 R'",
-      "alternates": [
-        "L' U2 L U L' U L"
-      ],
       "recognition": "Cross + 1 oriented corner; sune pattern",
       "setup": "R U2 R' U' R U' R'",
       "recognitionGroup": ".Y.YYY.YY.....Y..Y..Y"
@@ -568,9 +439,6 @@
       "name": "Square (a)",
       "shape": "square",
       "algorithm": "r U R' U' r' R U R U' R'",
-      "alternates": [
-        "M' U M U2 M' U M"
-      ],
       "recognition": "Square shape with edge-flipping needs",
       "setup": "R U R' U' R' r U R U' r'",
       "recognitionGroup": "Y.Y.YYYYY.......Y..Y."
@@ -580,9 +448,6 @@
       "name": "Awkward (b)",
       "shape": "awkward",
       "algorithm": "R U R' U' R U' R' F' U' F R U R'",
-      "alternates": [
-        "r2 D' r U r' D r2 U' r' U' r"
-      ],
       "recognition": "Awkward shape",
       "setup": "R U' R' F' U F R U R' U R U' R'",
       "recognitionGroup": ".Y..YYY.Y.Y...Y...YY."
@@ -592,9 +457,6 @@
       "name": "Awkward (c)",
       "shape": "awkward",
       "algorithm": "F R' F R2 U' R' U' R U R' F2",
-      "alternates": [
-        "r' D' r U' r' D r2 U' r' U r U r'"
-      ],
       "recognition": "Awkward shape; mirror of OLL 29",
       "setup": "F2 R U' R' U R U R2 F' R F'",
       "recognitionGroup": "..YYY..YYY...Y..YY..."
@@ -604,7 +466,6 @@
       "name": "P (a)",
       "shape": "P",
       "algorithm": "R' U' F U R U' R' F' R",
-      "alternates": [],
       "recognition": "P-shape; yellow pi-shape on side with single corner",
       "setup": "R' F R U R' U' F' U R",
       "recognitionGroup": "....YYYYY.....Y.Y.YY."
@@ -614,10 +475,6 @@
       "name": "P (b)",
       "shape": "P",
       "algorithm": "L U F' U' L' U L F L'",
-      "alternates": [
-        "S R U R' U' R' F R f'",
-        "R U B' U' R' U R B R'"
-      ],
       "recognition": "P-shape; mirror of OLL 31",
       "setup": "L F' L' U' L U F U' L'",
       "recognitionGroup": "...YY.YYY....YY.Y.Y.."
@@ -627,7 +484,6 @@
       "name": "T (a)",
       "shape": "T",
       "algorithm": "R U R' U' R' F R F'",
-      "alternates": [],
       "recognition": "T-shape; classic OLL/PLL primer",
       "setup": "F R' F' R U R U' R'",
       "recognitionGroup": "..YYYY..YYY.....YY..."
@@ -637,9 +493,6 @@
       "name": "C (a)",
       "shape": "C",
       "algorithm": "R U R2 U' R' F R U R U' F'",
-      "alternates": [
-        "f R F R' U R' U' F2 R"
-      ],
       "recognition": "C-shape pattern",
       "setup": "F U R' U' R' F' R U R2 U' R'",
       "recognitionGroup": "...YYYY.Y.Y...Y.Y.Y.."
@@ -649,7 +502,6 @@
       "name": "Fish (c)",
       "shape": "fish",
       "algorithm": "R U2 R2 F R F' R U2 R'",
-      "alternates": [],
       "recognition": "Fish-shape variant",
       "setup": "R U2 R' F R' F' R2 U2 R'",
       "recognitionGroup": "..YYY.YY...Y.Y..Y.Y.."
@@ -659,9 +511,6 @@
       "name": "W (a)",
       "shape": "W",
       "algorithm": "L' U' L U' L' U L U L F' L' F",
-      "alternates": [
-        "R U R2 F' U' F U R2 U2 R'"
-      ],
       "recognition": "W-shape",
       "setup": "F' L F L' U' L' U' L U L' U L",
       "recognitionGroup": "..Y.YYYY....Y...YY.Y."
@@ -671,7 +520,6 @@
       "name": "Fish (d)",
       "shape": "fish",
       "algorithm": "F R' F' R U R U' R'",
-      "alternates": [],
       "recognition": "Fish-shape variant",
       "setup": "R U R' U' R' F R F'",
       "recognitionGroup": "..YYY.YY....YY..YY..."
@@ -681,7 +529,6 @@
       "name": "W (b)",
       "shape": "W",
       "algorithm": "R U R' U R U' R' U' R' F R F'",
-      "alternates": [],
       "recognition": "W-shape; mirror of OLL 36",
       "setup": "F R' F' R U R U R' U' R U' R'",
       "recognitionGroup": "..Y.YYYY...Y....Y.YY."
@@ -691,9 +538,6 @@
       "name": "Big Lightning (a)",
       "shape": "big-lightning",
       "algorithm": "L F' L' U' L U F U' L'",
-      "alternates": [
-        "R B' R' U' R U B U' R'"
-      ],
       "recognition": "Large lightning-bolt shape",
       "setup": "L U F' U' L' U L F L'",
       "recognitionGroup": "..YYYYY...Y.Y...YY..."
@@ -703,9 +547,6 @@
       "name": "Big Lightning (b)",
       "shape": "big-lightning",
       "algorithm": "R' F R U R' U' F' U R",
-      "alternates": [
-        "L B L' U L U' B' U' L"
-      ],
       "recognition": "Large lightning-bolt; mirror of OLL 39",
       "setup": "R' U' F U R U' R' F' R",
       "recognitionGroup": ".YY.Y.YY....YY...Y.Y."
@@ -715,7 +556,6 @@
       "name": "Awkward (d)",
       "shape": "awkward",
       "algorithm": "R U R' U R U2 R' F R U R' U' F'",
-      "alternates": [],
       "recognition": "Awkward; sune + F-edge insert",
       "setup": "F U R U' R' F' R U2 R' U' R U' R'",
       "recognitionGroup": "..YYY..YY....Y..Y.Y.Y"
@@ -725,7 +565,6 @@
       "name": "Awkward (e)",
       "shape": "awkward",
       "algorithm": "R' U' R U' R' U2 R F R U R' U' F'",
-      "alternates": [],
       "recognition": "Awkward; anti-sune + F-edge insert; mirror of OLL 41",
       "setup": "F U R U' R' F' R' U2 R U R' U R",
       "recognitionGroup": ".Y..YYY.Y.Y....Y.Y.Y."
@@ -735,10 +574,6 @@
       "name": "P (c)",
       "shape": "P",
       "algorithm": "F' U' L' U L F",
-      "alternates": [
-        "f' L' U' L U f",
-        "R' U' F' U F R"
-      ],
       "recognition": "P-shape",
       "setup": "F' L' U' L U F",
       "recognitionGroup": "....YYYYY......YYY.Y."
@@ -748,9 +583,6 @@
       "name": "P (d)",
       "shape": "P",
       "algorithm": "f R U R' U' f'",
-      "alternates": [
-        "F U R U' R' F'"
-      ],
       "recognition": "P-shape; mirror of OLL 43",
       "setup": "f U R U' R' f'",
       "recognitionGroup": "...YY.YYY....Y.YYY..."
@@ -760,7 +592,6 @@
       "name": "T (b)",
       "shape": "T",
       "algorithm": "F R U R' U' F'",
-      "alternates": [],
       "recognition": "T-shape; the classic 'F sexy F' alg",
       "setup": "F U R U' R' F'",
       "recognitionGroup": "..YYYY..Y.Y.....Y.Y.Y"
@@ -770,7 +601,6 @@
       "name": "C (b)",
       "shape": "C",
       "algorithm": "R' U' R' F R F' U R",
-      "alternates": [],
       "recognition": "C-shape variant",
       "setup": "R' U' F R' F' R U R",
       "recognitionGroup": "...YYYY.Y.Y....YYY..."
@@ -780,9 +610,6 @@
       "name": "L (a)",
       "shape": "L",
       "algorithm": "R' U' R' F R F' R' F R F' U R",
-      "alternates": [
-        "F' L' U' L U L' U' L U F"
-      ],
       "recognition": "L-shape; two adjacent edges flipped + two opposite corners",
       "setup": "R' U' F R' F' R F R' F' R U R",
       "recognitionGroup": "....YY.Y.Y.Y..Y.Y.YY."
@@ -792,7 +619,6 @@
       "name": "L (b)",
       "shape": "L",
       "algorithm": "F R U R' U' R U R' U' F'",
-      "alternates": [],
       "recognition": "L-shape; mirror of OLL 47",
       "setup": "F U R U' R' U R U' R' F'",
       "recognitionGroup": "....YY.Y.Y..Y.Y.YY.Y."
@@ -802,9 +628,6 @@
       "name": "L (c)",
       "shape": "L",
       "algorithm": "R B' R2 F R2 B R2 F' R",
-      "alternates": [
-        "r U' r2 U r2 U r2 U' r"
-      ],
       "recognition": "L-shape variant",
       "setup": "R' F R2 B' R2 F' R2 B R'",
       "recognitionGroup": "....YY.Y....Y..YYY.YY"
@@ -814,9 +637,6 @@
       "name": "L (d)",
       "shape": "L",
       "algorithm": "R' F R2 B' R2 F' R2 B R'",
-      "alternates": [
-        "r' U r2 U' r2 U' r2 U r"
-      ],
       "recognition": "L-shape variant; mirror of OLL 49",
       "setup": "R B' R2 F R2 B R2 F' R",
       "recognitionGroup": "....YY.Y...Y...YY.YYY"
@@ -826,9 +646,6 @@
       "name": "Line / I (a)",
       "shape": "I",
       "algorithm": "F U R U' R' U R U' R' F'",
-      "alternates": [
-        "f R U R' U' R U R' U' f'"
-      ],
       "recognition": "Line/I shape with line on top",
       "setup": "F R U R' U' R U R' U' F'",
       "recognitionGroup": "...YYY....YY...YY.Y.Y"
@@ -838,10 +655,6 @@
       "name": "Line / I (b)",
       "shape": "I",
       "algorithm": "R' F' U' F U' R U R' U R",
-      "alternates": [
-        "R U R' U R U' B U' B' R'",
-        "R U R' U R d' R U' R' F'"
-      ],
       "recognition": "Line/I shape; mirror of OLL 51",
       "setup": "R' U' R U' R' U F' U F R",
       "recognitionGroup": "...YYY....Y.Y..YYY..Y"
@@ -851,9 +664,6 @@
       "name": "Square (b)",
       "shape": "square",
       "algorithm": "r' U' R U' R' U R U' R' U2 r",
-      "alternates": [
-        "l' U' L U' L' U L U' L' U2 l"
-      ],
       "recognition": "Square shape variant",
       "setup": "r' U2 R U R' U' R U R' U r",
       "recognitionGroup": "....YY.Y....Y.Y.Y.YYY"
@@ -863,7 +673,6 @@
       "name": "Square (c)",
       "shape": "square",
       "algorithm": "r U R' U R U' R' U R U2 r'",
-      "alternates": [],
       "recognition": "Square shape variant; mirror of OLL 53",
       "setup": "r U2 R' U' R U R' U' R U' r'",
       "recognitionGroup": "....YY.Y.Y.Y...YYY.Y."
@@ -873,9 +682,6 @@
       "name": "Line / I (c)",
       "shape": "I",
       "algorithm": "R' F R U R U' R2 F' R2 U' R' U R U R'",
-      "alternates": [
-        "r U2 R2 F R F' U2 r' F R F'"
-      ],
       "recognition": "Line/I shape with corners requiring rotation",
       "setup": "R U' R' U' R U R2 F R2 U R' U' R' F' R",
       "recognitionGroup": "...YYY...YYY...YYY..."
@@ -885,10 +691,6 @@
       "name": "Line / I (d)",
       "shape": "I",
       "algorithm": "r U r' U R U' R' U R U' R' r U' r'",
-      "alternates": [
-        "r' U' r U' R' U R U' R' U R r' U r",
-        "F R U R' U' R F' r U R' U' r'"
-      ],
       "recognition": "Line/I shape variant",
       "setup": "r U r' R U R' U' R U R' U' r U' r'",
       "recognitionGroup": "...YYY....Y.Y.Y.Y.Y.Y"
@@ -898,7 +700,6 @@
       "name": "Cross / H (b)",
       "shape": "cross",
       "algorithm": "R U R' U' M' U R U' r'",
-      "alternates": [],
       "recognition": "Cross + 2 opposite oriented corners + 2 to swap",
       "setup": "r U R' U' M U R U' R'",
       "recognitionGroup": "Y.YYYYY.Y.Y.....Y...."
