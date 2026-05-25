@@ -251,6 +251,10 @@ function bindSelectionToolbar() {
     const mod = await import("./drill.js");
     mod.start(state.data, selection.allKeys());
   });
+  document.getElementById("batch-selected")?.addEventListener("click", async () => {
+    const mod = await import("./batch.js");
+    mod.start(state.data, selection.allKeys());
+  });
   document.getElementById("recog-selected")?.addEventListener("click", async () => {
     const mod = await import("./recognition.js");
     mod.start(state.data, selection.allKeys());
@@ -267,8 +271,8 @@ function updateSelectionUI() {
     const k = cb.dataset.key;
     if (k) cb.checked = selection.allKeys().includes(k);
   }
-  // Enable/disable drill+recog buttons
-  for (const id of ["drill-selected", "recog-selected", "clear-selection"]) {
+  // Enable/disable selection-driven action buttons
+  for (const id of ["drill-selected", "batch-selected", "recog-selected", "clear-selection"]) {
     const btn = document.getElementById(id);
     if (btn) btn.disabled = count === 0;
   }
