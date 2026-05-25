@@ -64,9 +64,16 @@
   <script src="app.js" type="module"></script>
   <script>
     // Register the service worker (offline support + PWA install).
+    // After registration, force an update check on every page load so the
+    // browser re-fetches sw.js immediately rather than waiting up to 24h
+    // for its natural recheck cadence. Critical for installed mobile PWAs,
+    // which otherwise can stay pinned to an old SW + old cached assets
+    // until the user manually clears site data.
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch((err) => {
+        navigator.serviceWorker.register("sw.js").then((reg) => {
+          reg.update().catch(() => { /* network down — try again next load */ });
+        }).catch((err) => {
           console.warn("Service worker registration failed:", err);
         });
       });

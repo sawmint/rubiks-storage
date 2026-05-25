@@ -313,11 +313,23 @@ function renderSolvesList() {
 
     const t = document.createElement("div");
     t.className = "timer-solve-time";
-    t.textContent = sessions.fmtSolve(s);
+    // Time + small inspection-penalty chip rendered inline next to the time
+    // so the user immediately sees that part of the penalty was locked-in
+    // from inspection (vs. the user-clicked manual portion controlled by
+    // the OK/+2/DNF pills).
+    t.appendChild(document.createTextNode(sessions.fmtSolve(s)));
+    if (s.inspectionPenalty === "+2" || s.inspectionPenalty === "DNF") {
+      const chip = document.createElement("span");
+      chip.className = "timer-insp-chip";
+      chip.textContent = s.inspectionPenalty === "DNF" ? "insp DNF" : "+2 insp";
+      t.appendChild(chip);
+    }
+    // Build a clear tooltip that names every penalty source contributing
     if (s.phases && s.phases.length > 1) {
       t.title = s.phases.map((cum, phaseIdx) => `${labelForPhaseIndex(phaseIdx)}: ${(cum / 1000).toFixed(2)}`).join("\n");
     }
     t.title = (t.title ? t.title + "\n\n" : "") + `Scramble: ${s.scramble}`;
+    t.title += `\n\nPenalty: ${penaltySummary(s)}`;
     if (s.comment) t.title += `\n\nNote: ${s.comment}`;
     row.appendChild(t);
 
@@ -526,9 +538,27 @@ function mkPenaltyBtn(label, value, s) {
   b.type = "button";
   b.className = "timer-pill";
   b.textContent = label;
+  // Only the MANUAL portion is editable via these pills — the inspection
+  // penalty (if any) is locked in alongside.
   if (s.penalty === value) b.classList.add("active");
   b.addEventListener("click", () => sessions.setSolvePenalty(s.id, value));
   return b;
+}
+
+/* Build a human-readable summary of every penalty source on this solve.
+ * Used in the row's title-attribute tooltip so the user understands why
+ * the displayed time has a "+" or "++" suffix. */
+function penaltySummary(s) {
+  const ins = s.inspectionPenalty;
+  const man = s.penalty;
+  if (ins === "DNF") return "DNF (from inspection overrun)";
+  if (man === "DNF") return "DNF (manual)";
+  const parts = [];
+  if (ins === "+2") parts.push("+2 from inspection");
+  if (man === "+2") parts.push("+2 manual");
+  if (parts.length === 0) return "none";
+  if (parts.length === 2) return parts.join(" · ") + " → total +4";
+  return parts[0];
 }
 
 function labelForPhaseIndex(i) {
@@ -714,12 +744,14 @@ function inspectionTick() {
 }
 
 function autoStartDnf() {
-  // Record a DNF solve immediately for inspection overrun.
+  // Record a DNF solve immediately for inspection overrun. The DNF lives in
+  // inspectionPenalty (locked, not user-editable) — distinct from a user
+  // clicking the DNF pill on a completed solve.
   if (!session) return;
   cancelRaf();
   const phases = sessions.getPhaseConfig().count;
   const dummy = new Array(phases).fill(0);
-  recordAndReset({ timeMs: 0, phases: dummy, penalty: "DNF" });
+  recordAndReset({ timeMs: 0, phases: dummy, penalty: null, inspectionPenalty: "DNF" });
 }
 
 function startRun() {
@@ -764,20 +796,26 @@ function finishRun(totalMs) {
   session.state = "stopped";
   session.ui.timeDisplay.className = "timer-time timer-stopped";
   session.ui.timeDisplay.textContent = (totalMs / 1000).toFixed(2);
-  const penalty = session.inspectionPenalty || null;
+  // inspectionPenalty is the LOCKED inspection-overrun penalty; the manual
+  // penalty (user clicking +2 / DNF after the fact) starts as null and is
+  // edited via the OK/+2/DNF pills in the solves row. Without this split,
+  // a +2 from blown inspection + a missed turn during the solve would only
+  // record one +2 — but it's really +4 in WCA terms.
   recordAndReset({
     timeMs: totalMs,
     phases: session.phases.slice(),
-    penalty,
+    penalty: null,
+    inspectionPenalty: session.inspectionPenalty || null,
   });
 }
 
-function recordAndReset({ timeMs, phases, penalty }) {
+function recordAndReset({ timeMs, phases, penalty, inspectionPenalty }) {
   sessions.addSolve({
     timeMs,
     scramble: session.currentScramble || "",
     phases,
     penalty,
+    inspectionPenalty,
   });
   // Pull next scramble for the next solve
   loadNextScramble();

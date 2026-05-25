@@ -121,12 +121,14 @@ Stats schema (`rs-sessions-v1` in localStorage):
   sessions: {
     "default": {
       id, name, createdAt,
-      solves: [{ id, timeMs, scramble, phases: [cumMs, ...], penalty: null|"+2"|"DNF", date, comment }]
+      solves: [{ id, timeMs, scramble, phases: [cumMs, ...], penalty: null|"+2"|"DNF", inspectionPenalty: null|"+2"|"DNF", date, comment }]
     }
   }
 }
 ```
-WCA averages computed in `sessions.js`: `trimmedAverage(solves, n)` (drop best+worst, mean middle; ≥2 DNFs in window → DNF), `mean(solves)` (skips DNFs from the calculation, only DNF if every solve is a DNF — deviates from strict WCA mo3 to match cstimer's session-mean behavior), `bestSingle`, `bestAverage(solves, n)`. `effectiveMs(solve)` applies the +2 penalty (`Infinity` for DNF). Display via `fmtMs`/`fmtSolve`. The reset-stats action in the settings gear only touches `rs-stats-v2`, not `rs-sessions-v1` — they're independent stores.
+WCA averages computed in `sessions.js`: `trimmedAverage(solves, n)` (drop best+worst, mean middle; ≥2 DNFs in window → DNF), `mean(solves)` (skips DNFs from the calculation, only DNF if every solve is a DNF — deviates from strict WCA mo3 to match cstimer's session-mean behavior), `bestSingle`, `bestAverage(solves, n)`. `effectiveMs(solve)` stacks BOTH penalty sources (`inspectionPenalty + penalty`) so a +2 from inspection + a manual +2 = +4 total; either being DNF makes the whole solve DNF. Display via `fmtMs`/`fmtSolve` (suffix `+` = one +2, `++` = stacked +4). The reset-stats action in the settings gear only touches `rs-stats-v2`, not `rs-sessions-v1` — they're independent stores.
+
+**Two penalty sources stack**: `inspectionPenalty` is the LOCKED penalty set at solve time from inspection overrun (15s → +2, 17s → DNF, scaled by the configured `inspectionDurationSec`). `penalty` is the USER-EDITABLE penalty controlled by the OK / +2 / DNF pills in the solves row. `setSolvePenalty` only mutates the manual half — you can't retroactively unblow your inspection. The solve row shows a `+2 insp` chip alongside the time when the inspection portion is set, and the title-tooltip names every source ("+2 from inspection · +2 manual → total +4"). Without this split, a user who blew inspection AND then clicked +2 for missing a turn would only see a single +2 recorded instead of the correct +4.
 
 **Font for timer/stats displays**: switched from `--font-mono` to `--font-sans` with `font-variant-numeric: tabular-nums`. JetBrains Mono (default in the mono stack) renders `0` with a dot inside which a user complained about. Sans-with-tabular-nums gives plain zeros that still align column-perfectly. `--font-mono` itself was also changed to `ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace` (no more JetBrains Mono) for scramble text.
 
@@ -192,5 +194,7 @@ Entry point: `#open-weak-cases` button in the selection toolbar (next to Timer, 
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.
 
 **PWA cache version**: when changing any file in `sw.js`'s `CORE_ASSETS` array, bump `const CACHE_VERSION = "rs-vN"` so installed PWAs refresh on next open. The deploy skill handles this automatically. If a user reports "I pushed but my phone shows old code," check whether CACHE_VERSION was bumped.
+
+**SW update strategy**: same-origin shell assets use stale-while-revalidate (return cache instantly, fetch in background, next reload gets fresh). VisualCube images stay cache-first (URL-keyed, effectively immutable). Navigation requests are network-first. On top of all that, `index.html`'s SW registration calls `reg.update()` after `register()`, forcing the browser to re-fetch `sw.js` on every page load — without this, the browser's natural recheck interval (up to 24h) was leaving installed mobile PWAs pinned to an old SW for an entire day after a deploy.
 
 **SSH auth**: deploy key at `~/.ssh/rubiks-storage-deploy` (private), corresponding public key registered as a deploy key in the repo with write access. SSH alias `github-rubiks` in `~/.ssh/config` maps to it. If the key file is missing, regenerate with `ssh-keygen -t ed25519 -f ~/.ssh/rubiks-storage-deploy -N ""` and re-add the .pub to https://github.com/sawmint/rubiks-storage/settings/keys.

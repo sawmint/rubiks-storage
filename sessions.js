@@ -155,7 +155,7 @@ export function setInspectionDurationSec(seconds) {
   save();
 }
 
-export function addSolve({ timeMs, scramble, phases, penalty = null }) {
+export function addSolve({ timeMs, scramble, phases, penalty = null, inspectionPenalty = null }) {
   const s = load();
   const sess = s.sessions[s.activeSessionId];
   if (!sess) return;
@@ -164,7 +164,8 @@ export function addSolve({ timeMs, scramble, phases, penalty = null }) {
     timeMs,
     scramble,
     phases: phases || [timeMs],
-    penalty,
+    penalty,                 // user-controlled portion (OK / +2 / DNF pills)
+    inspectionPenalty,       // locked, set at solve time from inspection overrun
     date: Date.now(),
     comment: "",
   };
@@ -173,6 +174,9 @@ export function addSolve({ timeMs, scramble, phases, penalty = null }) {
   return solve;
 }
 
+/* Only mutates the user-controlled penalty. The inspection penalty (set at
+ * solve time) is immutable — you can't retroactively pretend you didn't
+ * blow your 15s inspection. */
 export function setSolvePenalty(solveId, penalty) {
   const sess = getActiveSession();
   if (!sess) return;
@@ -357,12 +361,17 @@ export function subscribe(fn) {
 
 /* ---------- WCA stats ---------- */
 
-/* Effective time of a solve: timeMs + 2000 for +2, Infinity for DNF. */
+/* Effective time of a solve, stacking BOTH penalty sources:
+ *   - inspectionPenalty: locked, from blowing inspection (15s/17s thresholds)
+ *   - penalty: user-controlled manual penalty from the OK/+2/DNF pills
+ * Either being DNF makes the whole solve DNF. Two +2s stack to +4. */
 export function effectiveMs(solve) {
   if (!solve) return Infinity;
-  if (solve.penalty === "DNF") return Infinity;
-  if (solve.penalty === "+2") return solve.timeMs + 2000;
-  return solve.timeMs;
+  if (solve.penalty === "DNF" || solve.inspectionPenalty === "DNF") return Infinity;
+  let ms = solve.timeMs;
+  if (solve.inspectionPenalty === "+2") ms += 2000;
+  if (solve.penalty === "+2") ms += 2000;
+  return ms;
 }
 
 /* Compute mean of N consecutive solves with trimming (best+worst dropped).
@@ -431,10 +440,17 @@ export function fmtMs(ms) {
   return `${m}:${r.padStart(5, "0")}`;
 }
 
-/* Display string for a solve: prefixes "+" if +2 penalty. */
+/* Display string for a solve. Penalty markers:
+ *   "+"  = one +2 (either inspection OR manual)
+ *   "++" = both +2s applied (+4 total) — disambiguated via tooltip in UI
+ *   "DNF" if either source is DNF.
+ */
 export function fmtSolve(solve) {
   if (!solve) return "-";
-  if (solve.penalty === "DNF") return "DNF";
+  if (solve.penalty === "DNF" || solve.inspectionPenalty === "DNF") return "DNF";
   const base = fmtMs(effectiveMs(solve));
-  return solve.penalty === "+2" ? base + "+" : base;
+  const plusCount = (solve.inspectionPenalty === "+2" ? 1 : 0) + (solve.penalty === "+2" ? 1 : 0);
+  if (plusCount === 2) return base + "++";
+  if (plusCount === 1) return base + "+";
+  return base;
 }
