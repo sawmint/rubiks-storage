@@ -95,6 +95,18 @@ You should see "Success. No rows returned." If you get an error like "relation a
 
 6. Push the change (the deploy skill bumps the PWA cache version and pushes for you). Reload the site — the **Sign in** button now appears next to the gear icon.
 
+7. **Set the redirect URL allow-list** — without this, Supabase will send you to its default `http://localhost:3000` after sign-in instead of back to your app, and the page will fail to load.
+   - In the Supabase dashboard, left sidebar → **Authentication** → **URL Configuration**.
+   - **Site URL**: set to your production URL, e.g. `https://sawmint.github.io/rubiks-storage/`. (This is the fallback if any other redirect is rejected.)
+   - **Redirect URLs**: paste each of these on its own line. The `**` wildcard allows any path under each URL.
+     ```
+     https://sawmint.github.io/rubiks-storage/**
+     https://*.pages.dev/**
+     http://localhost:8000/**
+     http://localhost:8765/**
+     ```
+   - Click **Save**.
+
 **Email magic-link sign-in works at this point.** You can stop here if you don't want Google sign-in. If you want Google too, continue to step 2.
 
 ---
