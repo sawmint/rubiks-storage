@@ -46,4 +46,7 @@ Case visualizations come from VisualCube at `https://visualcube.api.cubing.net/v
 - Honest uncertainty: flag stuff rather than guess silently.
 - Design for extension: data-driven configs, CSS tokens, explicit hook comments.
 - Working directory is `/home/arjun/WebstormProjects/Rubik's Storage` (quote — apostrophe).
-- Spaced repetition is a planned follow-up (Phase F in the plan file). PWA / offline phone access also planned but deferred.
+- Spaced repetition is a planned follow-up (Phase F in the plan file).
+
+## Deploy
+Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.

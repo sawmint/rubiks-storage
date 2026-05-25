@@ -9,7 +9,9 @@ Thumbs.db
 
 # Editor/runtime
 *.log
-.claude/
+# Local Claude Code config (preview server, etc.) - but keep committed skills.
+.claude/*
+!.claude/skills/
 
 # Node (if added later)
 node_modules/
