@@ -20,7 +20,7 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `pll-compose.json` — precomputed PLL composition lookup (288 LL states × 21 PLLs); generated server-side by pycuber
 - `rubiks-cube-algorithms.json` — dataset (PLL/OLL include `setup` and OLL has `recognitionGroup`). No `alternates` field — those were removed after a data-quality audit showed 48/66 alternates didn't actually solve their case; only `algorithm` is trusted
 - `scripts/compute-setups.py` — one-time pycuber script that generated setup + recognitionGroup
-- `sw.js` · `manifest.webmanifest` · `icon.svg` — PWA: offline support, installable
+- `sw.js` · `manifest.webmanifest` · `logo.png` — PWA: offline support, installable. `logo.png` is the brand mark (rendered in the header via `.brand-logo`), favicon, and apple-touch-icon. Replaced the old CSS conic-gradient brand square + the old `icon.svg`
 - `.claude/skills/deploy/SKILL.md` — deploy workflow skill (auto-loaded each session)
 - `rubiks-cube-storage-prompt.md` — original generation prompt
 
@@ -168,7 +168,9 @@ Key architectural note: the editor lives on `document.body`, NOT inside the solv
 ## Session export + import
 `sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all.
 
-`sessions.importJson(text)` is the counterpart, triggered by the `Import` footer button (hidden file input). Validates the envelope (must be `rs-session-export` or `rs-sessions-export` with matching schema version), then **non-destructively** adds each imported session with a fresh ID — never overwrites existing sessions. Imported solve IDs are also regenerated so they can't collide. Returns `{ok:true,count}` or `{ok:false,error}`; the UI alerts on error. Imported session names get a ` (imported)` suffix to make the source obvious.
+`sessions.importJson(text)` is the counterpart, triggered by the `Import` footer button (hidden file input). Validates the envelope (must be `rs-session-export` or `rs-sessions-export` with matching schema version), then **non-destructively** adds each imported session with a fresh ID — never overwrites existing sessions. Imported solve IDs are also regenerated so they can't collide. **Auto-activates the first imported session** so the user immediately sees their data after import (without this, the import looks like a no-op because the active session doesn't change). Returns `{ok:true,count}` or `{ok:false,error}`; the UI alerts on error. Imported session names get a ` (imported)` suffix to make the source obvious.
+
+**deleteSession invariant**: deleting the active session switches to the OLDEST surviving session, NOT a recreated empty "Default". The old behavior unconditionally recreated `default` after deletion, which silently dropped the user onto an empty session (especially confusing right after an import, where they'd just deleted the original to clean up and ended up on a blank slate instead of the imported one). Only when NO sessions remain at all does a fresh Default get created.
 
 ## Weak cases ("Today's drill")
 `weak-cases.js` is a small modal that surfaces drillable cases the user should practice next. It reads `stats.getAll()` for both per-case drill data and SRS state, then ranks in three tiers:

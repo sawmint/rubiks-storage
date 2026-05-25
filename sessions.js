@@ -268,6 +268,7 @@ export function importJson(jsonText) {
 
   load();
   let count = 0;
+  let firstImportedId = null;
   for (const src of sourceSessions) {
     if (!src || !Array.isArray(src.solves)) continue;
     const id = newId();
@@ -280,9 +281,13 @@ export function importJson(jsonText) {
         id: newId(), // fresh ID so it can't collide with anything existing
       })),
     };
+    if (firstImportedId == null) firstImportedId = id;
     count++;
   }
   if (count === 0) return { ok: false, error: "No valid sessions in file" };
+  // Auto-activate the first imported session so the user immediately sees
+  // their data — otherwise the import appears to do nothing visible.
+  if (firstImportedId) cache.activeSessionId = firstImportedId;
   save();
   return { ok: true, count };
 }
@@ -319,13 +324,21 @@ export function renameSession(id, name) {
 export function deleteSession(id) {
   load();
   if (!cache.sessions[id]) return;
+  const wasActive = cache.activeSessionId === id;
   delete cache.sessions[id];
-  // Ensure at least default exists
-  if (!cache.sessions.default) {
-    cache.sessions.default = { id: "default", name: "Default", createdAt: Date.now(), solves: [] };
-  }
-  if (cache.activeSessionId === id) {
-    cache.activeSessionId = "default";
+  // If the user just deleted the session they were on, switch to ANY
+  // surviving session (oldest first) rather than blindly recreating an
+  // empty "Default". The previous behavior left the user staring at a
+  // blank session after deleting the original following an import.
+  if (wasActive) {
+    const remaining = Object.values(cache.sessions).sort((a, b) => a.createdAt - b.createdAt);
+    if (remaining.length > 0) {
+      cache.activeSessionId = remaining[0].id;
+    } else {
+      // Only when no sessions remain at all — create a fresh Default.
+      cache.sessions.default = { id: "default", name: "Default", createdAt: Date.now(), solves: [] };
+      cache.activeSessionId = "default";
+    }
   }
   save();
 }

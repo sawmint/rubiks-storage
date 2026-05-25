@@ -143,31 +143,13 @@ a:hover { text-decoration: underline; }
 .brand {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
   flex-shrink: 0;
+  padding: var(--space-2) 0;
 }
-.brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background:
-    conic-gradient(from 45deg,
-      #f5c518 0 25%,
-      #e35d4a 0 50%,
-      #4b6bff 0 75%,
-      #21a47a 0);
-  box-shadow: var(--shadow-sm);
-}
-.brand-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.brand-sub {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-muted);
+.brand-logo {
+  height: 48px;
+  width: auto;
+  display: block;
 }
 .header-actions {
   display: flex;
@@ -961,9 +943,8 @@ a:hover { text-decoration: underline; }
     gap: 0;
     row-gap: var(--space-1);
   }
-  .brand { flex: 1 1 auto; min-width: 0; gap: var(--space-2); padding: var(--space-2) 0; }
-  .brand-title { font-size: 16px; }
-  .brand-mark { width: 28px; height: 28px; }
+  .brand { flex: 1 1 auto; min-width: 0; padding: var(--space-1) 0; }
+  .brand-logo { height: 36px; }
   .header-actions { flex: 0 0 auto; }
 
   /* Tabs take their own row, full width, no horizontal scroll required */

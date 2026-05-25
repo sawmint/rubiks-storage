@@ -10,10 +10,10 @@
   "theme_color": "#4b6bff",
   "icons": [
     {
-      "src": "./icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "./logo.png",
+      "sizes": "660x356",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "categories": ["education", "utilities"]
