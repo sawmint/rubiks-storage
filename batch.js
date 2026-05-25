@@ -1,21 +1,36 @@
 /* =========================================================
- * batch.js — sequential batch drill.
+ * batch.js — chained-scramble batch drill.
  *
- * Pick 5 random PLL/OLL cases. For each case, show its
- * SHORT scramble (random y + AUF + setup); user applies it
- * to their cube, executes their alg, presses space to split
- * to the next case. Single continuous timer for all 5; total
- * + per-case splits shown at the end.
+ * Pick N random PLL/OLL cases (locked to 5 for now). Build a
+ * single initial scramble by concatenating the cases' setups in
+ * REVERSE order:
  *
- * Locked to 5 for now.
+ *     scramble = setup_N · setup_{N-1} · ... · setup_1
+ *
+ * Then run consecutive-same-face cancellation to shorten any
+ * seams (e.g. trailing `x'` meets leading `x` → `x2`).
+ *
+ * Applied to a solved cube, this leaves the cube in a chaotic
+ * LL state. Executing the cases' algorithms in FORWARD order
+ * (alg_1, alg_2, ..., alg_N) cancels each setup in turn, so
+ * after the N-th alg the cube is back to solved.
+ *
+ * The user reads the alg from the screen, executes it, presses
+ * space to split, then sees the next alg. Single continuous
+ * timer for the whole sequence; per-alg splits shown at the end.
+ *
+ * Intermediate states don't look like canonical case_2, case_3,
+ * etc. — they're the case state with additional residual setup
+ * permutations on top. The user follows the on-screen alg
+ * rather than recognizing.
  *
  * State machine:
- *   idle → armed (hold space) → running (release) → split×5 → done
+ *   idle → armed (hold space) → running (release) → split×N → done
  * ========================================================= */
 
 import * as modal from "./modal.js";
 import * as selection from "./selection.js";
-import { buildScramble } from "./cube-notation.js";
+import { simplifyMoves } from "./cube-notation.js";
 import { vcImage } from "./app.js";
 
 const BATCH_SIZE = 5;
@@ -39,9 +54,16 @@ export function start(data, keys) {
   }
 
   const queue = pickQueue(resolved, BATCH_SIZE);
+  const rawScramble = queue
+    .slice()
+    .reverse()
+    .map((p) => p.item.setup)
+    .join(" ");
+  const initialScramble = simplifyMoves(rawScramble);
 
   session = {
     queue,
+    initialScramble,
     currentIdx: 0,
     splits: [],
     timer: { state: "idle", startMs: 0, lastSplitMs: 0, elapsedMs: 0 },
@@ -51,7 +73,7 @@ export function start(data, keys) {
 
   const body = buildBody();
   modal.open({
-    title: `Batch mode — ${BATCH_SIZE} cases`,
+    title: `Batch mode — ${BATCH_SIZE} chained cases`,
     body,
     onClose: endSession,
   });
@@ -90,6 +112,34 @@ function buildBody() {
   const root = document.createElement("div");
   root.className = "batch-body";
 
+  // Initial scramble — visible the entire run; user applies once at the start.
+  const scrambleWrap = document.createElement("div");
+  scrambleWrap.className = "batch-initial-wrap";
+  const scrambleLabel = document.createElement("div");
+  scrambleLabel.className = "batch-initial-label";
+  scrambleLabel.textContent = "Apply this scramble to a solved cube:";
+  scrambleWrap.appendChild(scrambleLabel);
+
+  const scramble = document.createElement("div");
+  scramble.className = "batch-initial-scramble";
+  scramble.textContent = session.initialScramble;
+  scrambleWrap.appendChild(scramble);
+
+  // Initial-state preview — what the cube should look like after applying the
+  // scramble. WCA white-up color scheme to match the timer preview.
+  const preview = document.createElement("img");
+  preview.className = "batch-initial-preview";
+  preview.alt = "Scrambled state preview";
+  preview.src = vcImage({
+    setup: session.initialScramble,
+    view: "trans",
+    size: 110,
+    sch: "wrgyob",
+  });
+  scrambleWrap.appendChild(preview);
+
+  root.appendChild(scrambleWrap);
+
   const status = document.createElement("div");
   status.className = "batch-status";
   session.ui.status = status;
@@ -100,15 +150,10 @@ function buildBody() {
   session.ui.caseInfo = caseInfo;
   root.appendChild(caseInfo);
 
-  const image = document.createElement("div");
-  image.className = "batch-image";
-  session.ui.image = image;
-  root.appendChild(image);
-
-  const scramble = document.createElement("div");
-  scramble.className = "batch-scramble";
-  session.ui.scramble = scramble;
-  root.appendChild(scramble);
+  const algBox = document.createElement("div");
+  algBox.className = "batch-alg";
+  session.ui.alg = algBox;
+  root.appendChild(algBox);
 
   const timer = document.createElement("div");
   timer.className = "batch-timer";
@@ -118,7 +163,7 @@ function buildBody() {
 
   const hint = document.createElement("div");
   hint.className = "batch-hint";
-  hint.textContent = "Apply the scramble, then hold space to arm. Press space after each solve.";
+  hint.textContent = "Apply the scramble above, then hold space to arm. Press space after each alg.";
   session.ui.hint = hint;
   root.appendChild(hint);
 
@@ -151,23 +196,11 @@ function renderCurrent() {
   if (currentIdx >= queue.length) return;
   const pick = queue[currentIdx];
 
-  session.ui.status.textContent = `Case ${currentIdx + 1} of ${BATCH_SIZE}`;
+  session.ui.status.textContent = `Alg ${currentIdx + 1} of ${BATCH_SIZE}`;
   const catLabel = pick.category === "pll" ? "PLL" : "OLL";
   const idStr = pick.category === "pll" ? pick.item.id : `#${pick.item.id}`;
   session.ui.caseInfo.textContent = `${catLabel} ${idStr} · ${pick.item.name}`;
-
-  // Per-case short scramble: random y + AUF + setup. The setup ends with
-  // canceling rotation tokens so the cube returns to canonical orientation.
-  const scr = buildScramble(pick.item.setup);
-  session.ui.scramble.textContent = scr;
-
-  const stage = pick.category === "pll" ? "pll" : "oll";
-  const url = vcImage({ setup: pick.item.setup, stage, view: "plan", size: 180 });
-  const img = new Image();
-  img.alt = pick.item.name;
-  img.className = "batch-cube";
-  img.src = url;
-  session.ui.image.replaceChildren(img);
+  session.ui.alg.textContent = pick.item.algorithm || "(no algorithm in data)";
 }
 
 function renderQueue() {
@@ -228,7 +261,7 @@ function startTimer() {
   session.timer.lastSplitMs = session.timer.startMs;
   session.ui.timer.classList.remove("armed");
   session.ui.timer.classList.add("running");
-  session.ui.hint.textContent = "Press space after each solve.";
+  session.ui.hint.textContent = "Execute the alg, then press space to split.";
   tick();
 }
 
@@ -267,10 +300,9 @@ function finish(stopMs) {
   session.ui.timer.classList.remove("running");
   session.ui.timer.classList.add("stopped");
   session.ui.timer.textContent = (total / 1000).toFixed(2);
+  session.ui.caseInfo.textContent = "Cube should be solved!";
+  session.ui.alg.textContent = "";
   session.ui.status.textContent = "Done";
-  session.ui.caseInfo.textContent = "Batch complete!";
-  session.ui.scramble.textContent = "";
-  session.ui.image.replaceChildren();
   session.ui.hint.textContent = "Close the modal or run another batch.";
   renderQueue();
   renderSplits(total);
