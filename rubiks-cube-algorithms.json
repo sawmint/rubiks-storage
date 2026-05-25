@@ -1,0 +1,1236 @@
+{
+  "pll": [
+    {
+      "id": "Aa",
+      "name": "A-perm (a)",
+      "group": "corners-only",
+      "algorithm": "x R' U R' D2 R U' R' D2 R2 x'",
+      "alternates": [
+        "y x' R2 D2 R' U' R D2 R' U R'",
+        "R' F R' B2 R F' R' B2 R2"
+      ],
+      "recognition": "Three-corner cycle clockwise; headlights on the back",
+      "auf": "none",
+      "setup": "x R2 D2 R U R' D2 R U' R x'"
+    },
+    {
+      "id": "Ab",
+      "name": "A-perm (b)",
+      "group": "corners-only",
+      "algorithm": "x R2 D2 R U R' D2 R U' R x'",
+      "alternates": [
+        "x' R2 D2 R' U' R D2 R' U R'",
+        "R B' R F2 R' B R F2 R2"
+      ],
+      "recognition": "Three-corner cycle counter-clockwise; headlights on the back",
+      "auf": "none",
+      "setup": "x R' U R' D2 R U' R' D2 R2 x'"
+    },
+    {
+      "id": "E",
+      "name": "E-perm",
+      "group": "diagonal",
+      "algorithm": "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
+      "alternates": [
+        "x' L' U L D' L' U' L D L' U' L D' L' U L D"
+      ],
+      "recognition": "Two diagonal corner swaps; no headlights, opposite colors on adjacent corners",
+      "auf": "none",
+      "setup": "x' D R U R' D' R U' R' D R U' R' D' R U R' x"
+    },
+    {
+      "id": "F",
+      "name": "F-perm",
+      "group": "corners+edges",
+      "algorithm": "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R",
+      "alternates": [
+        "R' U R U' R2 F' U' F U R F R' F' R2"
+      ],
+      "recognition": "Front edge and two corners swap; headlights on left, front edge swap",
+      "auf": "none",
+      "setup": "R' U' R U' R' U R U R2 F' R U R U' R' F U R"
+    },
+    {
+      "id": "Ga",
+      "name": "G-perm (a)",
+      "group": "corners+edges",
+      "algorithm": "R2 U R' U R' U' R U' R2 U' D R' U R D'",
+      "alternates": [
+        "R2 u R' U R' U' R u' R2 y' R' U R"
+      ],
+      "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise",
+      "auf": "none",
+      "setup": "D R' U' R D' U R2 U R' U R U' R U' R2"
+    },
+    {
+      "id": "Gb",
+      "name": "G-perm (b)",
+      "group": "corners+edges",
+      "algorithm": "R' U' R U D' R2 U R' U R U' R U' R2 D",
+      "alternates": [
+        "F' U' F R2 u R' U R U' R u' R2"
+      ],
+      "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (mirror of Ga)",
+      "auf": "none",
+      "setup": "D' R2 U R' U R' U' R U' R2 D U' R' U R"
+    },
+    {
+      "id": "Gc",
+      "name": "G-perm (c)",
+      "group": "corners+edges",
+      "algorithm": "R2 U' R U' R U R' U R2 U D' R U' R' D",
+      "alternates": [
+        "R2 u' R U' R U R' u R2 y R U' R'"
+      ],
+      "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (different angle)",
+      "auf": "none",
+      "setup": "D' R U R' D U' R2 U' R U' R' U R' U R2"
+    },
+    {
+      "id": "Gd",
+      "name": "G-perm (d)",
+      "group": "corners+edges",
+      "algorithm": "R U R' U' D R2 U' R U' R' U R' U R2 D'",
+      "alternates": [
+        "f R f' R2 u' R U' R' U R' u R2"
+      ],
+      "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise (different angle)",
+      "auf": "none",
+      "setup": "D R2 U' R U' R U R' U R2 D' U R U' R'"
+    },
+    {
+      "id": "H",
+      "name": "H-perm",
+      "group": "edges-only",
+      "algorithm": "M2 U M2 U2 M2 U M2",
+      "alternates": [
+        "R2 U2 R U2 R2 U2 R2 U2 R U2 R2"
+      ],
+      "recognition": "Two opposite edge pairs swap; all four corners solved, all edges show opposite colors",
+      "auf": "none",
+      "setup": "M2 U' M2 U2 M2 U' M2"
+    },
+    {
+      "id": "Ja",
+      "name": "J-perm (a)",
+      "group": "corners+edges",
+      "algorithm": "x R2 F R F' R U2 r' U r U2 x'",
+      "alternates": [
+        "L' U' L F L' U' L U L F' L2 U L",
+        "R' U L' U2 R U' R' U2 R L"
+      ],
+      "recognition": "Adjacent corner+edge swap on left side; headlights on right",
+      "auf": "none",
+      "setup": "x U2 r' U' r U2 R' F R' F' R2 x'"
+    },
+    {
+      "id": "Jb",
+      "name": "J-perm (b)",
+      "group": "corners+edges",
+      "algorithm": "R U R' F' R U R' U' R' F R2 U' R'",
+      "alternates": [
+        "R U2 R' U' R U2 L' U R' U' L"
+      ],
+      "recognition": "Adjacent corner+edge swap on right side; headlights on left",
+      "auf": "none",
+      "setup": "R U R2 F' R U R U' R' F R U' R'"
+    },
+    {
+      "id": "Na",
+      "name": "N-perm (a)",
+      "group": "diagonal",
+      "algorithm": "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'",
+      "alternates": [
+        "L U' R U2 L' U R' L U' R U2 L' U R'"
+      ],
+      "recognition": "Diagonal corner+edge swap; pair of headlights on opposite sides",
+      "auf": "none",
+      "setup": "R U R' U2 R U R2 F' R U R U' R' F R U' R' U' R U' R'"
+    },
+    {
+      "id": "Nb",
+      "name": "N-perm (b)",
+      "group": "diagonal",
+      "algorithm": "R' U R U' R' F' U' F R U R' F R' F' R U' R",
+      "alternates": [
+        "r' D' F r U' r' F' D r2 U r' U' r' F r F'"
+      ],
+      "recognition": "Diagonal corner+edge swap; mirror of Na",
+      "auf": "none",
+      "setup": "R' U R' F R F' R U' R' F' U F R U R' U' R"
+    },
+    {
+      "id": "Ra",
+      "name": "R-perm (a)",
+      "group": "corners+edges",
+      "algorithm": "R U' R' U' R U R D R' U' R D' R' U2 R'",
+      "alternates": [
+        "L U2 L' U2 L F' L' U' L U L F L2"
+      ],
+      "recognition": "Two adjacent edges + two adjacent corners; bookends on right",
+      "auf": "none",
+      "setup": "R U2 R D R' U R D' R' U' R' U R U R'"
+    },
+    {
+      "id": "Rb",
+      "name": "R-perm (b)",
+      "group": "corners+edges",
+      "algorithm": "R' U2 R U2 R' F R U R' U' R' F' R2",
+      "alternates": [
+        "R2 F R U R U' R' F' R U2 R' U2 R"
+      ],
+      "recognition": "Two adjacent edges + two adjacent corners; bookends on left",
+      "auf": "none",
+      "setup": "R2 F R U R U' R' F' R U2 R' U2 R"
+    },
+    {
+      "id": "T",
+      "name": "T-perm",
+      "group": "corners+edges",
+      "algorithm": "R U R' U' R' F R2 U' R' U' R U R' F'",
+      "alternates": [],
+      "recognition": "Adjacent corner swap (right side) + adjacent edge swap (right side); headlights on left",
+      "auf": "none",
+      "setup": "F R U' R' U R U R2 F' R U R U' R'"
+    },
+    {
+      "id": "Ua",
+      "name": "U-perm (a)",
+      "group": "edges-only",
+      "algorithm": "R U' R U R U R U' R' U' R2",
+      "alternates": [
+        "M2 U M U2 M' U M2",
+        "y2 R2 U' R' U' R U R U R U' R"
+      ],
+      "recognition": "Three-edge cycle counter-clockwise; headlights match on three sides",
+      "auf": "none",
+      "setup": "R2 U R U R' U' R' U' R' U R'"
+    },
+    {
+      "id": "Ub",
+      "name": "U-perm (b)",
+      "group": "edges-only",
+      "algorithm": "R2 U R U R' U' R' U' R' U R'",
+      "alternates": [
+        "M2 U' M U2 M' U' M2",
+        "y2 R' U R' U' R' U' R' U R U R2"
+      ],
+      "recognition": "Three-edge cycle clockwise; headlights match on three sides",
+      "auf": "none",
+      "setup": "R U' R U R U R U' R' U' R2"
+    },
+    {
+      "id": "V",
+      "name": "V-perm",
+      "group": "diagonal",
+      "algorithm": "R' U R' U' y R' F' R2 U' R' U R' F R F",
+      "alternates": [
+        "R' U R' d' R' F' R2 U' R' U R' F R F"
+      ],
+      "recognition": "Diagonal corner swap + adjacent edge swap (front+left)",
+      "auf": "none",
+      "setup": "F' R' F' R U' R U R2 F R y' U R U' R y"
+    },
+    {
+      "id": "Y",
+      "name": "Y-perm",
+      "group": "diagonal",
+      "algorithm": "F R U' R' U' R U R' F' R U R' U' R' F R F'",
+      "alternates": [],
+      "recognition": "Diagonal corner swap + adjacent edge swap (front+right)",
+      "auf": "none",
+      "setup": "F R' F' R U R U' R' F R U' R' U R U R' F'"
+    },
+    {
+      "id": "Z",
+      "name": "Z-perm",
+      "group": "edges-only",
+      "algorithm": "M2 U M2 U M' U2 M2 U2 M'",
+      "alternates": [
+        "M' U M2 U M2 U M' U2 M2",
+        "R U R' U R' U' R' U R U' R' U' R2 U R"
+      ],
+      "recognition": "Two adjacent edge pairs swap; checkered edge pattern, all corners solved",
+      "auf": "none",
+      "setup": "M U2 M2 U2 M U' M2 U' M2"
+    }
+  ],
+  "oll": [
+    {
+      "id": 1,
+      "name": "Runway / Dot",
+      "shape": "dot",
+      "algorithm": "R U2 R2 F R F' U2 R' F R F'",
+      "alternates": [],
+      "recognition": "Dot case; two yellow stickers facing front and back on the U-layer corners' edges",
+      "setup": "F R' F' R U2 F R' F' R2 U2 R'",
+      "recognitionGroup": "....Y.....Y.YYY.Y.YYY"
+    },
+    {
+      "id": 2,
+      "name": "Zamboni / Dot",
+      "shape": "dot",
+      "algorithm": "F R U R' U' F' f R U R' U' f'",
+      "alternates": [
+        "r U r' U2 r U2 R' U2 R U' r'"
+      ],
+      "recognition": "Dot case; yellow stickers face out on left and right corner-edges",
+      "setup": "f U R U' R' f' F U R U' R' F'",
+      "recognitionGroup": "....Y.....Y.YY.YYY.YY"
+    },
+    {
+      "id": 3,
+      "name": "Anti-Nazi / Dot",
+      "shape": "dot",
+      "algorithm": "f R U R' U' f' U' F R U R' U' F'",
+      "alternates": [],
+      "recognition": "Dot case; yellow bar offset from F/B by U' position",
+      "setup": "F U R U' R' F' U f U R U' R' f'",
+      "recognitionGroup": "....Y...Y.Y..YY.YY.YY"
+    },
+    {
+      "id": 4,
+      "name": "Nazi / Dot",
+      "shape": "dot",
+      "algorithm": "f R U R' U' f' U F R U R' U' F'",
+      "alternates": [],
+      "recognition": "Dot case; mirror of OLL 3",
+      "setup": "F U R U' R' F' U' f U R U' R' f'",
+      "recognitionGroup": "....Y...YYY..Y.YY.YY."
+    },
+    {
+      "id": 5,
+      "name": "Lightning / Square (a)",
+      "shape": "square",
+      "algorithm": "r' U2 R U R' U r",
+      "alternates": [],
+      "recognition": "Square shape on top-left; mirror of OLL 6",
+      "setup": "r' U' R U' R' U2 r",
+      "recognitionGroup": "....YY.YY.....Y.YY.YY"
+    },
+    {
+      "id": 6,
+      "name": "Lightning / Square (b)",
+      "shape": "square",
+      "algorithm": "r U2 R' U' R U' r'",
+      "alternates": [],
+      "recognition": "Square shape on top-right",
+      "setup": "r U R' U R U2 r'",
+      "recognitionGroup": "....YY.YYY.....YY.YY."
+    },
+    {
+      "id": 7,
+      "name": "Small Lightning Bolt (a)",
+      "shape": "small-lightning",
+      "algorithm": "r U R' U R U2 r'",
+      "alternates": [
+        "L' U2 L U2 L F' L' F"
+      ],
+      "recognition": "Lightning bolt pointing into front-right",
+      "setup": "r U2 R' U' R U' r'",
+      "recognitionGroup": "...YY..YY....YY.YY..Y"
+    },
+    {
+      "id": 8,
+      "name": "Small Lightning Bolt (b)",
+      "shape": "small-lightning",
+      "algorithm": "r' U' R U' R' U2 r",
+      "alternates": [
+        "R U2 R' U2 R' F R F'"
+      ],
+      "recognition": "Lightning bolt pointing into front-left; mirror of OLL 7",
+      "setup": "r' U2 R U R' U r",
+      "recognitionGroup": "....YYYY....Y..YY.YY."
+    },
+    {
+      "id": 9,
+      "name": "Fish (a)",
+      "shape": "fish",
+      "algorithm": "R U R' U' R' F R2 U R' U' F'",
+      "alternates": [],
+      "recognition": "Fish shape; sune-like but with edge flipped",
+      "setup": "F U R U' R2 F' R U R U' R'",
+      "recognitionGroup": "..YYY..Y.Y..YY..Y.Y.."
+    },
+    {
+      "id": 10,
+      "name": "Fish (b)",
+      "shape": "fish",
+      "algorithm": "R U R' U R' F R F' R U2 R'",
+      "alternates": [],
+      "recognition": "Fish shape; mirror of OLL 9",
+      "setup": "R U2 R' F R' F' R U' R U' R'",
+      "recognitionGroup": "..YYY..Y...Y.Y..YY..Y"
+    },
+    {
+      "id": 11,
+      "name": "Small Lightning Bolt (c)",
+      "shape": "small-lightning",
+      "algorithm": "r U R' U R' F R F' R U2 r'",
+      "alternates": [
+        "r' R2 U R' U R U2 R' U M'"
+      ],
+      "recognition": "Lightning shape variant",
+      "setup": "r U2 R' F R' F' R U' R U' r'",
+      "recognitionGroup": "....YYYY...Y..Y.YY.Y."
+    },
+    {
+      "id": 12,
+      "name": "Small Lightning Bolt (d)",
+      "shape": "small-lightning",
+      "algorithm": "F R U R' U' F' U F R U R' U' F'",
+      "alternates": [
+        "M' R' U' R U' R' U2 R U' R r'"
+      ],
+      "recognition": "Lightning shape variant; mirror of OLL 11",
+      "setup": "F U R U' R' F' U' F U R U' R' F'",
+      "recognitionGroup": "...YY..YYY...Y.YY.Y.."
+    },
+    {
+      "id": 13,
+      "name": "Knight Move Shape (a)",
+      "shape": "knight",
+      "algorithm": "r U' r' U' r U r' F' U F",
+      "alternates": [
+        "F U R U' R2 F' R U R U' R'"
+      ],
+      "recognition": "Knight-move arrangement of yellow stickers",
+      "setup": "F' U' F r U' r' U r U r'",
+      "recognitionGroup": "...YYYY...YY..Y.YY..."
+    },
+    {
+      "id": 14,
+      "name": "Knight Move Shape (b)",
+      "shape": "knight",
+      "algorithm": "R' F R U R' F' R F U' F'",
+      "alternates": [
+        "l' U l U l' U' l F U' F'"
+      ],
+      "recognition": "Knight-move arrangement; mirror of OLL 13",
+      "setup": "F U F' R' F R U' R' F' R",
+      "recognitionGroup": "...YYY..YYY....YY.Y.."
+    },
+    {
+      "id": 15,
+      "name": "Knight Move Shape (c)",
+      "shape": "knight",
+      "algorithm": "r' U' r R' U' R U r' U r",
+      "alternates": [
+        "l' U' l L' U' L U l' U l"
+      ],
+      "recognition": "Knight-move arrangement, third orientation",
+      "setup": "r' U' r U' R' U R r' U r",
+      "recognitionGroup": "...YYY..Y.Y...Y.YY..Y"
+    },
+    {
+      "id": 16,
+      "name": "Knight Move Shape (d)",
+      "shape": "knight",
+      "algorithm": "r U r' R U R' U' r U' r'",
+      "alternates": [],
+      "recognition": "Knight-move arrangement; mirror of OLL 15",
+      "setup": "r U r' U R U' R' r U' r'",
+      "recognitionGroup": "...YYYY...Y.Y..YY.Y.."
+    },
+    {
+      "id": 17,
+      "name": "Awkward / Dot (a)",
+      "shape": "dot",
+      "algorithm": "R U R' U R' F R F' U2 R' F R F'",
+      "alternates": [
+        "F R' F' R U S' R U' R' S"
+      ],
+      "recognition": "Dot case with two diagonally-opposed yellow corners",
+      "setup": "F R' F' R U2 F R' F' R U' R U' R'",
+      "recognitionGroup": "..Y.Y.Y...Y.YY..YY.Y."
+    },
+    {
+      "id": 18,
+      "name": "Awkward / Dot (b)",
+      "shape": "dot",
+      "algorithm": "r U R' U R U2 r' r' U' R U' R' U2 r",
+      "alternates": [
+        "F R U R' U y' R' U2 R' F R F'"
+      ],
+      "recognition": "Dot case; chair-like distribution",
+      "setup": "r' U2 R U R' U r r U2 R' U' R U' r'",
+      "recognitionGroup": "....Y.Y.Y.Y..Y.YYY.Y."
+    },
+    {
+      "id": 19,
+      "name": "Awkward (a)",
+      "shape": "awkward",
+      "algorithm": "M U R U R' U' M' R' F R F'",
+      "alternates": [
+        "r' R U R U R' U' r R2 F R F'"
+      ],
+      "recognition": "Awkward shape; needs M-slice or wide-r",
+      "setup": "F R' F' R M U R U' R' U' M'",
+      "recognitionGroup": "....Y.Y.Y.Y..YY.Y.YY."
+    },
+    {
+      "id": 20,
+      "name": "Awkward / H",
+      "shape": "awkward",
+      "algorithm": "M U R U R' U' M2 U R U' r'",
+      "alternates": [
+        "r U R' U' M2 U R U' R' U' M'"
+      ],
+      "recognition": "Awkward shape with H-like symmetry",
+      "setup": "r U R' U' M2 U R U' R' U' M'",
+      "recognitionGroup": "Y.Y.Y.Y.Y.Y..Y..Y..Y."
+    },
+    {
+      "id": 21,
+      "name": "Cross / H (a)",
+      "shape": "cross",
+      "algorithm": "R U2 R' U' R U R' U' R U' R'",
+      "alternates": [
+        "F R U R' U' R U R' U' R U R' U' F'",
+        "y R U R' U R U' R' U R U2 R'"
+      ],
+      "recognition": "Cross with all 4 corners unoriented in H symmetry",
+      "setup": "R U R' U R U' R' U R U2 R'",
+      "recognitionGroup": ".Y.YYY.Y....Y.Y...Y.Y"
+    },
+    {
+      "id": 22,
+      "name": "Cross / Pi",
+      "shape": "cross",
+      "algorithm": "R U2 R2 U' R2 U' R2 U2 R",
+      "alternates": [
+        "f R U R' U' f' F R U R' U' R U R' U' F'"
+      ],
+      "recognition": "Cross with Pi corner orientation; two opposite corners face out same way",
+      "setup": "R' U2 R2 U R2 U R2 U2 R'",
+      "recognitionGroup": ".Y.YYY.Y....Y..Y.Y..Y"
+    },
+    {
+      "id": 23,
+      "name": "Cross / Headlights",
+      "shape": "cross",
+      "algorithm": "R2 D R' U2 R D' R' U2 R'",
+      "alternates": [],
+      "recognition": "Cross + two corners oriented + two adjacent corners with headlights",
+      "setup": "R U2 R D R' U2 R D' R2",
+      "recognitionGroup": ".Y.YYYYYY......Y.Y..."
+    },
+    {
+      "id": 24,
+      "name": "Cross / Chameleon",
+      "shape": "cross",
+      "algorithm": "r U R' U' r' F R F'",
+      "alternates": [
+        "x' R U R' D R U' R' D'"
+      ],
+      "recognition": "Cross + two oriented corners + chameleon corner pattern",
+      "setup": "F R' F' r U R U' r'",
+      "recognitionGroup": ".Y.YYYYYY.....Y...Y.."
+    },
+    {
+      "id": 25,
+      "name": "Cross / Bowtie",
+      "shape": "cross",
+      "algorithm": "F' r U R' U' r' F R",
+      "alternates": [
+        "x' R U' R' D R U R' D'"
+      ],
+      "recognition": "Cross with bowtie corner pattern",
+      "setup": "R' F' r U R U' r' F",
+      "recognitionGroup": ".YYYYYYY....Y....Y..."
+    },
+    {
+      "id": 26,
+      "name": "Cross / Anti-Sune",
+      "shape": "cross",
+      "algorithm": "R U2 R' U' R U' R'",
+      "alternates": [
+        "L' U' L U' L' U2 L"
+      ],
+      "recognition": "Cross + 1 oriented corner; anti-sune pattern",
+      "setup": "R U R' U R U2 R'",
+      "recognitionGroup": ".Y.YYY.YYY.....Y..Y.."
+    },
+    {
+      "id": 27,
+      "name": "Cross / Sune",
+      "shape": "cross",
+      "algorithm": "R U R' U R U2 R'",
+      "alternates": [
+        "L' U2 L U L' U L"
+      ],
+      "recognition": "Cross + 1 oriented corner; sune pattern",
+      "setup": "R U2 R' U' R U' R'",
+      "recognitionGroup": ".Y.YYY.YY.....Y..Y..Y"
+    },
+    {
+      "id": 28,
+      "name": "Square (a)",
+      "shape": "square",
+      "algorithm": "r U R' U' r' R U R U' R'",
+      "alternates": [
+        "M' U M U2 M' U M"
+      ],
+      "recognition": "Square shape with edge-flipping needs",
+      "setup": "R U R' U' R' r U R U' r'",
+      "recognitionGroup": "Y.Y.YYYYY.......Y..Y."
+    },
+    {
+      "id": 29,
+      "name": "Awkward (b)",
+      "shape": "awkward",
+      "algorithm": "R U R' U' R U' R' F' U' F R U R'",
+      "alternates": [
+        "r2 D' r U r' D r2 U' r' U' r"
+      ],
+      "recognition": "Awkward shape",
+      "setup": "R U' R' F' U F R U R' U R U' R'",
+      "recognitionGroup": ".Y..YYY.Y.Y...Y...YY."
+    },
+    {
+      "id": 30,
+      "name": "Awkward (c)",
+      "shape": "awkward",
+      "algorithm": "F R' F R2 U' R' U' R U R' F2",
+      "alternates": [
+        "r' D' r U' r' D r2 U' r' U r U r'"
+      ],
+      "recognition": "Awkward shape; mirror of OLL 29",
+      "setup": "F2 R U' R' U R U R2 F' R F'",
+      "recognitionGroup": "..YYY..YYY...Y..YY..."
+    },
+    {
+      "id": 31,
+      "name": "P (a)",
+      "shape": "P",
+      "algorithm": "R' U' F U R U' R' F' R",
+      "alternates": [],
+      "recognition": "P-shape; yellow pi-shape on side with single corner",
+      "setup": "R' F R U R' U' F' U R",
+      "recognitionGroup": "....YYYYY.....Y.Y.YY."
+    },
+    {
+      "id": 32,
+      "name": "P (b)",
+      "shape": "P",
+      "algorithm": "L U F' U' L' U L F L'",
+      "alternates": [
+        "S R U R' U' R' F R f'",
+        "R U B' U' R' U R B R'"
+      ],
+      "recognition": "P-shape; mirror of OLL 31",
+      "setup": "L F' L' U' L U F U' L'",
+      "recognitionGroup": "...YY.YYY....YY.Y.Y.."
+    },
+    {
+      "id": 33,
+      "name": "T (a)",
+      "shape": "T",
+      "algorithm": "R U R' U' R' F R F'",
+      "alternates": [],
+      "recognition": "T-shape; classic OLL/PLL primer",
+      "setup": "F R' F' R U R U' R'",
+      "recognitionGroup": "..YYYY..YYY.....YY..."
+    },
+    {
+      "id": 34,
+      "name": "C (a)",
+      "shape": "C",
+      "algorithm": "R U R2 U' R' F R U R U' F'",
+      "alternates": [
+        "f R F R' U R' U' F2 R"
+      ],
+      "recognition": "C-shape pattern",
+      "setup": "F U R' U' R' F' R U R2 U' R'",
+      "recognitionGroup": "...YYYY.Y.Y...Y.Y.Y.."
+    },
+    {
+      "id": 35,
+      "name": "Fish (c)",
+      "shape": "fish",
+      "algorithm": "R U2 R2 F R F' R U2 R'",
+      "alternates": [],
+      "recognition": "Fish-shape variant",
+      "setup": "R U2 R' F R' F' R2 U2 R'",
+      "recognitionGroup": "..YYY.YY...Y.Y..Y.Y.."
+    },
+    {
+      "id": 36,
+      "name": "W (a)",
+      "shape": "W",
+      "algorithm": "L' U' L U' L' U L U L F' L' F",
+      "alternates": [
+        "R U R2 F' U' F U R2 U2 R'"
+      ],
+      "recognition": "W-shape",
+      "setup": "F' L F L' U' L' U' L U L' U L",
+      "recognitionGroup": "..Y.YYYY....Y...YY.Y."
+    },
+    {
+      "id": 37,
+      "name": "Fish (d)",
+      "shape": "fish",
+      "algorithm": "F R' F' R U R U' R'",
+      "alternates": [],
+      "recognition": "Fish-shape variant",
+      "setup": "R U R' U' R' F R F'",
+      "recognitionGroup": "..YYY.YY....YY..YY..."
+    },
+    {
+      "id": 38,
+      "name": "W (b)",
+      "shape": "W",
+      "algorithm": "R U R' U R U' R' U' R' F R F'",
+      "alternates": [],
+      "recognition": "W-shape; mirror of OLL 36",
+      "setup": "F R' F' R U R U R' U' R U' R'",
+      "recognitionGroup": "..Y.YYYY...Y....Y.YY."
+    },
+    {
+      "id": 39,
+      "name": "Big Lightning (a)",
+      "shape": "big-lightning",
+      "algorithm": "L F' L' U' L U F U' L'",
+      "alternates": [
+        "R B' R' U' R U B U' R'"
+      ],
+      "recognition": "Large lightning-bolt shape",
+      "setup": "L U F' U' L' U L F L'",
+      "recognitionGroup": "..YYYYY...Y.Y...YY..."
+    },
+    {
+      "id": 40,
+      "name": "Big Lightning (b)",
+      "shape": "big-lightning",
+      "algorithm": "R' F R U R' U' F' U R",
+      "alternates": [
+        "L B L' U L U' B' U' L"
+      ],
+      "recognition": "Large lightning-bolt; mirror of OLL 39",
+      "setup": "R' U' F U R U' R' F' R",
+      "recognitionGroup": ".YY.Y.YY....YY...Y.Y."
+    },
+    {
+      "id": 41,
+      "name": "Awkward (d)",
+      "shape": "awkward",
+      "algorithm": "R U R' U R U2 R' F R U R' U' F'",
+      "alternates": [],
+      "recognition": "Awkward; sune + F-edge insert",
+      "setup": "F U R U' R' F' R U2 R' U' R U' R'",
+      "recognitionGroup": "..YYY..YY....Y..Y.Y.Y"
+    },
+    {
+      "id": 42,
+      "name": "Awkward (e)",
+      "shape": "awkward",
+      "algorithm": "R' U' R U' R' U2 R F R U R' U' F'",
+      "alternates": [],
+      "recognition": "Awkward; anti-sune + F-edge insert; mirror of OLL 41",
+      "setup": "F U R U' R' F' R' U2 R U R' U R",
+      "recognitionGroup": ".Y..YYY.Y.Y....Y.Y.Y."
+    },
+    {
+      "id": 43,
+      "name": "P (c)",
+      "shape": "P",
+      "algorithm": "F' U' L' U L F",
+      "alternates": [
+        "f' L' U' L U f",
+        "R' U' F' U F R"
+      ],
+      "recognition": "P-shape",
+      "setup": "F' L' U' L U F",
+      "recognitionGroup": "....YYYYY......YYY.Y."
+    },
+    {
+      "id": 44,
+      "name": "P (d)",
+      "shape": "P",
+      "algorithm": "f R U R' U' f'",
+      "alternates": [
+        "F U R U' R' F'"
+      ],
+      "recognition": "P-shape; mirror of OLL 43",
+      "setup": "f U R U' R' f'",
+      "recognitionGroup": "...YY.YYY....Y.YYY..."
+    },
+    {
+      "id": 45,
+      "name": "T (b)",
+      "shape": "T",
+      "algorithm": "F R U R' U' F'",
+      "alternates": [],
+      "recognition": "T-shape; the classic 'F sexy F' alg",
+      "setup": "F U R U' R' F'",
+      "recognitionGroup": "..YYYY..Y.Y.....Y.Y.Y"
+    },
+    {
+      "id": 46,
+      "name": "C (b)",
+      "shape": "C",
+      "algorithm": "R' U' R' F R F' U R",
+      "alternates": [],
+      "recognition": "C-shape variant",
+      "setup": "R' U' F R' F' R U R",
+      "recognitionGroup": "...YYYY.Y.Y....YYY..."
+    },
+    {
+      "id": 47,
+      "name": "L (a)",
+      "shape": "L",
+      "algorithm": "R' U' R' F R F' R' F R F' U R",
+      "alternates": [
+        "F' L' U' L U L' U' L U F"
+      ],
+      "recognition": "L-shape; two adjacent edges flipped + two opposite corners",
+      "setup": "R' U' F R' F' R F R' F' R U R",
+      "recognitionGroup": "....YY.Y.Y.Y..Y.Y.YY."
+    },
+    {
+      "id": 48,
+      "name": "L (b)",
+      "shape": "L",
+      "algorithm": "F R U R' U' R U R' U' F'",
+      "alternates": [],
+      "recognition": "L-shape; mirror of OLL 47",
+      "setup": "F U R U' R' U R U' R' F'",
+      "recognitionGroup": "....YY.Y.Y..Y.Y.YY.Y."
+    },
+    {
+      "id": 49,
+      "name": "L (c)",
+      "shape": "L",
+      "algorithm": "R B' R2 F R2 B R2 F' R",
+      "alternates": [
+        "r U' r2 U r2 U r2 U' r"
+      ],
+      "recognition": "L-shape variant",
+      "setup": "R' F R2 B' R2 F' R2 B R'",
+      "recognitionGroup": "....YY.Y....Y..YYY.YY"
+    },
+    {
+      "id": 50,
+      "name": "L (d)",
+      "shape": "L",
+      "algorithm": "R' F R2 B' R2 F' R2 B R'",
+      "alternates": [
+        "r' U r2 U' r2 U' r2 U r"
+      ],
+      "recognition": "L-shape variant; mirror of OLL 49",
+      "setup": "R B' R2 F R2 B R2 F' R",
+      "recognitionGroup": "....YY.Y...Y...YY.YYY"
+    },
+    {
+      "id": 51,
+      "name": "Line / I (a)",
+      "shape": "I",
+      "algorithm": "F U R U' R' U R U' R' F'",
+      "alternates": [
+        "f R U R' U' R U R' U' f'"
+      ],
+      "recognition": "Line/I shape with line on top",
+      "setup": "F R U R' U' R U R' U' F'",
+      "recognitionGroup": "...YYY....YY...YY.Y.Y"
+    },
+    {
+      "id": 52,
+      "name": "Line / I (b)",
+      "shape": "I",
+      "algorithm": "R' F' U' F U' R U R' U R",
+      "alternates": [
+        "R U R' U R U' B U' B' R'",
+        "R U R' U R d' R U' R' F'"
+      ],
+      "recognition": "Line/I shape; mirror of OLL 51",
+      "setup": "R' U' R U' R' U F' U F R",
+      "recognitionGroup": "...YYY....Y.Y..YYY..Y"
+    },
+    {
+      "id": 53,
+      "name": "Square (b)",
+      "shape": "square",
+      "algorithm": "r' U' R U' R' U R U' R' U2 r",
+      "alternates": [
+        "l' U' L U' L' U L U' L' U2 l"
+      ],
+      "recognition": "Square shape variant",
+      "setup": "r' U2 R U R' U' R U R' U r",
+      "recognitionGroup": "....YY.Y....Y.Y.Y.YYY"
+    },
+    {
+      "id": 54,
+      "name": "Square (c)",
+      "shape": "square",
+      "algorithm": "r U R' U R U' R' U R U2 r'",
+      "alternates": [],
+      "recognition": "Square shape variant; mirror of OLL 53",
+      "setup": "r U2 R' U' R U R' U' R U' r'",
+      "recognitionGroup": "....YY.Y.Y.Y...YYY.Y."
+    },
+    {
+      "id": 55,
+      "name": "Line / I (c)",
+      "shape": "I",
+      "algorithm": "R' F R U R U' R2 F' R2 U' R' U R U R'",
+      "alternates": [
+        "r U2 R2 F R F' U2 r' F R F'"
+      ],
+      "recognition": "Line/I shape with corners requiring rotation",
+      "setup": "R U' R' U' R U R2 F R2 U R' U' R' F' R",
+      "recognitionGroup": "...YYY...YYY...YYY..."
+    },
+    {
+      "id": 56,
+      "name": "Line / I (d)",
+      "shape": "I",
+      "algorithm": "r U r' U R U' R' U R U' R' r U' r'",
+      "alternates": [
+        "r' U' r U' R' U R U' R' U R r' U r",
+        "F R U R' U' R F' r U R' U' r'"
+      ],
+      "recognition": "Line/I shape variant",
+      "setup": "r U r' R U R' U' R U R' U' r U' r'",
+      "recognitionGroup": "...YYY....Y.Y.Y.Y.Y.Y"
+    },
+    {
+      "id": 57,
+      "name": "Cross / H (b)",
+      "shape": "cross",
+      "algorithm": "R U R' U' M' U R U' r'",
+      "alternates": [],
+      "recognition": "Cross + 2 opposite oriented corners + 2 to swap",
+      "setup": "r U R' U' M U R U' R'",
+      "recognitionGroup": "Y.YYYYY.Y.Y.....Y...."
+    }
+  ],
+  "f2l": {
+    "advanced": [
+      {
+        "id": 1,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors match; slot-switch insert",
+        "edge_state": "edge in U",
+        "algorithm": "y' R' U R U' d' R U R'",
+        "trigger": "other"
+      },
+      {
+        "id": 2,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors match; slot-switch insert mirror",
+        "edge_state": "edge in U",
+        "algorithm": "R U' R' U d R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 3,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors opposite; deep case",
+        "edge_state": "edge in U",
+        "algorithm": "U' R U2 R' d R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 4,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors opposite; awkward case",
+        "edge_state": "edge in U",
+        "algorithm": "R' U2 R2 U R2 U R",
+        "trigger": "other"
+      },
+      {
+        "id": 5,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors opposite",
+        "edge_state": "edge in U",
+        "algorithm": "d R' U R U' R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 6,
+        "slot": "FR",
+        "corner_state": "WP facing side, colors opposite",
+        "edge_state": "edge in U",
+        "algorithm": "U' R U' R' U R U R'",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 7,
+        "slot": "FR",
+        "corner_state": "WP facing UP; corner above slot",
+        "edge_state": "edge in U, paired adjacent",
+        "algorithm": "R U2 R' U' R U R'",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 8,
+        "slot": "FR",
+        "corner_state": "WP facing UP; mirror angle",
+        "edge_state": "edge in U, paired adjacent",
+        "algorithm": "y' R' U2 R U R' U' R",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 9,
+        "slot": "FR",
+        "corner_state": "WP facing UP; difficult case requiring rotation",
+        "edge_state": "edge in U",
+        "algorithm": "y' U R' U2 R y R U2 R' U R U' R'",
+        "trigger": "other"
+      },
+      {
+        "id": 10,
+        "slot": "FR",
+        "corner_state": "WP facing UP; difficult case mirror",
+        "edge_state": "edge in U",
+        "algorithm": "U' R U2 R' y' R' U2 R U' R' U R",
+        "trigger": "other"
+      },
+      {
+        "id": 11,
+        "slot": "FR",
+        "corner_state": "Corner solved in slot; edge in U above slot",
+        "edge_state": "edge in U",
+        "algorithm": "y' R' U' R U R' U' R",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 12,
+        "slot": "FR",
+        "corner_state": "Corner solved in slot; edge in U above slot mirror",
+        "edge_state": "edge in U",
+        "algorithm": "R U R' U' R U R'",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 13,
+        "slot": "FR",
+        "corner_state": "Corner solved in slot; edge in U other side",
+        "edge_state": "edge in U",
+        "algorithm": "R U' R' U R U' R'",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 14,
+        "slot": "FR",
+        "corner_state": "Corner solved in slot; edge in U other side mirror",
+        "edge_state": "edge in U",
+        "algorithm": "y' R' U R U' R' U R",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 15,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot (bottom layer); corner in U",
+        "edge_state": "edge in slot, oriented",
+        "algorithm": "U' R U' R' U2 R U' R'",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 16,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot; corner in U mirror",
+        "edge_state": "edge in slot",
+        "algorithm": "d R' U R U2 R' U R",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 17,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot; corner in U other angle",
+        "edge_state": "edge in slot",
+        "algorithm": "U' R U R' d R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 18,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot; corner in U other angle mirror",
+        "edge_state": "edge in slot",
+        "algorithm": "d R' U' R d' R U R'",
+        "trigger": "other"
+      },
+      {
+        "id": 19,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot; corner in U near",
+        "edge_state": "edge in slot",
+        "algorithm": "R U' R' d R' U R",
+        "trigger": "other"
+      },
+      {
+        "id": 20,
+        "slot": "FR",
+        "corner_state": "Edge solved in slot; corner in U (3-sexy case)",
+        "edge_state": "edge in slot",
+        "algorithm": "(R U R' U') (R U R' U') (R U R')",
+        "trigger": "split-pair"
+      },
+      {
+        "id": 21,
+        "slot": "FR",
+        "corner_state": "Both pieces in slot, both unsolved",
+        "edge_state": "edge in slot, flipped/wrong",
+        "algorithm": "R U' R' U' R U R' U2 R U' R'",
+        "trigger": "other"
+      },
+      {
+        "id": 22,
+        "slot": "FR",
+        "corner_state": "Both pieces in slot, both unsolved (variant)",
+        "edge_state": "edge in slot, flipped/wrong",
+        "algorithm": "R U R' U2 R U' R' U R U R'",
+        "trigger": "other"
+      },
+      {
+        "id": 23,
+        "slot": "FR",
+        "corner_state": "Both pieces in slot (variant)",
+        "edge_state": "edge in slot, flipped/wrong",
+        "algorithm": "R U' R' d R' U' R U' R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 24,
+        "slot": "FR",
+        "corner_state": "Both pieces in slot (variant)",
+        "edge_state": "edge in slot, flipped/wrong",
+        "algorithm": "R U R' U' R U' R' U2 y' R' U' R",
+        "trigger": "other"
+      },
+      {
+        "id": 25,
+        "slot": "FR",
+        "corner_state": "Both pieces in slot (hardest case)",
+        "edge_state": "edge in slot, flipped/wrong",
+        "algorithm": "R U' R' U y' R' U2 R U2 R' U R",
+        "trigger": "other"
+      }
+    ],
+    "beginner": [
+      {
+        "id": "B1",
+        "name": "WP-top, paired right-insert",
+        "method": "corner: WP on top; corner above slot | edge: edge in U layer paired with corner, oriented",
+        "algorithm": "U R U' R'",
+        "notes": ""
+      },
+      {
+        "id": "B2",
+        "name": "WP-top, paired left-insert (mirror)",
+        "method": "corner: WP on top; corner above slot, mirror angle | edge: edge in U, paired on left",
+        "algorithm": "y' U' R' U R",
+        "notes": ""
+      },
+      {
+        "id": "B3",
+        "name": "WP-side colors-match, separated",
+        "method": "corner: WP facing side; FL color matches edge \u2014 corner above slot | edge: edge in U, separated from corner",
+        "algorithm": "U' R U R' U2 R U' R'",
+        "notes": ""
+      },
+      {
+        "id": "B4",
+        "name": "WP-side colors-match, separated (mirror)",
+        "method": "corner: WP facing side; FL color matches \u2014 alternate angle | edge: edge in U, separated",
+        "algorithm": "d R' U' R U2 R' U R",
+        "notes": ""
+      },
+      {
+        "id": "B5",
+        "name": "WP-side colors-match, far position",
+        "method": "corner: WP facing side, colors match; deep case | edge: edge in U, far from corner",
+        "algorithm": "U' R U2 R' U2 R U' R'",
+        "notes": ""
+      },
+      {
+        "id": "B6",
+        "name": "WP-side colors-match, far position (mirror)",
+        "method": "corner: WP facing side, colors match; deep case mirror | edge: edge in U, far",
+        "algorithm": "d R' U2 R U2 R' U R",
+        "notes": ""
+      },
+      {
+        "id": "B7",
+        "name": "WP-side colors-opposite, simple",
+        "method": "corner: WP facing side; FL color OPPOSITE to edge \u2014 simple | edge: edge above slot, paired",
+        "algorithm": "y' R' U' R",
+        "notes": ""
+      },
+      {
+        "id": "B8",
+        "name": "WP-side colors-opposite, simple (mirror)",
+        "method": "corner: WP facing side, colors opposite \u2014 simple | edge: edge above slot, paired",
+        "algorithm": "R U R'",
+        "notes": ""
+      },
+      {
+        "id": "B9",
+        "name": "WP-side colors-opposite, slot-switch",
+        "method": "corner: WP facing side, colors opposite; needs slot switch | edge: edge in U",
+        "algorithm": "d R' U' R U' R' U' R",
+        "notes": ""
+      },
+      {
+        "id": "B10",
+        "name": "WP-side colors-opposite, split-pair",
+        "method": "corner: WP facing side, colors opposite; split-pair | edge: edge in U, separated",
+        "algorithm": "U' R U R' U R U R'",
+        "notes": ""
+      },
+      {
+        "id": "B11",
+        "name": "WP-up, far position",
+        "method": "corner: WP facing UP; far position | edge: edge in U",
+        "algorithm": "U R U2 R' U R U' R'",
+        "notes": ""
+      },
+      {
+        "id": "B12",
+        "name": "WP-up, far position (mirror)",
+        "method": "corner: WP facing UP; far position mirror | edge: edge in U",
+        "algorithm": "y' U' R' U2 R U' R' U R",
+        "notes": ""
+      },
+      {
+        "id": "B13",
+        "name": "WP-up, edge opposite",
+        "method": "corner: WP facing UP; edge opposite | edge: edge in U, opposite side",
+        "algorithm": "U2 R U R' U R U' R'",
+        "notes": ""
+      },
+      {
+        "id": "B14",
+        "name": "WP-up, edge opposite (mirror)",
+        "method": "corner: WP facing UP; edge opposite mirror | edge: edge in U, opposite side",
+        "algorithm": "y' U2 R' U' R U' R' U R",
+        "notes": ""
+      },
+      {
+        "id": "B15",
+        "name": "Corner solved in slot, edge in U",
+        "method": "corner: Corner solved in slot; edge in U | edge: edge in U, oriented",
+        "algorithm": "U R U' R' d' L' U L",
+        "notes": ""
+      },
+      {
+        "id": "B16",
+        "name": "Corner solved in slot, edge in U (mirror)",
+        "method": "corner: Corner solved in slot; edge in U mirror | edge: edge in U, oriented",
+        "algorithm": "y' U' R' U R r' U' R U M'",
+        "notes": ""
+      }
+    ]
+  },
+  "meta": {
+    "notation": "WCA Singmaster (uppercase + lowercase wide both used)",
+    "assumed_orientation": "white bottom, yellow top, green front",
+    "generated_by": "Claude Opus 4.7 (1M context) \u2014 2026-05-24 (F2L from rubiksplace.com; confidence fields removed 2026-05-24)",
+    "counts": {
+      "pll": 21,
+      "oll": 57,
+      "f2l_advanced": 25,
+      "f2l_beginner": 16
+    }
+  }
+}

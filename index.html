@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#4b6bff" />
+  <title>Rubik's Storage - CFOP Algorithm Browser</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1 class="brand-title">Rubik's Storage</h1>
+          <p class="brand-sub">CFOP algorithm browser · PLL · OLL · F2L</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <!-- Reserved space for future actions: timer, scramble generator, favorites -->
+        <button id="load-all" class="btn" type="button" title="Load all visible case images">Load all images</button>
+        <button id="reset-stats" class="btn btn-ghost" type="button" title="Reset all drill and recognition stats">Reset stats</button>
+        <button id="theme-toggle" class="btn btn-ghost" type="button" aria-label="Toggle theme">
+          <span class="theme-icon">◐</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Algorithm categories">
+    <div class="container tabs-inner" id="tabs"></div>
+  </nav>
+
+  <section class="toolbar">
+    <div class="container toolbar-inner">
+      <div class="search-wrap">
+        <input
+          id="search"
+          type="search"
+          placeholder="Search by name, id, algorithm, recognition…"
+          autocomplete="off"
+          aria-label="Search algorithms"
+        />
+      </div>
+      <div class="filters" id="filters" aria-label="Filters"></div>
+      <div class="stats" id="stats" aria-live="polite"></div>
+    </div>
+    <div id="selection-toolbar" class="container selection-toolbar hidden">
+      <button id="select-all" class="btn btn-small" type="button">Select all in tab</button>
+      <button id="clear-selection" class="btn btn-small" type="button" disabled>Clear</button>
+      <span id="selection-count" class="selection-count" aria-live="polite"></span>
+      <span class="selection-spacer"></span>
+      <button id="drill-selected" class="btn btn-primary" type="button" disabled>Drill selected</button>
+      <button id="recog-selected" class="btn btn-primary" type="button" disabled>Train recognition</button>
+    </div>
+  </section>
+
+  <div id="modal-root" class="modal-root hidden" aria-hidden="true"></div>
+
+  <main class="container main">
+    <div id="grid" class="grid" role="list"></div>
+    <div id="empty" class="empty hidden">No algorithms match the current filters.</div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span id="meta-info"></span>
+      <span class="footer-spacer"></span>
+      <a href="rubiks-cube-algorithms.json" class="footer-link">raw data</a>
+    </div>
+  </footer>
+
+  <script src="app.js" type="module"></script>
+  <script>
+    // Register the service worker (offline support + PWA install).
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js").catch((err) => {
+          console.warn("Service worker registration failed:", err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

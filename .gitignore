@@ -1,0 +1,15 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor/runtime
+*.log
+.claude/
+
+# Node (if added later)
+node_modules/

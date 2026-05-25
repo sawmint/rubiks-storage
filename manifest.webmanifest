@@ -1,0 +1,20 @@
+{
+  "name": "Rubik's Storage",
+  "short_name": "Rubik's",
+  "description": "CFOP algorithm browser and trainer (PLL, OLL, F2L)",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#4b6bff",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "utilities"]
+}
