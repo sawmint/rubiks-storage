@@ -867,6 +867,33 @@ a:hover { text-decoration: underline; }
   color: var(--text);
   font-weight: 600;
 }
+/* Wrapper so the "more" toggle sits below the meta text without disturbing
+   the flex column gap. The toggle only becomes visible when the JS detects
+   actual text overflow inside the card-meta. */
+.card-meta-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.card-meta-toggle {
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: inherit;
+}
+.card-meta-toggle:hover { color: var(--accent-strong); }
+/* When expanded, drop the line-clamp so the full text renders. */
+.card-meta.expanded {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
 
 /* ----- recognition settings screen ----- */
 .recog-settings {

@@ -554,15 +554,13 @@ function renderCard(it, cat) {
     card.appendChild(algRow(it.algorithm));
   }
 
-  // meta rows. The full text also goes into the title attribute so the
-  // CSS line-clamp on mobile portrait (2 lines + ellipsis) doesn't hide
-  // info — tap-and-hold reveals the rest in the browser's native tooltip.
+  // meta rows. On portrait mobile the meta text gets line-clamped to 2
+  // lines (CSS), but we'd rather not silently truncate — so each meta gets
+  // a "more"/"collapse" toggle that only renders when overflow is real
+  // (detected post-layout via scrollHeight > clientHeight). The full text
+  // also lives in the title attribute as a backup for tap-and-hold.
   for (const m of cat.metaRows(it) || []) {
-    const div = document.createElement("div");
-    div.className = "card-meta";
-    div.title = `${m.label}: ${m.value}`;
-    div.innerHTML = `<strong>${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`;
-    card.appendChild(div);
+    card.appendChild(metaRowWithToggle(m));
   }
 
   // stats badge (drillable categories only)
@@ -666,6 +664,46 @@ async function loadAllImages() {
     }
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+}
+
+/* Build a meta row (e.g. "Recognition: ..." / "Description: ...") with a
+ * "more"/"collapse" toggle that appears ONLY when the text is actually
+ * truncated by a CSS line-clamp. Detection runs post-layout via
+ * requestAnimationFrame, so it picks up whichever font-size + clamp the
+ * current breakpoint resolved to (no JS-side hardcoded thresholds). */
+function metaRowWithToggle(m) {
+  const wrap = document.createElement("div");
+  wrap.className = "card-meta-wrap";
+
+  const text = document.createElement("div");
+  text.className = "card-meta";
+  text.title = `${m.label}: ${m.value}`;
+  text.innerHTML = `<strong>${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`;
+  wrap.appendChild(text);
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "card-meta-toggle hidden";
+  toggle.textContent = "more";
+  toggle.addEventListener("click", () => {
+    const expanded = text.classList.toggle("expanded");
+    toggle.textContent = expanded ? "collapse" : "more";
+  });
+  wrap.appendChild(toggle);
+
+  // Reveal the toggle only if the CSS clamp actually truncated something.
+  // Use setTimeout(0) rather than requestAnimationFrame — RAF doesn't fire
+  // in headless rendering contexts (preview/screenshot tools), and a 0ms
+  // timeout still runs after the current synchronous render so the
+  // browser has applied layout. Double-schedule via setTimeout-in-setTimeout
+  // for the same "fonts have settled" buffer we'd get from double RAF.
+  setTimeout(() => setTimeout(() => {
+    if (text.scrollHeight > text.clientHeight + 1) {
+      toggle.classList.remove("hidden");
+    }
+  }, 0), 0);
+
+  return wrap;
 }
 
 function algRow(algStr) {
