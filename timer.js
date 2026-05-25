@@ -26,9 +26,12 @@ import { vcImage } from "./app.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const HOLD_ARM_MS = 300;          // how long space must be held to arm
-const INSPECTION_TOTAL_MS = 15000;
-const INSPECTION_PLUS2_MS = 17000;
-const INSPECTION_DNF_MS   = 17001; // anything past this is DNF on start
+const PLUS2_GRACE_MS = 2000;      // WCA: +2 if start is within 2s past the limit; DNF beyond
+
+/* Read the user's configured inspection duration in ms.
+ * `sessions.getInspectionDurationSec()` defaults to 15 if unset. */
+function inspectionTotalMs() { return sessions.getInspectionDurationSec() * 1000; }
+function inspectionDnfMs()   { return inspectionTotalMs() + PLUS2_GRACE_MS; }
 
 let session = null; // active timer session (not a persistent session)
 let rafId = null;
@@ -633,27 +636,55 @@ function cancelInspectionInterval() {
   if (inspectionIntervalId) { clearInterval(inspectionIntervalId); inspectionIntervalId = null; }
 }
 
+/* Keep ticking through the entire pre-solve inspection cycle, including the
+ * "arming" / "armed" hold-states. The previous behavior cancelled the
+ * interval as soon as state left "inspecting", which froze the countdown
+ * AND stopped the +2/DNF threshold checks — meaning a user could hold past
+ * 17s and bypass the WCA DNF entirely. Now the timer keeps firing; only
+ * the display update is suppressed during arming/armed so those state
+ * colors stay on screen. */
 function inspectionTick() {
-  if (!session || session.state !== "inspecting") { cancelInspectionInterval(); return; }
+  if (!session) { cancelInspectionInterval(); return; }
+  const inInspectCycle =
+    session.state === "inspecting" ||
+    session.state === "preInspectArm" ||
+    session.state === "arming" ||
+    session.state === "armed";
+  if (!inInspectCycle) { cancelInspectionInterval(); return; }
+  if (!session.inspectionStartMs) return; // not yet inspecting (preInspectArm before release)
+
+  const totalMs = inspectionTotalMs();
+  const dnfMs = inspectionDnfMs();
   const elapsed = performance.now() - session.inspectionStartMs;
-  const remaining = Math.max(0, INSPECTION_TOTAL_MS - elapsed);
-  if (elapsed >= INSPECTION_PLUS2_MS) {
-    // Past 17s → automatic DNF on the upcoming solve
+
+  if (elapsed >= dnfMs) {
+    // Past limit + 2s grace → automatic DNF, fires regardless of hold state
     cancelInspectionInterval();
     session.inspectionPenalty = "DNF";
     autoStartDnf();
     return;
-  } else if (elapsed >= INSPECTION_TOTAL_MS) {
-    // 15-17s → +2 penalty banked; keep showing countdown of overflow
+  }
+  if (elapsed >= totalMs) {
+    // Within +2 grace window — bank the penalty so startRun sees it
     session.inspectionPenalty = "+2";
+  }
+
+  // Suppress display updates while the user is holding/armed — let the
+  // arming/armed style win so visual state is consistent with what the hand
+  // is doing. The countdown resumes the moment focus returns to "inspecting".
+  if (session.state !== "inspecting") return;
+
+  if (elapsed >= totalMs) {
     session.ui.timeDisplay.textContent = "+2";
     session.ui.timeDisplay.className = "timer-time timer-inspecting timer-bad";
   } else {
+    const remaining = Math.max(0, totalMs - elapsed);
     const secsLeft = Math.ceil(remaining / 1000);
     session.ui.timeDisplay.textContent = String(secsLeft);
     let cls = "timer-time timer-inspecting";
-    if (elapsed >= 12000) cls += " timer-bad";
-    else if (elapsed >= 8000) cls += " timer-warn";
+    // Warn/bad bands scale to the configured duration (≥80% bad, ≥53% warn)
+    if (elapsed >= totalMs * 0.80) cls += " timer-bad";
+    else if (elapsed >= totalMs * 0.53) cls += " timer-warn";
     session.ui.timeDisplay.className = cls;
   }
 }
@@ -668,6 +699,7 @@ function autoStartDnf() {
 }
 
 function startRun() {
+  cancelInspectionInterval();
   session.state = "running";
   session.startMs = performance.now();
   session.phases = [];
@@ -978,10 +1010,39 @@ function openSettingsPanel() {
   const inspectCb = document.createElement("input");
   inspectCb.type = "checkbox";
   inspectCb.checked = sessions.getInspection();
-  inspectCb.addEventListener("change", () => sessions.setInspection(inspectCb.checked));
+  inspectCb.addEventListener("change", () => {
+    sessions.setInspection(inspectCb.checked);
+    durationRow.style.display = inspectCb.checked ? "" : "none";
+  });
   inspectLabel.appendChild(inspectCb);
-  inspectLabel.appendChild(document.createTextNode(" WCA inspection (15s)"));
+  inspectLabel.appendChild(document.createTextNode(" WCA inspection"));
   pop.appendChild(inspectLabel);
+
+  // Inspection duration selector (only meaningful when inspection is on)
+  const durationRow = document.createElement("div");
+  durationRow.className = "timer-settings-row";
+  durationRow.style.display = sessions.getInspection() ? "" : "none";
+  const durationLabel = document.createElement("span");
+  durationLabel.textContent = "Inspection duration";
+  durationRow.appendChild(durationLabel);
+  const durationGroup = document.createElement("div");
+  durationGroup.className = "timer-settings-pill-group";
+  const currentDuration = sessions.getInspectionDurationSec();
+  for (const sec of [8, 15, 30, 60]) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "timer-pill" + (sec === currentDuration ? " active" : "");
+    b.textContent = sec + "s";
+    b.addEventListener("click", () => {
+      sessions.setInspectionDurationSec(sec);
+      for (const pb of durationGroup.querySelectorAll(".timer-pill")) {
+        pb.classList.toggle("active", parseInt(pb.textContent, 10) === sec);
+      }
+    });
+    durationGroup.appendChild(b);
+  }
+  durationRow.appendChild(durationGroup);
+  pop.appendChild(durationRow);
 
   const phaseLabel = document.createElement("div");
   phaseLabel.className = "timer-settings-section";

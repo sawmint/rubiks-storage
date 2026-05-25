@@ -45,6 +45,7 @@ function empty() {
     activeSessionId: "default",
     phaseConfig: { count: 1, labels: ["Solve"] },
     inspection: true,
+    inspectionDurationSec: 15,
     sessions: {
       default: {
         id: "default",
@@ -78,6 +79,9 @@ function load() {
       }
       if (!cache.phaseConfig) cache.phaseConfig = { count: 1, labels: ["Solve"] };
       if (typeof cache.inspection !== "boolean") cache.inspection = true;
+      if (typeof cache.inspectionDurationSec !== "number" || cache.inspectionDurationSec <= 0) {
+        cache.inspectionDurationSec = 15;
+      }
     }
   } catch (e) {
     console.error("sessions: load failed, resetting", e);
@@ -125,6 +129,10 @@ export function getInspection() {
   return load().inspection;
 }
 
+export function getInspectionDurationSec() {
+  return load().inspectionDurationSec || 15;
+}
+
 /* ---------- mutations ---------- */
 
 export function setPhaseConfig(count, labels) {
@@ -136,6 +144,14 @@ export function setPhaseConfig(count, labels) {
 export function setInspection(on) {
   load();
   cache.inspection = !!on;
+  save();
+}
+
+export function setInspectionDurationSec(seconds) {
+  load();
+  const n = Number(seconds);
+  if (!isFinite(n) || n <= 0) return;
+  cache.inspectionDurationSec = Math.round(n);
   save();
 }
 

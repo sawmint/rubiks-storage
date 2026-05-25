@@ -1447,6 +1447,11 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.5px;
   margin-top: var(--space-2);
 }
+.timer-settings-pill-group {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 .timer-settings-input {
   flex: 1;
   background: var(--bg-sunken);
