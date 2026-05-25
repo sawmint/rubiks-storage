@@ -36,7 +36,7 @@ const state = {
  * pass `caseAlg` to apply the inverse (legacy — used by F2L which has no
  * pre-computed setup). Setup-based URLs render correctly even for cases
  * whose solving algorithm contains rotations. */
-export function vcImage({ setup, caseAlg, stage, view, size = 140 }) {
+export function vcImage({ setup, caseAlg, stage, view, size = 140, sch }) {
   const params = new URLSearchParams({
     fmt: "svg",
     size: String(size),
@@ -46,6 +46,7 @@ export function vcImage({ setup, caseAlg, stage, view, size = 140 }) {
   if (caseAlg) params.set("case", caseAlg);
   if (stage)   params.set("stage", stage);
   if (view)    params.set("view", view);
+  if (sch)     params.set("sch",  sch);
   return `${VISUALCUBE_BASE}?${params.toString()}`;
 }
 

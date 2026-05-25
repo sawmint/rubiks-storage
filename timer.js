@@ -324,7 +324,8 @@ async function loadNextScramble(force = false) {
     session.currentScramble = scr;
     session.ui.scramble.textContent = scr;
     // Render preview via VisualCube. The 3x3 stage "image" gives a full cube view.
-    const url = vcImage({ setup: scr, view: "trans", size: 140 });
+    // WCA scheme: white-up, red-right, green-front, yellow-down, orange-left, blue-back
+    const url = vcImage({ setup: scr, view: "trans", size: 140, sch: "wrgyob" });
     const img = new Image();
     img.alt = "Scramble preview";
     img.className = "timer-preview-img";
