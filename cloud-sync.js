@@ -12,12 +12,8 @@
  *     local → cloud, or pull cloud → local. ("Ask each time" first-login
  *     policy, per the approved plan.)
  *   - seed the diff snapshots so ongoing pushes only touch what changes.
- *
- * Out of scope for v1: realtime postgres_changes subscriptions (would let
- * other devices' writes appear without a refresh). The single-tab/single-
- * device usage pattern dominates, and a refresh-to-see-other-device
- * works correctly given that pull-on-signin is implemented. Adding it
- * later is a one-call subscribe.
+ *   - subscribe to postgres_changes on the four user tables so writes
+ *     from other devices/tabs appear here without a refresh.
  * ========================================================= */
 
 import * as stats from "./stats.js";
@@ -34,6 +30,7 @@ let sessionsUnsub = null;
 let applyingRemote = false;     // suppress push-loops when we're applying server data locally
 let pushTimer = null;
 let onlineHandler = null;
+let realtimeChannel = null;
 
 // Last-pushed snapshots (one entry per logical row, JSON-stringified for cheap equality)
 let lastStats = new Map();      // key: "pll/Aa"        → JSON of {drill,recog,srs}
@@ -450,6 +447,165 @@ function seedSnapshots() {
   });
 }
 
+/* ---------- realtime ----------
+ *
+ * Supabase Realtime → postgres_changes streams INSERT/UPDATE/DELETE events
+ * for the four user tables, filtered server-side by user_id (RLS also
+ * scopes reads, but the filter prevents wasted broadcasts).
+ *
+ * Each handler:
+ *   1. flips applyingRemote=true so our own stats/sessions subscribers don't
+ *      schedule a push for the apply we're about to do.
+ *   2. mutates local state via the applyRemote* helpers (per-row patches —
+ *      no full snapshot replace, which would re-render everything).
+ *   3. updates the diff snapshot (lastStats/lastSessions/...) to match the
+ *      remote row, so the next local edit only pushes its own delta.
+ *
+ * Echoes of our own writes also arrive here; they no-op because the local
+ * state already matches the echoed row and applyingRemote suppresses any
+ * push attempt.
+ *
+ * Tables must be in the supabase_realtime publication for events to fire —
+ * see SETUP.md's SQL block. Default REPLICA IDENTITY (= primary key) is
+ * enough; our delete handlers only need PK columns from the old row.
+ */
+function subscribeRealtime() {
+  const c = auth.getClient();
+  if (!c || !userId) return null;
+
+  const channel = c.channel(`rs-user-${userId}`);
+  const filter = `user_id=eq.${userId}`;
+
+  channel.on("postgres_changes",
+    { event: "*", schema: "public", table: "case_stats", filter },
+    (payload) => {
+      const ev = payload.eventType;
+      const row = payload.new;
+      const oldRow = payload.old;
+      applyingRemote = true;
+      try {
+        if (ev === "DELETE") {
+          const cat = oldRow?.category;
+          const cid = oldRow?.case_id;
+          if (cat == null || cid == null) return;
+          stats.applyRemoteCase(cat, cid, null);
+          lastStats.delete(`${cat}/${cid}`);
+        } else if (row) {
+          const value = {
+            drill: row.drill || {},
+            recog: row.recog || {},
+            srs:   row.srs   || {},
+          };
+          stats.applyRemoteCase(row.category, row.case_id, value);
+          lastStats.set(`${row.category}/${row.case_id}`, JSON.stringify(value));
+        }
+      } catch (e) {
+        console.error("realtime case_stats apply failed:", e, payload);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+  );
+
+  channel.on("postgres_changes",
+    { event: "*", schema: "public", table: "sessions", filter },
+    (payload) => {
+      const ev = payload.eventType;
+      const row = payload.new;
+      const oldRow = payload.old;
+      applyingRemote = true;
+      try {
+        if (ev === "DELETE") {
+          const id = oldRow?.id;
+          if (!id) return;
+          sessions.applyRemoteSession(id, null);
+          lastSessions.delete(id);
+        } else if (row) {
+          sessions.applyRemoteSession(row.id, {
+            name: row.name,
+            createdAt: row.created_at,
+            isActive: !!row.is_active,
+          });
+          lastSessions.set(row.id, JSON.stringify({
+            name: row.name,
+            createdAt: row.created_at,
+            isActive: !!row.is_active,
+          }));
+        }
+      } catch (e) {
+        console.error("realtime sessions apply failed:", e, payload);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+  );
+
+  channel.on("postgres_changes",
+    { event: "*", schema: "public", table: "solves", filter },
+    (payload) => {
+      const ev = payload.eventType;
+      const row = payload.new;
+      const oldRow = payload.old;
+      applyingRemote = true;
+      try {
+        if (ev === "DELETE") {
+          const id = oldRow?.id;
+          if (!id) return;
+          sessions.applyRemoteSolve(id, null);
+          lastSolves.delete(id);
+        } else if (row) {
+          const solveObj = {
+            id: row.id,
+            timeMs: row.time_ms,
+            scramble: row.scramble || "",
+            phases: row.phases || [row.time_ms],
+            penalty: row.penalty,
+            inspectionPenalty: row.inspection_penalty,
+            date: row.date,
+            comment: row.comment || "",
+          };
+          sessions.applyRemoteSolve(row.id, { ...solveObj, sessionId: row.session_id });
+          lastSolves.set(row.id, JSON.stringify(solveObj));
+        }
+      } catch (e) {
+        console.error("realtime solves apply failed:", e, payload);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+  );
+
+  channel.on("postgres_changes",
+    { event: "*", schema: "public", table: "user_prefs", filter },
+    (payload) => {
+      const ev = payload.eventType;
+      const row = payload.new;
+      if (ev === "DELETE" || !row) return;  // we never delete prefs rows
+      applyingRemote = true;
+      try {
+        const prefs = row.prefs || {};
+        sessions.applyRemotePrefs(prefs);
+        lastPrefs = JSON.stringify({
+          phaseConfig: prefs.phaseConfig,
+          inspection: prefs.inspection,
+          inspectionDurationSec: prefs.inspectionDurationSec,
+          activeSessionId: prefs.activeSessionId,
+        });
+      } catch (e) {
+        console.error("realtime user_prefs apply failed:", e, payload);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+  );
+
+  channel.subscribe((status, err) => {
+    if (err) console.warn("realtime channel error:", err);
+  });
+
+  return channel;
+}
+
 /* ---------- lifecycle ---------- */
 
 /* Called on SIGNED_IN. Decides whether to ask the conflict prompt, then
@@ -499,6 +655,9 @@ async function startForUser(user) {
   statsUnsub    = stats.subscribe(()    => { if (!applyingRemote) schedulePush(); });
   sessionsUnsub = sessions.subscribe(() => { if (!applyingRemote) schedulePush(); });
 
+  // Realtime — patch local state when another device writes.
+  realtimeChannel = subscribeRealtime();
+
   // Flush any leftover queue from a previous offline session
   onlineHandler = () => flushQueue();
   window.addEventListener("online", onlineHandler);
@@ -510,6 +669,16 @@ async function startForUser(user) {
 function stop() {
   if (statsUnsub)    { statsUnsub();    statsUnsub = null; }
   if (sessionsUnsub) { sessionsUnsub(); sessionsUnsub = null; }
+  if (realtimeChannel) {
+    const c = auth.getClient();
+    try {
+      if (c?.removeChannel) c.removeChannel(realtimeChannel);
+      else realtimeChannel.unsubscribe?.();
+    } catch (e) {
+      console.warn("realtime teardown failed:", e);
+    }
+    realtimeChannel = null;
+  }
   if (onlineHandler) {
     window.removeEventListener("online", onlineHandler);
     onlineHandler = null;

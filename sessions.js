@@ -359,6 +359,106 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 
+/* Apply a single remote session-row mutation (realtime echo). row=null
+ * means the row was deleted; otherwise pass {name, createdAt, isActive}.
+ * Deleting the currently-active session falls back to the oldest survivor
+ * (same invariant as deleteSession), so a remote tab tidying up doesn't
+ * strand us on a missing activeSessionId. */
+export function applyRemoteSession(id, row) {
+  load();
+  if (row == null) {
+    if (!cache.sessions[id]) return;
+    const wasActive = cache.activeSessionId === id;
+    delete cache.sessions[id];
+    if (wasActive) {
+      const remaining = Object.values(cache.sessions).sort((a, b) => a.createdAt - b.createdAt);
+      if (remaining.length > 0) {
+        cache.activeSessionId = remaining[0].id;
+      } else {
+        cache.sessions.default = { id: "default", name: "Default", createdAt: Date.now(), solves: [] };
+        cache.activeSessionId = "default";
+      }
+    }
+    save();
+    return;
+  }
+  const existing = cache.sessions[id];
+  if (existing) {
+    existing.name = row.name;
+    existing.createdAt = row.createdAt;
+  } else {
+    cache.sessions[id] = {
+      id,
+      name: row.name,
+      createdAt: row.createdAt,
+      solves: [],
+    };
+  }
+  // is_active on the remote row only flips us if the remote is asserting
+  // active=true; we never deactivate locally from a remote write (the local
+  // user might be mid-something).
+  if (row.isActive) cache.activeSessionId = id;
+  save();
+}
+
+/* Apply a single remote solve-row mutation. row=null means delete. For
+ * upserts, row carries {sessionId, timeMs, scramble, phases, penalty,
+ * inspectionPenalty, date, comment}. If a solve moves between sessions
+ * (rare; would require manual SQL), we remove from any session that has
+ * it before inserting into the new target. */
+export function applyRemoteSolve(id, row) {
+  load();
+  if (row == null) {
+    for (const sess of Object.values(cache.sessions)) {
+      const idx = sess.solves.findIndex((s) => s.id === id);
+      if (idx >= 0) { sess.solves.splice(idx, 1); save(); return; }
+    }
+    return;
+  }
+  const target = cache.sessions[row.sessionId];
+  if (!target) return; // orphan — the parent session hasn't synced yet
+  for (const sess of Object.values(cache.sessions)) {
+    if (sess === target) continue;
+    const idx = sess.solves.findIndex((s) => s.id === id);
+    if (idx >= 0) sess.solves.splice(idx, 1);
+  }
+  const solveObj = {
+    id,
+    timeMs: row.timeMs,
+    scramble: row.scramble || "",
+    phases: row.phases || [row.timeMs],
+    penalty: row.penalty,
+    inspectionPenalty: row.inspectionPenalty,
+    date: row.date,
+    comment: row.comment || "",
+  };
+  const existingIdx = target.solves.findIndex((s) => s.id === id);
+  if (existingIdx >= 0) {
+    target.solves[existingIdx] = solveObj;
+  } else {
+    target.solves.push(solveObj);
+    target.solves.sort((a, b) => a.date - b.date);
+  }
+  save();
+}
+
+/* Apply a remote prefs payload (the jsonb blob from user_prefs.prefs).
+ * Only flips activeSessionId if the target session actually exists locally
+ * — otherwise we'd risk pointing at a session that hasn't streamed in yet. */
+export function applyRemotePrefs(prefs) {
+  if (!prefs || typeof prefs !== "object") return;
+  load();
+  if (prefs.phaseConfig) cache.phaseConfig = prefs.phaseConfig;
+  if (typeof prefs.inspection === "boolean") cache.inspection = prefs.inspection;
+  if (typeof prefs.inspectionDurationSec === "number" && prefs.inspectionDurationSec > 0) {
+    cache.inspectionDurationSec = prefs.inspectionDurationSec;
+  }
+  if (prefs.activeSessionId && cache.sessions[prefs.activeSessionId]) {
+    cache.activeSessionId = prefs.activeSessionId;
+  }
+  save();
+}
+
 /* Wholesale replacement — used by cloud-sync to apply a pulled snapshot.
  * Mirrors stats.replaceAll. Validates invariants the same way load() does
  * (activeSessionId points to a real session; phaseConfig/inspection

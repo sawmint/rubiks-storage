@@ -198,6 +198,26 @@ export function replaceAll(cases) {
   save();
 }
 
+/* Apply a single remote case mutation (realtime postgres_changes echo from
+ * another device). Pass `value` as {drill, recog, srs} for insert/update,
+ * or null to delete the row. Same listener-fire path as the regular write
+ * accessors; cloud-sync gates its own subscriber with applyingRemote to
+ * keep the echo from being pushed back up. */
+export function applyRemoteCase(category, id, value) {
+  load();
+  const k = caseKey(category, id);
+  if (value == null) {
+    delete cache.cases[k];
+  } else {
+    cache.cases[k] = {
+      drill: value.drill || {},
+      recog: value.recog || {},
+      srs:   value.srs   || {},
+    };
+  }
+  save();
+}
+
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);

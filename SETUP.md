@@ -77,6 +77,16 @@ create policy "own rows" on public.case_stats for all using (auth.uid() = user_i
 create policy "own rows" on public.sessions   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own rows" on public.solves     for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "own rows" on public.user_prefs for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Realtime: stream INSERT/UPDATE/DELETE to subscribed clients so a write on
+-- one device appears on every other signed-in device without a refresh.
+-- Without this ALTER, Supabase's Realtime service won't broadcast row changes
+-- for these tables.
+alter publication supabase_realtime add table
+  public.case_stats,
+  public.sessions,
+  public.solves,
+  public.user_prefs;
 ```
 
 You should see "Success. No rows returned." If you get an error like "relation already exists," the SQL was already run — that's fine.
@@ -158,6 +168,8 @@ If you already have local drill stats / timer solves on this device when you sig
 
 After that, every drill rep / timer solve / penalty change pushes up automatically. If you're offline, the writes queue in localStorage (`rs-sync-queue-v1`) and flush automatically when you come back online.
 
+If you're signed in on two devices (e.g. laptop + phone) at the same time, edits flow both ways live — a solve recorded on your phone shows up in the laptop's solve list immediately, no refresh needed. This uses Supabase Realtime; the SQL block in step 1 adds the four tables to the `supabase_realtime` publication so the events broadcast.
+
 ---
 
 ## Troubleshooting
@@ -169,6 +181,8 @@ After that, every drill rep / timer solve / penalty change pushes up automatical
 **Google sign-in says "redirect_uri_mismatch":** The redirect URI in Google Cloud Console must EXACTLY match the callback URL Supabase shows. Re-check it (no trailing slash, https only).
 
 **RLS error in console after sign in:** Re-run the SQL block from step 1; the policies may not have applied.
+
+**Edits from one device don't appear on the other until refresh:** the `alter publication supabase_realtime add table ...` line at the bottom of step 1's SQL block didn't run. In Supabase SQL Editor, run just that statement (or re-run the whole block — `add table` errors on tables already in the publication and you can ignore those errors). You can also confirm in the dashboard under **Database** → **Publications** → **supabase_realtime** that all four tables are listed.
 
 **Want to wipe your cloud data and start over:** in Supabase SQL Editor, run:
 ```sql
