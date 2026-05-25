@@ -223,9 +223,9 @@
       "id": "V",
       "name": "V-perm",
       "group": "diagonal",
-      "algorithm": "R' U R' U' y R' F' R2 U' R' U R' F R F",
+      "algorithm": "y' R' U R' U' y R' F' R2 U' R' U R' F R F",
       "alternates": [
-        "R' U R' d' R' F' R2 U' R' U R' F R F"
+        "y' R' U R' d' R' F' R2 U' R' U R' F R F"
       ],
       "recognition": "Diagonal corner swap + adjacent edge swap (front+left)",
       "auf": "none",
