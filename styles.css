@@ -270,6 +270,8 @@ a:hover { text-decoration: underline; }
   margin-left: 6px;
   vertical-align: 1px;
 }
+/* Default: show the long label. Mobile override hides it and shows the short one. */
+.tab-label-short { display: none; }
 
 /* ----- toolbar ----- */
 .toolbar {
@@ -902,22 +904,58 @@ a:hover { text-decoration: underline; }
 
 /* ----- responsive ----- */
 @media (max-width: 640px) {
-  /* Header / layout */
-  .header-inner { padding: 0 var(--space-3); height: 56px; gap: var(--space-2); }
-  .brand-title { font-size: 15px; }
+  /* Header / layout — wrap so tabs get their own full-width row */
+  .header-inner {
+    padding: 0 var(--space-3);
+    height: auto;
+    min-height: 52px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+    row-gap: var(--space-1);
+  }
+  .brand { flex: 1 1 auto; min-width: 0; gap: var(--space-2); padding: var(--space-2) 0; }
+  .brand-title { font-size: 16px; }
   .brand-mark { width: 28px; height: 28px; }
-  .brand { gap: var(--space-2); }
-  .header-actions .btn { padding: 6px 10px; font-size: 12px; }
+  .header-actions { flex: 0 0 auto; }
 
-  .toolbar-inner { padding: var(--space-3) var(--space-3); gap: var(--space-2); }
-  .main { padding: var(--space-4) var(--space-3) var(--space-6); }
-  .stats { margin-left: 0; }
-  .grid { grid-template-columns: 1fr; gap: var(--space-3); }
-
-  /* Tabs: smaller padding so they fit inline with logo */
-  .tabs.tabs-inline { gap: 0; }
-  .tab { padding: 0 10px; font-size: 13px; }
+  /* Tabs take their own row, full width, no horizontal scroll required */
+  .tabs.tabs-inline {
+    order: 3;
+    flex: 1 0 100%;
+    width: 100%;
+    margin: 0 calc(-1 * var(--space-3));
+    padding: 0 var(--space-3);
+    border-top: 1px solid var(--border);
+    height: 44px;
+    /* No fade mask on mobile — all 4 tabs should fit comfortably */
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+  .tab {
+    flex: 1 1 0;
+    justify-content: center;
+    padding: 0;
+    font-size: 13px;
+    text-align: center;
+    min-width: 0;
+  }
+  .tab-label-full { display: none; }
+  .tab-label-short { display: inline; }
   .tab .tab-count { margin-left: 4px; padding: 1px 5px; font-size: 10px; }
+
+  /* Toolbar tighter spacing */
+  .toolbar-inner { padding: var(--space-3) var(--space-3); gap: var(--space-2); }
+
+  /* Filter chips: smaller + horizontal scroll instead of wrapping */
+  .filters { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-group { flex-wrap: nowrap !important; }
+  .chip { padding: 4px 8px; font-size: 11px; white-space: nowrap; }
+
+  .main { padding: var(--space-3) var(--space-3) var(--space-6); }
+  .stats { margin-left: 0; font-size: 11px; }
+  .grid { grid-template-columns: 1fr; gap: var(--space-3); }
 
   /* Selection toolbar: stack and grow buttons */
   .selection-toolbar { padding: var(--space-2) var(--space-3) var(--space-3); }
@@ -943,6 +981,16 @@ a:hover { text-decoration: underline; }
 
   /* Card stats */
   .card-stats { font-size: 11px; padding: 3px 8px; }
+
+  /* Compact cards on mobile so more fit per screen */
+  .card { padding: var(--space-3) var(--space-3) var(--space-2); gap: var(--space-2); }
+  .card-img-wrap { min-height: 120px; padding: var(--space-2); }
+  .card-img { max-height: 110px; }
+  .card-title { font-size: 14px; }
+  .card-id { font-size: 10px; padding: 1px 6px; }
+  .badge { font-size: 10px; padding: 1px 6px; }
+  .card-meta { font-size: 12px; }
+  .card-head { gap: var(--space-2); }
 
   /* Settings: stack rows on very narrow screens */
   .settings-row { flex-direction: column; align-items: stretch; gap: var(--space-2); }

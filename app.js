@@ -99,6 +99,7 @@ const CATEGORIES = [
   {
     key: "f2l_adv",
     label: "F2L (advanced)",
+    shortLabel: "F2L+",
     accent: "var(--cat-f2l-adv)",
     getItems: (d) => d.f2l.advanced,
     titleOf: (it) => "Case " + it.id + ": " + (it.trigger || "f2l"),
@@ -121,6 +122,7 @@ const CATEGORIES = [
   {
     key: "f2l_beg",
     label: "F2L (beginner)",
+    shortLabel: "F2L−",
     accent: "var(--cat-f2l-beg)",
     getItems: (d) => d.f2l.beginner,
     titleOf: (it) => it.name,
@@ -298,7 +300,8 @@ function renderTabs() {
     btn.dataset.cat = cat.key;
     btn.style.setProperty("--tab-accent", cat.accent);
     const count = cat.getItems(state.data).length;
-    btn.innerHTML = `${escapeHtml(cat.label)}<span class="tab-count">${count}</span>`;
+    const shortLabel = cat.shortLabel || cat.label;
+    btn.innerHTML = `<span class="tab-label-full">${escapeHtml(cat.label)}</span><span class="tab-label-short">${escapeHtml(shortLabel)}</span><span class="tab-count">${count}</span>`;
     btn.addEventListener("click", () => selectCategory(cat.key));
     host.appendChild(btn);
   }
