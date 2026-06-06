@@ -76,9 +76,8 @@ function attachPopoverDismiss(pop, anchor) {
 
 /* ---------- public entry ---------- */
 
-export function openTimer() {
-  scrambler.warmUp();
-  session = {
+function freshSession() {
+  return {
     state: "idle",
     startMs: 0,
     elapsedMs: 0,
@@ -92,7 +91,13 @@ export function openTimer() {
     ui: {},
     keyHandlers: null,
     cleanup: [],
+    inlineHost: null,
   };
+}
+
+export function openTimer() {
+  scrambler.warmUp();
+  session = freshSession();
 
   const body = buildBody();
   modal.open({
@@ -101,14 +106,52 @@ export function openTimer() {
     onClose: closeTimer,
     allowBackdropClose: false,
   });
-  // After modal.open, hide the modal header (it's empty title, we don't want the close button to dominate)
-  // Actually keep it — useful for closing. Just style accordingly via .timer-modal class.
 
   attachKeyHandlers();
   attachWindowBlur();
   attachSessionsListener();
   loadNextScramble();
   renderAll();
+}
+
+/* Mount the timer UI INLINE into a host element (no modal). Used by the
+ * Timer page in the workspace shell so the timer is part of the page
+ * instead of a fullscreen overlay. The same `.timer-modal` class is set
+ * on the wrapper so the existing fullscreen-timer CSS still applies. */
+export function mountTimer(host) {
+  if (!host) return;
+  // If already mounted, no-op (idempotent so a re-render of the host page
+  // doesn't kill an in-progress solve).
+  if (session && session.inlineHost === host) return;
+  // If the timer is up elsewhere (modal or another host), clean it first.
+  if (session) unmountTimer();
+
+  scrambler.warmUp();
+  session = freshSession();
+  session.inlineHost = host;
+
+  const body = buildBody();
+  const wrapper = document.createElement("div");
+  wrapper.className = "timer-modal timer-inline";
+  wrapper.appendChild(body);
+  host.replaceChildren(wrapper);
+
+  attachKeyHandlers();
+  attachWindowBlur();
+  attachSessionsListener();
+  loadNextScramble();
+  renderAll();
+}
+
+/* Tear down an inline-mounted timer. Idempotent. */
+export function unmountTimer() {
+  if (!session) return;
+  // Reuse all of closeTimer's cleanup (detach handlers, cancel rafs, drop
+  // popovers, null out subscriptions), but also clear the host element so
+  // the next mount starts fresh.
+  const host = session.inlineHost;
+  closeTimer();
+  if (host) host.replaceChildren();
 }
 
 function closeTimer() {

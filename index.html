@@ -22,9 +22,9 @@
     *, *::before, *::after { box-sizing: border-box; }
 
     /* ============================================================ */
-    /* Design tokens — warm dark, cobalt accent, IBM Plex pairing.    */
+    /* Design tokens - warm dark, cobalt accent, IBM Plex pairing.    */
     /* We override styles.css's vars (--bg, --text, --accent, etc.)   */
-    /* at :root so the warm-dark palette permeates EVERY component —  */
+    /* at :root so the warm-dark palette permeates EVERY component -  */
     /* including the modal/drill/recognition/timer UI rendered by     */
     /* modules that read these same vars.                             */
     /* ============================================================ */
@@ -53,7 +53,7 @@
       --accent-soft:   rgba(46, 76, 242, 0.14);
       --accent-strong: #4866ff;
 
-      /* Semantic — keep styles.css aliases */
+      /* Semantic - keep styles.css aliases */
       --good: #84a847;
       --ok:   #84a847;
       --warn: #d49a2a;
@@ -67,7 +67,7 @@
       --cat-f2l-adv:  #4f8a3a;
       --cat-f2l-beg:  #c4453a;
 
-      /* Algorithm move colors — warm-dark palette tuned to be readable
+      /* Algorithm move colors - warm-dark palette tuned to be readable
        * on the alg-block dark background. Used by alg-color.js. */
       --move-D: #5fb15a;
       --move-R: #ec8a3d;
@@ -104,7 +104,7 @@
       --space-6: 32px;
       --space-8: 48px;
 
-      /* Radii — present but restrained, not the soft-modern 14px AI default */
+      /* Radii - present but restrained, not the soft-modern 14px AI default */
       --r-sm: 3px;
       --r-md: 5px;
       --r-lg: 8px;
@@ -117,7 +117,7 @@
       --shadow:       0 4px 16px rgba(0,0,0,0.45);
       --shadow-float: 0 10px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
 
-      /* Cube face WCA colors — used by .face-sticker and ws-mode dots */
+      /* Cube face WCA colors - used by .face-sticker and ws-mode dots */
       --cube-white:  #ece7d8;
       --cube-yellow: #e4b834;
       --cube-red:    #c4453a;
@@ -1015,7 +1015,7 @@
     .session-meta { color: var(--muted); font-size: 11px; letter-spacing: 0.02em; }
 
     /* ============================================================ */
-    /* TIMER (the page — the actual fullscreen timer lives in a modal)*/
+    /* TIMER (the page - the actual fullscreen timer lives in a modal)*/
     /* ============================================================ */
 
     .timer-shell {
@@ -1339,7 +1339,41 @@
     .soon-toast.error { border-color: var(--bad); color: var(--bad); }
 
     /* ============================================================ */
-    /* Hidden trigger panel — the existing modules listen on these   */
+    /* ============================================================ */
+    /* Inline timer host                                              */
+    /* The Timer page mounts the speedcubing timer body directly into */
+    /* this host. .timer-modal class is reused so existing fullscreen */
+    /* timer CSS applies; the wrapper is sized to fill the page below */
+    /* the workspace bar (no internal page-head on Timer).            */
+    /* ============================================================ */
+    .timer-inline-host {
+      padding: var(--s-5) var(--s-6);
+      min-height: calc(100vh - 55px);
+      display: flex;
+      flex-direction: column;
+    }
+    .timer-inline-host .timer-modal {
+      flex: 1;
+      max-width: none;
+      width: 100%;
+      padding: 0;
+      background: transparent;
+      box-shadow: none;
+      border: none;
+      max-height: none;
+    }
+    .timer-inline-host .timer-body {
+      min-height: calc(100vh - 105px);
+      gap: var(--s-4);
+    }
+    /* Bigger numbers when embedded - the timer is the page focus */
+    .timer-inline-host .timer-display,
+    .timer-inline-host .timer-time {
+      font-size: 152px;
+    }
+
+    /* ============================================================ */
+    /* Hidden trigger panel - the existing modules listen on these   */
     /* IDs to open drill / recognition / batch / weak-cases. The new */
     /* shell dispatches clicks to them so we don't have to rewrite   */
     /* the modules' selection-toolbar contract.                       */
@@ -1353,7 +1387,7 @@
 <body>
 
 <!-- ============================================================ -->
-<!-- APP — workspace top bar + 6 mode pages.                       -->
+<!-- APP - workspace top bar + 6 mode pages.                       -->
 <!-- ============================================================ -->
 <div class="app">
 
@@ -1368,12 +1402,12 @@
       <span class="ws-brand-name">rubik's storage</span>
     </div>
     <nav class="ws-modes" id="ws-modes">
-      <button class="ws-mode active" data-page="home"><span class="ws-mode-dot"></span>Home</button>
-      <button class="ws-mode" data-page="browse"><span class="ws-mode-dot"></span>Browse</button>
-      <button class="ws-mode" data-page="practice"><span class="ws-mode-dot"></span>Practice</button>
-      <button class="ws-mode" data-page="timer"><span class="ws-mode-dot"></span>Timer</button>
-      <button class="ws-mode" data-page="stats"><span class="ws-mode-dot"></span>Stats</button>
-      <button class="ws-mode" data-page="settings"><span class="ws-mode-dot"></span>Settings</button>
+      <button class="ws-mode active" data-page="home">Home</button>
+      <button class="ws-mode" data-page="browse">Browse</button>
+      <button class="ws-mode" data-page="practice">Practice</button>
+      <button class="ws-mode" data-page="timer">Timer</button>
+      <button class="ws-mode" data-page="stats">Stats</button>
+      <button class="ws-mode" data-page="settings">Settings</button>
     </nav>
     <div class="ws-user">
       <button class="ws-account" id="ws-account" aria-label="Account">
@@ -1397,7 +1431,7 @@
 <!-- Modal overlay used by drill, recognition, batch, weak-cases, timer, auth-ui -->
 <div id="modal-root" class="modal-root hidden" aria-hidden="true"></div>
 
-<!-- Legacy hidden trigger buttons — app.js calls .click() on these to
+<!-- Legacy hidden trigger buttons - app.js calls .click() on these to
      forward Practice / Timer actions through the existing module APIs.
      This keeps drill.js / recognition.js / batch.js / timer.js / weak-cases.js
      unchanged. -->
@@ -1428,7 +1462,7 @@
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js").then((reg) => {
-        reg.update().catch(() => { /* network down — try again next load */ });
+        reg.update().catch(() => { /* network down - try again next load */ });
       }).catch((err) => {
         console.warn("Service worker registration failed:", err);
       });

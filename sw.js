@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v50";
+const CACHE_VERSION = "rs-v51";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -82,22 +82,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Stale-while-revalidate for same-origin shell assets (JS/CSS/JSON/etc).
-  // Returns the cached version immediately for fast loads, AND kicks off a
-  // network refetch in the background so the next reload picks up any
-  // changes. The previous cache-first strategy meant edits stuck around
-  // until a CACHE_VERSION bump triggered a SW reinstall — painful for
-  // active development AND for users between deploys.
+  // Network-first for same-origin shell assets (JS/CSS/JSON/etc). Online
+  // users always get fresh code on the very first load after a deploy,
+  // which avoids the "force refresh once after pushing" lag. Offline
+  // users fall back to whatever's cached so the PWA still works.
+  // The previous strategy was stale-while-revalidate, which always served
+  // the cached copy first and refetched in the background; that's fast
+  // but cost users a stale page load every deploy. Network-first costs
+  // one extra round trip per asset when online, in exchange for "what I
+  // pushed is what they see" semantics.
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request)
-          .then((res) => cacheAndReturn(request, res))
-          .catch(() => cached); // offline → fall back to whatever we have
-        // If cached: serve immediately, refresh in background.
-        // If not cached: wait for the network response.
-        return cached || fetchPromise;
-      })
+      fetch(request)
+        .then((res) => cacheAndReturn(request, res))
+        .catch(() => caches.match(request))
     );
     return;
   }

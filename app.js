@@ -1,11 +1,11 @@
 /* =========================================================
- * Rubik's Storage — front-end
+ * Rubik's Storage - front-end
  *
  * This file drives the WORKSPACE-TOP-BAR shell (Home / Browse /
  * Practice / Timer / Stats / Settings) defined in index.html.
  *
  * The existing module entry points (drill.start / recognition.start /
- * batch.start / weak-cases.start / timer.openTimer) are untouched —
+ * batch.start / weak-cases.start / timer.openTimer) are untouched -
  * we wire the new UI to them via hidden trigger buttons in index.html
  * so the drill/recognition/batch/timer modal flows keep working.
  *
@@ -192,7 +192,7 @@ const statsPageState = {
 };
 
 /* Session-only set of case-keys the user has "Skip"ped from the Home
- * focus strip. Cleared on page reload — the SRS schedule (or actual
+ * focus strip. Cleared on page reload - the SRS schedule (or actual
  * practice) determines next-day focus. */
 const skippedFocusKeys = new Set();
 
@@ -250,12 +250,18 @@ function bindWorkspaceBar() {
 }
 
 function setActivePage(page) {
+  const prev = appState.activePage;
   appState.activePage = page;
   for (const btn of document.querySelectorAll(".ws-mode")) {
     btn.classList.toggle("active", btn.dataset.page === page);
   }
   for (const section of document.querySelectorAll(".page")) {
     section.classList.toggle("active", section.dataset.page === page);
+  }
+  // Tear down inline timer when switching AWAY from Timer page so key
+  // handlers + rafs are released. Re-mounted on next visit by renderTimer.
+  if (prev === "timer" && page !== "timer") {
+    import("./timer.js").then((mod) => mod.unmountTimer());
   }
   const renderer = ({
     home: renderHome,
@@ -271,7 +277,7 @@ function setActivePage(page) {
 
 /* Account chip in the workspace bar. When cloud sync isn't configured
  * (supabase-config.js placeholders empty), the chip stays as a static
- * "Sign in" — clicking it just opens the modal which will offer no
+ * "Sign in" - clicking it just opens the modal which will offer no
  * providers. To keep the UI honest we hide it in that case. */
 function bindAccount() {
   const btn = document.getElementById("ws-account");
@@ -327,7 +333,7 @@ function bindHiddenTriggers() {
   });
   document.getElementById("batch-selected").addEventListener("click", async () => {
     const pllKeys = selection.allKeys().filter((k) => k.startsWith("pll/"));
-    if (pllKeys.length === 0) return showToast("Batch needs PLL cases — select some in Browse", "error");
+    if (pllKeys.length === 0) return showToast("Batch needs PLL cases. Select some in Browse first.", "error");
     const mod = await import("./batch.js");
     mod.start(appState.data, pllKeys);
   });
@@ -372,7 +378,7 @@ function renderHome() {
         <button class="btn btn-primary" data-act="start">Start drill →</button>
       </div>`;
     focusEl.querySelector('[data-act="skip"]').addEventListener("click", () => {
-      // Mark this case as skipped for the rest of the session — the next
+      // Mark this case as skipped for the rest of the session - the next
       // renderHome() will surface the next-weakest as the focus. Skipped
       // set is in-memory only (cleared on reload) since the underlying
       // SRS schedule + actual practice is what determines tomorrow's focus.
@@ -562,7 +568,7 @@ function computeWeekStats() {
   });
   const ao12 = sessions.trimmedAverage(thisWeek, 12);
 
-  // Drill reps from stats.lastAt — count reps that happened in last 7 days
+  // Drill reps from stats.lastAt - count reps that happened in last 7 days
   const allStats = stats.getAll();
   const weekSec = nowMs / 1000 - 7 * 86400;
   let drillRepsThisWeek = 0;
@@ -720,7 +726,7 @@ function renderBrowse() {
   /* Facet filter row */
   const facetEl = renderFacetRow(cat, allItems);
 
-  /* Selection action bar — only shown for drillable categories */
+  /* Selection action bar - only shown for drillable categories */
   const actions = document.createElement("div");
   if (cat.drillable) {
     actions.className = "toolbar";
@@ -728,7 +734,7 @@ function renderBrowse() {
     actions.innerHTML = `
       <button class="btn btn-small" id="browse-select-all">Select all in view</button>
       <button class="btn btn-small" id="browse-clear" ${selection.size() === 0 ? "disabled" : ""}>Clear selection</button>
-      <span class="meta-label" id="browse-selcount">${selection.size() === 0 ? "Nothing selected — click a card or use the checkbox" : `${selection.size()} selected`}</span>
+      <span class="meta-label" id="browse-selcount">${selection.size() === 0 ? "Nothing selected. Click a card or use the checkbox." : `${selection.size()} selected`}</span>
       <span style="margin-left:auto"></span>
       <button class="btn btn-primary btn-small" id="browse-drill" ${selection.size() === 0 ? "disabled" : ""}>Drill selected →</button>
       <button class="btn btn-small" id="browse-batch" ${selection.allKeys().filter(k=>k.startsWith("pll/")).length === 0 ? "disabled" : ""} title="Solve 5 PLLs under one continuous timer">Batch (5)</button>
@@ -821,8 +827,8 @@ function renderFacetRow(cat, items) {
 function catSubtitle(cat) {
   if (cat.key === "pll") return "21 last-layer permutations. Click cards to select; drill the selection from the bar below.";
   if (cat.key === "oll") return "57 last-layer orientations. Click cards to select; drill the selection from the bar below.";
-  if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only — not drillable.";
-  if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only — not drillable.";
+  if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only, not drillable.";
+  if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
   return "";
 }
@@ -996,7 +1002,7 @@ function renderPractice() {
     submodeRow.appendChild(btn);
   }
 
-  /* Stage — different content per submode */
+  /* Stage - different content per submode */
   const shell = document.createElement("div");
   shell.className = "practice-shell";
 
@@ -1027,7 +1033,7 @@ function practiceStageContent(submode, ctx) {
 
   if (submode === "drill") {
     headline.textContent = "Drill selected cases";
-    sub.textContent = "Cstimer-style spacebar timer. Each case is scrambled and you solve it under the clock. Drill times update spaced-repetition automatically.";
+    sub.textContent = "Hold space to arm, release to start, press any key to stop. Each case is scrambled and you solve it under the clock. Drill times update spaced-repetition automatically.";
     countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}`;
     const start = btn("btn btn-primary btn-lg", "Start drill →");
     start.disabled = ctx.totalSel === 0;
@@ -1036,7 +1042,7 @@ function practiceStageContent(submode, ctx) {
     browse.addEventListener("click", () => setActivePage("browse"));
     ctaRow.append(start, browse);
   } else if (submode === "weak") {
-    headline.textContent = "Today's drill — weakest cases";
+    headline.textContent = "Today's drill";
     sub.textContent = "Surface the cases you've practiced least, are slowest on, or are overdue for spaced-repetition review. Opens a picker so you can confirm the lineup before starting.";
     const weak = rankWeakCases(["pll", "oll"], 20);
     const dueCount = weak.filter((c) => c.isDue).length;
@@ -1056,7 +1062,7 @@ function practiceStageContent(submode, ctx) {
     browse.addEventListener("click", () => setActivePage("browse"));
     ctaRow.append(start, browse);
   } else if (submode === "batch") {
-    headline.textContent = "Batch — 5 PLLs, one continuous timer";
+    headline.textContent = "Batch: 5 PLLs, one continuous timer";
     sub.textContent = "Pulls 5 random PLLs from your selection, then issues a single short scramble that's equivalent to the composed setup. You execute all 5 algorithms under one timer; the cube ends solved.";
     countPill.innerHTML = `<b>${ctx.pllCount}</b> PLL case${ctx.pllCount === 1 ? "" : "s"} selected${ctx.pllCount < 5 ? " · need 5+ for variety" : ""}`;
     const start = btn("btn btn-primary btn-lg", "Start batch →");
@@ -1143,74 +1149,24 @@ function btn(className, text) {
 
 /* ============================================================ */
 /* TIMER                                                          */
+/* The timer mounts INLINE into the page (no modal). This is the   */
+/* full speedcubing timer with WCA inspection, sessions, comments  */
+/* and stats footer, hosted directly under the workspace bar.      */
 /* ============================================================ */
 
 function renderTimer() {
   const root = document.getElementById("page-timer");
   if (!appState.data) return;
-
-  const sess = sessions.getActiveSession();
-  const solves = sess?.solves || [];
-  const best = sessions.bestSingle(solves);
-  const mean = sessions.mean(solves);
-  const ao5 = sessions.trimmedAverage(solves, 5);
-  const ao12 = sessions.trimmedAverage(solves, 12);
-
-  /* Header */
-  const head = document.createElement("div");
-  head.className = "page-head";
-  head.innerHTML = `
-    <div>
-      <h1 class="page-title">Timer</h1>
-      <p class="page-subtitle">Cstimer-style speedcubing timer with WCA inspection, sessions, and per-solve notes. Press the big button to enter the fullscreen timer.</p>
-    </div>
-    <div class="row" style="gap:var(--s-2);">
-      <span class="meta-label">Session</span>
-      <strong style="color: var(--text); font-family: var(--font-display);">${escapeHtml(sess?.name || "—")}</strong>
-      <button class="btn btn-small" id="timer-open">Open timer →</button>
-    </div>`;
-  head.querySelector("#timer-open").addEventListener("click", () => document.getElementById("open-timer").click());
-
-  /* Stage + side */
-  const shell = document.createElement("div");
-  shell.className = "timer-shell";
-
-  const stage = document.createElement("div");
-  stage.className = "timer-stage";
-  stage.innerHTML = `
-    <h2 class="timer-stage-headline">${escapeHtml(sess?.name || "Default session")}</h2>
-    <p class="timer-stage-sub">${solves.length} solve${solves.length === 1 ? "" : "s"} in this session.${sessions.getInspection() ? " WCA inspection on (" + sessions.getInspectionDurationSec() + "s)." : " Inspection off."}</p>
-    <div class="timer-stage-display">${best != null ? sessions.fmtMs(best) : "0.00"}</div>
-    <p class="timer-hint">best single this session</p>
-    <button class="btn btn-primary btn-lg" id="timer-launch">Launch fullscreen timer →</button>`;
-  stage.querySelector("#timer-launch").addEventListener("click", () => document.getElementById("open-timer").click());
-
-  const side = document.createElement("div");
-  side.className = "timer-side";
-  side.innerHTML = `
-    <div class="timer-stats-grid">
-      <div class="timer-stat-cell"><p class="stat-label">Best</p><p class="stat-value">${best != null ? sessions.fmtMs(best) : "-"}</p></div>
-      <div class="timer-stat-cell"><p class="stat-label">Mean</p><p class="stat-value">${mean != null ? sessions.fmtMs(mean) : "-"}</p></div>
-      <div class="timer-stat-cell"><p class="stat-label">ao5</p><p class="stat-value">${ao5 != null ? sessions.fmtMs(ao5) : "-"}</p></div>
-      <div class="timer-stat-cell"><p class="stat-label">ao12</p><p class="stat-value">${ao12 != null ? sessions.fmtMs(ao12) : "-"}</p></div>
-    </div>
-    <div class="side-block">
-      <h3 class="side-block-title">Recent solves</h3>
-      <div class="session-list">
-        ${solves.slice(-15).reverse().map((s, i) => {
-          const t = sessions.effectiveMs(s);
-          const isBest = best != null && t === best;
-          return `
-            <div class="session-item ${isBest ? "best" : ""}">
-              <span>${sessions.fmtSolve(s)}</span>
-              <span class="session-meta">#${solves.length - i}${isBest ? " · best" : ""}</span>
-            </div>`;
-        }).join("") || `<div class="session-meta" style="padding: var(--s-2) 0;">No solves yet — launch the timer.</div>`}
-      </div>
-    </div>`;
-
-  shell.append(stage, side);
-  root.replaceChildren(head, shell);
+  // Single inline host fills the page; timer.js builds its UI inside.
+  let host = root.querySelector(".timer-inline-host");
+  if (!host) {
+    host = document.createElement("div");
+    host.className = "timer-inline-host";
+    root.replaceChildren(host);
+  }
+  // mountTimer is idempotent: if already mounted into this host, it no-ops
+  // so the live timer state survives the page-render call.
+  import("./timer.js").then((mod) => mod.mountTimer(host));
 }
 
 /* ============================================================ */
@@ -1314,7 +1270,7 @@ function renderStats() {
   const heatmapHost = body.querySelector("#stats-heatmap");
   drawHeatmap(heatmapHost, allSolves);
 
-  // Mastery grid — top 6 drilled cases by best time (ascending)
+  // Mastery grid - top 6 drilled cases by best time (ascending)
   const masteryHost = body.querySelector("#stats-mastery");
   drawMastery(masteryHost);
 
@@ -1468,7 +1424,7 @@ function renderSettings() {
         <div class="settings-row">
           <div>
             <div class="settings-label">Cloud sync</div>
-            <div class="settings-desc">${user ? "Active — drill + sessions sync across devices" : "Sign in to enable cloud sync"}</div>
+            <div class="settings-desc">${user ? "Active. Drill + sessions sync across devices." : "Sign in to enable cloud sync"}</div>
           </div>
           <span class="chip ${user ? "accent" : ""}">${user ? "Connected" : "Off"}</span>
         </div>` : `
@@ -1643,7 +1599,7 @@ function renderSettings() {
     </div>
     <div class="settings-about-cell">
       <span class="settings-about-label">Tip</span>
-      <span class="settings-about-value" style="font-size: 12px; font-weight: 400; color: var(--text-soft);">Press space in the Timer page for cstimer-style hold-to-start.</span>
+      <span class="settings-about-value" style="font-size: 12px; font-weight: 400; color: var(--text-soft);">Hold space on the Timer page to arm, release to start, press a key to stop.</span>
     </div>`;
 
   body.append(shell, about);
@@ -1659,8 +1615,7 @@ function showToast(label, kind = "info") {
   if (existing) existing.remove();
   const t = document.createElement("div");
   t.className = "soon-toast" + (kind === "error" ? " error" : "");
-  t.textContent = kind === "info" && !label.includes("—") ? `${label} — coming soon` : label;
-  if (kind !== "info") t.textContent = label;
+  t.textContent = kind === "info" ? `${label}: coming soon` : label;
   document.body.appendChild(t);
   requestAnimationFrame(() => t.classList.add("show"));
   setTimeout(() => {
