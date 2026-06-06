@@ -1,0 +1,787 @@
+<!doctype html>
+<!--suppress CssUnusedSymbol, HtmlUnknownTarget -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rubik's Storage — App Map</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --bg-0:   #07091a;
+      --bg-1:   #0e1330;
+      --bg-2:   #161c47;
+      --text:   #e8ecf8;
+      --muted:  #7d8aae;
+      --line:   rgba(255,255,255,0.07);
+
+      /* Cube palette */
+      --c-white:  #e9ecf3;
+      --c-yellow: #f6d12f;
+      --c-red:    #ff4b4b;
+      --c-orange: #ff8a2c;
+      --c-blue:   #5b8cff;
+      --c-green:  #2ddb86;
+      --c-purple: #b27ce9;
+
+      /* Category accents */
+      --cat-core:      var(--c-white);
+      --cat-learning:  var(--c-yellow);
+      --cat-content:   var(--c-blue);
+      --cat-practice:  var(--c-red);
+      --cat-timer:     var(--c-orange);
+      --cat-account:   var(--c-green);
+      --cat-analytics: var(--c-purple);
+
+      /* Declared so static linters can resolve them; the real values are
+       * set per-element in JS (see focusNode + openPanel). */
+      --edge-color:    rgba(255,255,255,0.55);
+      --panel-accent:  var(--c-blue);
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg-0);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", Roboto, system-ui, sans-serif;
+      font-feature-settings: "ss01", "cv01", "cv02";
+      letter-spacing: -0.005em;
+      min-height: 100vh;
+      overflow-x: auto;
+    }
+
+    /* Layered aurora background */
+    body::before, body::after {
+      content: "";
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      inset: 0;
+      background:
+        radial-gradient(70% 50% at 20% 0%,  rgba(91,140,255,0.18), transparent 70%),
+        radial-gradient(60% 50% at 85% 100%, rgba(178,124,233,0.14), transparent 70%),
+        radial-gradient(50% 40% at 50% 50%, rgba(45,219,134,0.05), transparent 70%);
+      animation: drift 28s ease-in-out infinite alternate;
+    }
+    body::after {
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+    }
+    @keyframes drift {
+      0%   { transform: translate3d(0,0,0); }
+      50%  { transform: translate3d(-30px,20px,0); }
+      100% { transform: translate3d(20px,-15px,0); }
+    }
+
+    header {
+      position: relative;
+      z-index: 2;
+      padding: 36px 48px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      max-width: 1560px;
+      margin: 0 auto;
+    }
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .brand-mark {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, var(--c-yellow), var(--c-orange));
+      border-radius: 3px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 14px rgba(246, 209, 47, 0.5);
+    }
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+    h1 .sub {
+      color: var(--muted);
+      font-weight: 400;
+      margin-left: 8px;
+      font-size: 18px;
+    }
+    .subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      max-width: 60ch;
+    }
+
+    .legend {
+      display: flex;
+      gap: 18px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      background: rgba(15,20,46,0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend strong { color: var(--text); font-weight: 500; }
+    .legend-row { display: flex; gap: 14px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot.live      { background: var(--c-green); box-shadow: 0 0 8px var(--c-green); }
+    .dot.planned   { background: var(--c-yellow); box-shadow: 0 0 6px var(--c-yellow); }
+    .dot.wip       { background: var(--c-orange); box-shadow: 0 0 6px var(--c-orange); }
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    .canvas {
+      position: relative;
+      width: 1500px;
+      height: 1180px;
+      margin: 12px auto 64px;
+      z-index: 1;
+    }
+
+    .lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .edge {
+      fill: none;
+      stroke: rgba(255,255,255,0.10);
+      stroke-width: 1.2;
+      transition: stroke 0.2s ease, stroke-width 0.2s ease, opacity 0.2s ease;
+    }
+    .edge.planned { stroke-dasharray: 4 5; stroke: rgba(255,255,255,0.07); }
+    .edge.dim     { opacity: 0.15; }
+    .edge.highlight {
+      stroke: var(--edge-color, rgba(255,255,255,0.55));
+      stroke-width: 1.8;
+      filter: drop-shadow(0 0 4px var(--edge-color, rgba(255,255,255,0.4)));
+    }
+
+    .node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      width: 168px;
+      padding: 12px 14px 13px;
+      background: linear-gradient(180deg, rgba(28,36,68,0.92), rgba(18,24,52,0.92));
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.04) inset,
+        0 12px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(.2,.7,.2,1.2), border-color 0.2s, box-shadow 0.2s, opacity 0.2s;
+    }
+    .node:hover {
+      transform: translate(-50%, -50%) scale(1.045);
+      border-color: var(--accent);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.04) inset,
+        0 14px 34px rgba(0,0,0,0.45),
+        0 0 0 1px var(--accent),
+        0 0 22px color-mix(in srgb, var(--accent) 35%, transparent);
+      z-index: 6;
+    }
+    .node.dim { opacity: 0.28; }
+
+    /* Cube-sticker tab on top-left */
+    .node::before {
+      content: "";
+      position: absolute;
+      left: 16px;
+      top: -6px;
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      border-radius: 2px;
+      transform: rotate(45deg);
+      box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 70%, transparent);
+    }
+
+    .node-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .node-label {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .node-status {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .node[data-status="live"] .node-status {
+      background: var(--c-green);
+      box-shadow: 0 0 8px var(--c-green);
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+    .node[data-status="planned"] .node-status {
+      background: var(--c-yellow);
+      box-shadow: 0 0 6px var(--c-yellow);
+    }
+    .node[data-status="wip"] .node-status {
+      background: var(--c-orange);
+      box-shadow: 0 0 6px var(--c-orange);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.55; transform: scale(0.86); }
+    }
+
+    .node[data-status="planned"] {
+      background: linear-gradient(180deg, rgba(20,26,52,0.6), rgba(14,18,40,0.55));
+      border-style: dashed;
+      border-color: rgba(255,255,255,0.14);
+    }
+
+    .node-cat {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .node-cat-chip {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .panel {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      width: 340px;
+      max-height: 380px;
+      overflow-y: auto;
+      background: rgba(14,19,46,0.94);
+      backdrop-filter: blur(20px) saturate(140%);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 18px 20px 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: none;
+      z-index: 50;
+    }
+    .panel.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .panel-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      background: color-mix(in srgb, var(--panel-accent, var(--c-blue)) 18%, transparent);
+      color: color-mix(in srgb, var(--panel-accent, var(--c-blue)) 85%, white);
+      border-radius: 6px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .panel-title {
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      margin: 0 0 8px;
+    }
+    .panel-desc {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #b8c4e0;
+      margin: 0 0 14px;
+    }
+    .panel-links {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .panel-link-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .panel-link {
+      padding: 4px 9px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .panel-link:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.18);
+    }
+    .panel-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .panel-close:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+    /* Cluster labels — large faded zone titles drawn beneath the nodes */
+    .zone {
+      position: absolute;
+      pointer-events: none;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.18);
+      z-index: 0;
+    }
+
+    footer {
+      position: relative;
+      z-index: 1;
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 0 48px 60px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    footer code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      background: rgba(255,255,255,0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #cfd6ea;
+    }
+
+    @media (max-width: 1560px) {
+      header, footer { padding-left: 24px; padding-right: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <h1>App Map<span class="sub">— Rubik's Storage</span></h1>
+      </div>
+      <p class="subtitle">Existing pages (live), planned features, and how they connect. Hover any node to highlight its links. Click for details.</p>
+    </div>
+
+    <div class="legend" aria-label="Legend">
+      <div class="legend-row">
+        <div class="legend-item"><span class="dot live"></span><strong>Live</strong></div>
+        <div class="legend-item"><span class="dot planned"></span><strong>Planned</strong></div>
+        <div class="legend-item"><span class="dot wip"></span><strong>In design</strong></div>
+      </div>
+      <div class="legend-row" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 16px;">
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-core)"></span>Core</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-learning)"></span>Learning</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-content)"></span>Content</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-practice)"></span>Practice</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-timer)"></span>Timer</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-account)"></span>Account</div>
+        <div class="legend-item"><span class="swatch" style="background:var(--cat-analytics)"></span>Analytics</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="canvas" id="canvas">
+    <!-- Zone labels (drawn faintly behind everything) -->
+    <div class="zone" style="left: 660px; top: 20px;">⌃ Learning Path</div>
+    <div class="zone" style="left: 1230px; top: 230px;">Content ⌗</div>
+    <div class="zone" style="left: 1130px; top: 870px;">Future Algs ⌗</div>
+    <div class="zone" style="left: 580px; top: 470px;">Practice Loop</div>
+    <div class="zone" style="left: 100px; top: 480px;">Timer</div>
+    <div class="zone" style="left: 220px; top: 880px;">Analytics ⌄</div>
+    <div class="zone" style="left: 260px; top: 280px;">Account</div>
+
+    <svg class="lines" id="lines" viewBox="0 0 1500 1180">
+      <defs>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+
+    <div id="nodes"></div>
+  </div>
+
+  <aside class="panel" id="panel" role="dialog" aria-hidden="true">
+    <button class="panel-close" id="panel-close" aria-label="Close">×</button>
+    <div id="panel-content"></div>
+  </aside>
+
+  <footer>
+    <div>Categories use cube-face palette. Connections show navigation flows.</div>
+    <div><code>app-map.html</code> — keep as a living planning doc.</div>
+  </footer>
+
+  <script>
+    /* ============================================================
+     * Data — nodes (pages/features) + edges (navigation links)
+     * Categories drive accent color. Status drives indicator dot
+     * + dashed-vs-solid border. Coords are absolute on a
+     * 1500×1180 canvas; hand-positioned for legibility, not
+     * auto-layout (you can rearrange freely).
+     * ============================================================ */
+    const CAT_COLOR = {
+      core:      "var(--cat-core)",
+      learning:  "var(--cat-learning)",
+      content:   "var(--cat-content)",
+      practice:  "var(--cat-practice)",
+      timer:     "var(--cat-timer)",
+      account:   "var(--cat-account)",
+      analytics: "var(--cat-analytics)",
+    };
+
+    const NODES = [
+      /* CORE — central hubs */
+      { id: "home", label: "Home", x: 700, y: 440, status: "live", cat: "core",
+        desc: "Tab navigation (PLL/OLL/F2L/Notation) + the selection toolbar that holds Timer / Today's drill / Drill / Batch / Train recognition. Everything radiates from here." },
+      { id: "alg-browser", label: "Algorithm Browser", x: 1010, y: 440, status: "live", cat: "core",
+        desc: "Card grid for the active tab. Search, filter chips, per-card alg + cube preview + drill button. Driven by the data-driven CATEGORIES table." },
+
+      /* LEARNING — planned top zone */
+      { id: "guided-path", label: "Guided Path", x: 560, y: 110, status: "planned", cat: "learning",
+        desc: "Intermediate progression. Branching sub-paths from 2-look CFOP → full CFOP → sub-20 → sub-15 → advanced subsets. Built for cubers already committed to getting faster." },
+      { id: "milestones", label: "Milestones", x: 850, y: 130, status: "planned", cat: "learning",
+        desc: "Checkpoints — full PLL learned, full CFOP, sub-20, sub-15, ZBLL T/U subset. Multiple sub-paths converge at each one so the user can pick what to drill next." },
+      { id: "fingertricks", label: "Fingertricks", x: 870, y: 800, status: "planned", cat: "learning",
+        desc: "Animated cube playback (cubing.js) with finger annotations per alg. Best moat candidate — nothing on the market does this well." },
+
+      /* CONTENT — current algorithm tabs */
+      { id: "pll",      label: "PLL",      x: 1200, y: 320, status: "live", cat: "content", desc: "21 algorithms with precomputed setups + canonical rotation cancellation." },
+      { id: "oll",      label: "OLL",      x: 1340, y: 380, status: "live", cat: "content", desc: "57 algorithms, recognition groups for rotation-equivalent cases." },
+      { id: "f2l-adv",  label: "F2L",     x: 1340, y: 480, status: "live", cat: "content", desc: "Advanced F2L cases (25). Not drillable yet — no setup precompute." },
+      { id: "notation", label: "Notation", x: 1175, y: 560, status: "live", cat: "content", desc: "Reference grid for cube notation. Filter by face / wide / slice / rotation / modifier." },
+
+      /* CONTENT — planned */
+      { id: "coll", label: "COLL", x: 1340, y: 700, status: "planned", cat: "content",
+        desc: "~40 algorithms. Corner OLL with permutation. Popular for OH; common 'next step' after full PLL+OLL." },
+      { id: "zbll", label: "ZBLL Subsets", x: 1340, y: 800, status: "planned", cat: "content",
+        desc: "T and U subsets first (~50 algorithms). Stretch content for advanced cubers." },
+      { id: "oh",   label: "OH Variants",  x: 1175, y: 770, status: "planned", cat: "content",
+        desc: "PLL/OLL algorithm variants optimized for one-handed solving. Captures the OH competition audience." },
+      { id: "roux", label: "Roux Method",  x: 1030, y: 830, status: "planned", cat: "content",
+        desc: "Alternate method: F2B → CMLL → LSE. Differentiation play against the all-CFOP world." },
+
+      /* PRACTICE — current */
+      { id: "drill",       label: "Drill",         x: 640, y: 600, status: "live", cat: "practice",
+        desc: "Spacebar timer per case, SRS-rated reps (Leitner box advance). Uses shuffled-bag picker to avoid back-to-back duplicates." },
+      { id: "recognition", label: "Recognition",   x: 510, y: 700, status: "live", cat: "practice",
+        desc: "Settings screen first (time limit, auto-advance), then trainer. PLL = free-text input, OLL = name-button picker." },
+      { id: "batch",       label: "Batch (5)",     x: 780, y: 660, status: "live", cat: "practice",
+        desc: "Chained 5-PLL drill using the precomputed composition table (pll-compose.json). One short scramble, cube ends solved." },
+      { id: "weak-cases",  label: "Today's Drill", x: 700, y: 540, status: "live", cat: "practice",
+        desc: "Ranks drillable cases: SRS-overdue first, then never-drilled, then slowest best-times. Delegates to drill or batch." },
+
+      /* TIMER — current */
+      { id: "timer",      label: "Timer",      x: 280, y: 580, status: "live", cat: "timer",
+        desc: "CSTimer-style fullscreen timer. WCA inspection, configurable duration, phase splits, scrambles, sessions." },
+      { id: "sessions",   label: "Sessions",   x: 280, y: 680, status: "live", cat: "timer",
+        desc: "Multi-session manager with WCA ao5/ao12/mean/best, export/import JSON, comment editor per solve." },
+      { id: "solve-info", label: "Solve Info", x: 150, y: 800, status: "live", cat: "timer",
+        desc: "Per-solve editor: colored scramble + VisualCube preview + note. Persists per solve via comment field." },
+
+      /* ANALYTICS — planned */
+      { id: "solve-analysis", label: "Solve Analysis", x: 380, y: 870, status: "planned", cat: "analytics",
+        desc: "Break each solve into cross / F2L pairs / OLL / PLL phases. Show splits vs your average, suggest practice based on slow phases." },
+      { id: "progress",       label: "Progress Dashboard", x: 540, y: 970, status: "planned", cat: "analytics",
+        desc: "Trends over time. Best/avg by session, alg mastery heatmap, time-to-milestone tracking." },
+      { id: "achievements",   label: "Achievements", x: 730, y: 1000, status: "planned", cat: "analytics",
+        desc: "Sub-30, sub-20, full PLL learned, etc. Light gamification — milestones turn into shareable badges." },
+      { id: "sharing",        label: "Sharing", x: 130, y: 960, status: "planned", cat: "analytics",
+        desc: "Share a session or PR via short link, friend leaderboards. Light social, opt-in only." },
+
+      /* ACCOUNT */
+      { id: "settings", label: "Settings", x: 490, y: 360, status: "live", cat: "account",
+        desc: "Dark-mode toggle, reset stats button, account section (when signed in)." },
+      { id: "sign-in",  label: "Sign In",  x: 330, y: 390, status: "live", cat: "account",
+        desc: "Magic-link email OR Google OAuth. Triggers cloud-sync init and the conflict resolution flow." },
+      { id: "account",  label: "Account",  x: 350, y: 490, status: "live", cat: "account",
+        desc: "Shows email, sign-out, sync status. Lives inside the Settings dropdown when signed in." },
+    ];
+
+    /* Edges — { from, to, status: 'live' | 'planned' } */
+    const EDGES = [
+      /* Home → main navigation */
+      ["home", "alg-browser", "live"],
+      ["home", "settings",    "live"],
+      ["home", "sign-in",     "live"],
+      ["home", "timer",       "live"],
+      ["home", "drill",       "live"],
+      ["home", "recognition", "live"],
+      ["home", "batch",       "live"],
+      ["home", "weak-cases",  "live"],
+      ["home", "guided-path", "planned"],
+
+      /* Alg browser → tabs */
+      ["alg-browser", "pll",      "live"],
+      ["alg-browser", "oll",      "live"],
+      ["alg-browser", "f2l-adv",  "live"],
+      ["alg-browser", "notation", "live"],
+      ["alg-browser", "coll",     "planned"],
+      ["alg-browser", "zbll",     "planned"],
+      ["alg-browser", "oh",       "planned"],
+      ["alg-browser", "roux",     "planned"],
+
+      /* Practice modes consume alg content */
+      ["drill", "pll",  "live"],
+      ["drill", "oll",  "live"],
+      ["drill", "coll", "planned"],
+      ["drill", "zbll", "planned"],
+      ["drill", "oh",   "planned"],
+      ["recognition", "pll", "live"],
+      ["recognition", "oll", "live"],
+      ["batch", "pll", "live"],
+
+      /* Weak cases → practice modes */
+      ["weak-cases", "drill", "live"],
+      ["weak-cases", "batch", "live"],
+
+      /* Timer family */
+      ["timer", "sessions",       "live"],
+      ["timer", "solve-info",     "live"],
+      ["timer", "solve-analysis", "planned"],
+
+      /* Account */
+      ["sign-in", "account",  "live"],
+      ["settings", "account", "live"],
+
+      /* Learning path connections */
+      ["guided-path", "milestones",        "planned"],
+      ["milestones",  "pll",  "planned"],
+      ["milestones",  "oll",  "planned"],
+      ["milestones",  "coll", "planned"],
+      ["milestones",  "zbll", "planned"],
+      ["milestones",  "f2l-adv", "planned"],
+      ["milestones",  "fingertricks", "planned"],
+
+      /* Fingertricks attaches to every alg category */
+      ["fingertricks", "pll",  "planned"],
+      ["fingertricks", "oll",  "planned"],
+      ["fingertricks", "coll", "planned"],
+      ["fingertricks", "zbll", "planned"],
+      ["fingertricks", "oh",   "planned"],
+
+      /* Analytics */
+      ["progress", "timer",          "planned"],
+      ["progress", "drill",          "planned"],
+      ["progress", "solve-analysis", "planned"],
+      ["achievements", "progress",   "planned"],
+      ["sharing", "progress",        "planned"],
+      ["sharing", "achievements",    "planned"],
+    ];
+
+    /* ============================================================
+     * Render
+     * ============================================================ */
+    const nodesLayer = document.getElementById("nodes");
+    const svg = document.getElementById("lines");
+    const panel = document.getElementById("panel");
+    const panelContent = document.getElementById("panel-content");
+    const panelClose = document.getElementById("panel-close");
+
+    const nodeMap = Object.fromEntries(NODES.map(n => [n.id, n]));
+
+    /* Render nodes */
+    for (const n of NODES) {
+      const el = document.createElement("div");
+      el.className = "node";
+      el.dataset.id = n.id;
+      el.dataset.status = n.status;
+      el.dataset.cat = n.cat;
+      el.style.left = n.x + "px";
+      el.style.top  = n.y + "px";
+      el.style.setProperty("--accent", CAT_COLOR[n.cat]);
+      el.innerHTML = `
+        <div class="node-row">
+          <div class="node-label">${n.label}</div>
+          <div class="node-status" aria-label="${n.status}"></div>
+        </div>
+        <div class="node-cat"><span class="node-cat-chip"></span>${n.cat}</div>
+      `;
+      nodesLayer.appendChild(el);
+
+      el.addEventListener("mouseenter", () => focusNode(n.id));
+      el.addEventListener("mouseleave", () => clearFocus());
+      el.addEventListener("click", () => openPanel(n.id));
+    }
+
+    /* Render edges as quadratic-bezier paths, slightly perpendicular-curved
+     * so dense clusters stay readable. */
+    function pathBetween(x1, y1, x2, y2) {
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 1) return `M ${x1} ${y1} L ${x2} ${y2}`;
+      const mx = (x1 + x2) / 2;
+      const my = (y1 + y2) / 2;
+      // Perpendicular offset, capped so curves don't go wild on long edges.
+      const nx = -dy / len;
+      const ny = dx / len;
+      const amt = Math.min(len * 0.12, 38);
+      const cx = mx + nx * amt;
+      const cy = my + ny * amt;
+      return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    }
+
+    const edgeEls = [];
+    for (const [from, to, status] of EDGES) {
+      const a = nodeMap[from];
+      const b = nodeMap[to];
+      if (!a || !b) continue;
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", pathBetween(a.x, a.y, b.x, b.y));
+      p.classList.add("edge");
+      if (status === "planned") p.classList.add("planned");
+      p.dataset.from = from;
+      p.dataset.to = to;
+      svg.appendChild(p);
+      edgeEls.push({ el: p, from, to, status });
+    }
+
+    /* Hover focus: highlight a node's edges + adjacent nodes, dim others */
+    function focusNode(id) {
+      const neighbors = new Set([id]);
+      for (const e of edgeEls) {
+        if (e.from === id || e.to === id) {
+          e.el.classList.add("highlight");
+          e.el.classList.remove("dim");
+          const otherId = e.from === id ? e.to : e.from;
+          neighbors.add(otherId);
+          const other = nodeMap[otherId];
+          e.el.style.setProperty("--edge-color", CAT_COLOR[other.cat]);
+        } else {
+          e.el.classList.add("dim");
+          e.el.classList.remove("highlight");
+        }
+      }
+      for (const el of nodesLayer.children) {
+        if (!neighbors.has(el.dataset.id)) el.classList.add("dim");
+        else el.classList.remove("dim");
+      }
+    }
+    function clearFocus() {
+      for (const e of edgeEls) {
+        e.el.classList.remove("highlight", "dim");
+        e.el.style.removeProperty("--edge-color");
+      }
+      for (const el of nodesLayer.children) el.classList.remove("dim");
+    }
+
+    /* Panel */
+    function openPanel(id) {
+      const n = nodeMap[id];
+      if (!n) return;
+      panel.style.setProperty("--panel-accent", CAT_COLOR[n.cat]);
+      const connected = EDGES
+        .filter(([f, t]) => f === id || t === id)
+        .map(([f, t]) => f === id ? t : f);
+      const uniq = [...new Set(connected)];
+      panelContent.innerHTML = `
+        <div class="panel-tag">
+          <span class="dot ${n.status}" style="width:6px;height:6px"></span>
+          ${n.status === "live" ? "Live" : n.status === "planned" ? "Planned" : "In design"} · ${n.cat}
+        </div>
+        <h3 class="panel-title">${n.label}</h3>
+        <p class="panel-desc">${n.desc}</p>
+        ${uniq.length ? `
+          <div class="panel-links">Connects to</div>
+          <div class="panel-link-list">
+            ${uniq.map(id2 => `<div class="panel-link" data-jump="${id2}">${nodeMap[id2]?.label || id2}</div>`).join("")}
+          </div>
+        ` : ""}
+      `;
+      panel.classList.add("show");
+      panel.setAttribute("aria-hidden", "false");
+      focusNode(id);
+
+      panel.querySelectorAll("[data-jump]").forEach(el => {
+        el.addEventListener("click", () => openPanel(el.dataset.jump));
+      });
+    }
+    function closePanel() {
+      panel.classList.remove("show");
+      panel.setAttribute("aria-hidden", "true");
+      clearFocus();
+    }
+    panelClose.addEventListener("click", closePanel);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanel(); });
+
+    /* Click outside a node to clear focus (panel stays unless you press Esc/×) */
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".node") && !e.target.closest(".panel")) {
+        clearFocus();
+      }
+    });
+  </script>
+</body>
+</html>

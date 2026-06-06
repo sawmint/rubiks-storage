@@ -1,25 +1,24 @@
 /* =========================================================
  * Rubik's Storage — front-end
  *
- * Architecture:
- *   1. Load JSON dataset.
- *   2. Define a CATEGORIES table — each entry describes how to
- *      render and filter that category. Adding a new category
- *      later (e.g. ZBLL, COLL, OH algs) means appending one row.
- *   3. A single render() function dispatches off state.category.
- *   4. Cards are built from a small renderCard() helper that
- *      composes field components (badges, alg block, meta, etc.)
+ * This file drives the WORKSPACE-TOP-BAR shell (Home / Browse /
+ * Practice / Timer / Stats / Settings) defined in index.html.
+ *
+ * The existing module entry points (drill.start / recognition.start /
+ * batch.start / weak-cases.start / timer.openTimer) are untouched —
+ * we wire the new UI to them via hidden trigger buttons in index.html
+ * so the drill/recognition/batch/timer modal flows keep working.
  *
  * Extension hooks:
  *   - CATEGORIES[].extraBadges(item)  → array of {label, className}
  *   - CATEGORIES[].metaRows(item)     → array of {label, value}
  *   - CATEGORIES[].filterFacets       → which fields drive chips
- *   - Future: add a per-card "actions" hook for buttons like
- *     "animate on cube", "practice timer", "add to favorites".
+ *   - CATEGORIES[].drillable / recognitionMode  → feature gating
  * ========================================================= */
 
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
+import * as sessions from "./sessions.js";
 import * as auth from "./auth.js";
 import * as cloudSync from "./cloud-sync.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
@@ -27,24 +26,10 @@ import { renderHtml as colorizeAlg } from "./alg-color.js";
 const DATA_URL = "rubiks-cube-algorithms.json";
 const VISUALCUBE_BASE = "https://visualcube.api.cubing.net/visualcube.php";
 
-const state = {
-  data: null,
-  category: "pll",
-  search: "",
-  filters: {},        // { facetKey: Set<string> }
-};
+/* ---------- VisualCube ---------- */
 
-/* Build a VisualCube image URL.
- * Pass `setup` (preferred) for forward-application to a solved cube;
- * pass `caseAlg` to apply the inverse (legacy — used by F2L which has no
- * pre-computed setup). Setup-based URLs render correctly even for cases
- * whose solving algorithm contains rotations. */
 export function vcImage({ setup, caseAlg, stage, view, size = 140, sch }) {
-  const params = new URLSearchParams({
-    fmt: "svg",
-    size: String(size),
-    bg: "t",
-  });
+  const params = new URLSearchParams({ fmt: "svg", size: String(size), bg: "t" });
   if (setup)   params.set("alg",  setup);
   if (caseAlg) params.set("case", caseAlg);
   if (stage)   params.set("stage", stage);
@@ -53,100 +38,49 @@ export function vcImage({ setup, caseAlg, stage, view, size = 140, sch }) {
   return `${VISUALCUBE_BASE}?${params.toString()}`;
 }
 
-/* ---------- notation reference data ----------
- * Static dataset used by the Notation tab. Each entry is shaped like a
- * regular algorithm item (id/name/algorithm/setup) so the existing card
- * renderer works as-is — the only difference is `drillable: false` on
- * the category. The `algorithm` field flows through `algRow()` so the
- * letter renders with the same colorizer used everywhere else (R is
- * orange, x is red, etc.). The `setup` field drives the VisualCube
- * preview, which shows the cube state AFTER applying the move from
- * solved (WCA scheme so colors land in their conventional positions).
- */
+/* ---------- notation reference data ---------- */
+
 const NOTATION_DATA = [
-  // ----- Face turns -----
-  { id: "R", name: "Right", algorithm: "R", setup: "R", category: "Face turn",
-    description: "Turn the right face 90° clockwise (looking at the right side)." },
-  { id: "L", name: "Left", algorithm: "L", setup: "L", category: "Face turn",
-    description: "Turn the left face 90° clockwise (looking at the left side)." },
-  { id: "U", name: "Up", algorithm: "U", setup: "U", category: "Face turn",
-    description: "Turn the top face 90° clockwise (looking down at it)." },
-  { id: "D", name: "Down", algorithm: "D", setup: "D", category: "Face turn",
-    description: "Turn the bottom face 90° clockwise (looking up at it)." },
-  { id: "F", name: "Front", algorithm: "F", setup: "F", category: "Face turn",
-    description: "Turn the front face 90° clockwise." },
-  { id: "B", name: "Back", algorithm: "B", setup: "B", category: "Face turn",
-    description: "Turn the back face 90° clockwise (looking from behind)." },
+  { id: "R", name: "Right",  algorithm: "R",  setup: "R",  category: "Face turn", description: "Turn the right face 90° clockwise (looking at the right side)." },
+  { id: "L", name: "Left",   algorithm: "L",  setup: "L",  category: "Face turn", description: "Turn the left face 90° clockwise (looking at the left side)." },
+  { id: "U", name: "Up",     algorithm: "U",  setup: "U",  category: "Face turn", description: "Turn the top face 90° clockwise (looking down at it)." },
+  { id: "D", name: "Down",   algorithm: "D",  setup: "D",  category: "Face turn", description: "Turn the bottom face 90° clockwise (looking up at it)." },
+  { id: "F", name: "Front",  algorithm: "F",  setup: "F",  category: "Face turn", description: "Turn the front face 90° clockwise." },
+  { id: "B", name: "Back",   algorithm: "B",  setup: "B",  category: "Face turn", description: "Turn the back face 90° clockwise (looking from behind)." },
 
-  // ----- Wide moves (two layers) -----
-  { id: "Rw", name: "Right wide (r)", algorithm: "Rw", setup: "Rw", category: "Wide",
-    description: "Turn the right TWO layers in the R direction. Often written lowercase as r." },
-  { id: "Lw", name: "Left wide (l)", algorithm: "Lw", setup: "Lw", category: "Wide",
-    description: "Turn the left TWO layers in the L direction. Often written as l." },
-  { id: "Uw", name: "Up wide (u)", algorithm: "Uw", setup: "Uw", category: "Wide",
-    description: "Turn the top TWO layers in the U direction. Often written as u." },
-  { id: "Dw", name: "Down wide (d)", algorithm: "Dw", setup: "Dw", category: "Wide",
-    description: "Turn the bottom TWO layers in the D direction. Often written as d." },
-  { id: "Fw", name: "Front wide (f)", algorithm: "Fw", setup: "Fw", category: "Wide",
-    description: "Turn the front TWO layers in the F direction. Often written as f." },
-  { id: "Bw", name: "Back wide (b)", algorithm: "Bw", setup: "Bw", category: "Wide",
-    description: "Turn the back TWO layers in the B direction. Often written as b." },
+  { id: "Rw", name: "Right wide (r)", algorithm: "Rw", setup: "Rw", category: "Wide", description: "Turn the right TWO layers in the R direction. Often written lowercase as r." },
+  { id: "Lw", name: "Left wide (l)",  algorithm: "Lw", setup: "Lw", category: "Wide", description: "Turn the left TWO layers in the L direction. Often written as l." },
+  { id: "Uw", name: "Up wide (u)",    algorithm: "Uw", setup: "Uw", category: "Wide", description: "Turn the top TWO layers in the U direction. Often written as u." },
+  { id: "Dw", name: "Down wide (d)",  algorithm: "Dw", setup: "Dw", category: "Wide", description: "Turn the bottom TWO layers in the D direction. Often written as d." },
+  { id: "Fw", name: "Front wide (f)", algorithm: "Fw", setup: "Fw", category: "Wide", description: "Turn the front TWO layers in the F direction. Often written as f." },
+  { id: "Bw", name: "Back wide (b)",  algorithm: "Bw", setup: "Bw", category: "Wide", description: "Turn the back TWO layers in the B direction. Often written as b." },
 
-  // ----- Slice moves (middle layer only) -----
-  { id: "M", name: "Middle slice", algorithm: "M", setup: "M", category: "Slice",
-    description: "Turn the middle slice (between L and R) in the L direction." },
-  { id: "E", name: "Equatorial slice", algorithm: "E", setup: "E", category: "Slice",
-    description: "Turn the equator slice (between U and D) in the D direction." },
-  { id: "S", name: "Standing slice", algorithm: "S", setup: "S", category: "Slice",
-    description: "Turn the standing slice (between F and B) in the F direction." },
+  { id: "M", name: "Middle slice",     algorithm: "M", setup: "M", category: "Slice", description: "Turn the middle slice (between L and R) in the L direction." },
+  { id: "E", name: "Equatorial slice", algorithm: "E", setup: "E", category: "Slice", description: "Turn the equator slice (between U and D) in the D direction." },
+  { id: "S", name: "Standing slice",   algorithm: "S", setup: "S", category: "Slice", description: "Turn the standing slice (between F and B) in the F direction." },
 
-  // ----- Cube rotations (whole cube, no permutation change) -----
-  { id: "x", name: "x rotation", algorithm: "x", setup: "x", category: "Rotation",
-    description: "Rotate the entire cube around the L-R axis, in the R direction." },
-  { id: "y", name: "y rotation", algorithm: "y", setup: "y", category: "Rotation",
-    description: "Rotate the entire cube around the U-D axis, in the U direction." },
-  { id: "z", name: "z rotation", algorithm: "z", setup: "z", category: "Rotation",
-    description: "Rotate the entire cube around the F-B axis, in the F direction." },
+  { id: "x", name: "x rotation", algorithm: "x", setup: "x", category: "Rotation", description: "Rotate the entire cube around the L-R axis, in the R direction." },
+  { id: "y", name: "y rotation", algorithm: "y", setup: "y", category: "Rotation", description: "Rotate the entire cube around the U-D axis, in the U direction." },
+  { id: "z", name: "z rotation", algorithm: "z", setup: "z", category: "Rotation", description: "Rotate the entire cube around the F-B axis, in the F direction." },
 
-  // ----- Modifiers (shown via example) -----
-  { id: "prime", name: "Apostrophe ( ' )", algorithm: "R'", setup: "R'", category: "Modifier",
-    description: "Inverts the move (counter-clockwise / opposite direction). Example: R' is the inverse of R." },
-  { id: "double", name: "Double ( 2 )", algorithm: "R2", setup: "R2", category: "Modifier",
-    description: "Half turn (180°). Same end result regardless of direction. Example: R2 = R + R." },
+  { id: "prime",  name: "Apostrophe ( ' )", algorithm: "R'", setup: "R'", category: "Modifier", description: "Inverts the move (counter-clockwise / opposite direction). Example: R' is the inverse of R." },
+  { id: "double", name: "Double ( 2 )",     algorithm: "R2", setup: "R2", category: "Modifier", description: "Half turn (180°). Same end result regardless of direction. Example: R2 = R + R." },
 ];
 
-/* ---------- category configuration ---------- */
+/* ---------- categories ---------- */
 
 const CATEGORIES = [
   {
-    key: "notation",
-    label: "Notation",
-    accent: "var(--cat-notation)",
-    getItems: () => NOTATION_DATA,
-    titleOf: (it) => it.name,
-    idOf: (it) => it.algorithm,
-    searchFields: ["id", "name", "category", "description", "algorithm"],
-    filterFacets: [
-      { key: "category", label: "Category", from: (it) => it.category },
-    ],
-    extraBadges: (it) => [{ label: it.category, className: "badge" }],
-    metaRows: (it) => [{ label: "Description", value: it.description }],
-    imageUrl: (it) => vcImage({ setup: it.setup, view: "trans", size: 140, sch: "wrgyob" }),
-    drillable: false,
-  },
-  {
     key: "pll",
     label: "PLL",
-    accent: "var(--cat-pll)",
+    accent: "var(--cube-blue)",
     getItems: (d) => d.pll,
     titleOf: (it) => it.name,
     idOf: (it) => it.id,
     searchFields: ["id", "name", "group", "algorithm", "recognition"],
-    filterFacets: [
-      { key: "group", label: "Group", from: (it) => it.group },
-    ],
+    filterFacets: [{ key: "group", label: "Group", from: (it) => it.group }],
     extraBadges: (it) => [
-      it.group   && { label: it.group,            className: "badge" },
+      it.group && { label: it.group, className: "badge" },
       it.auf && it.auf !== "none" && { label: "AUF " + it.auf, className: "badge" },
     ].filter(Boolean),
     metaRows: (it) => [
@@ -159,14 +93,12 @@ const CATEGORIES = [
   {
     key: "oll",
     label: "OLL",
-    accent: "var(--cat-oll)",
+    accent: "var(--cube-orange)",
     getItems: (d) => d.oll,
     titleOf: (it) => it.name,
     idOf: (it) => "#" + it.id,
     searchFields: ["id", "name", "shape", "algorithm", "recognition"],
-    filterFacets: [
-      { key: "shape", label: "Shape", from: (it) => it.shape },
-    ],
+    filterFacets: [{ key: "shape", label: "Shape", from: (it) => it.shape }],
     extraBadges: (it) => [
       it.shape && { label: it.shape, className: "badge" },
     ].filter(Boolean),
@@ -181,14 +113,12 @@ const CATEGORIES = [
     key: "f2l_adv",
     label: "F2L (advanced)",
     shortLabel: "F2L+",
-    accent: "var(--cat-f2l-adv)",
+    accent: "var(--cube-green)",
     getItems: (d) => d.f2l.advanced,
     titleOf: (it) => "Case " + it.id + ": " + (it.trigger || "f2l"),
     idOf: (it) => "#" + it.id,
     searchFields: ["id", "slot", "corner_state", "edge_state", "algorithm", "trigger"],
-    filterFacets: [
-      { key: "trigger", label: "Trigger", from: (it) => it.trigger },
-    ],
+    filterFacets: [{ key: "trigger", label: "Trigger", from: (it) => it.trigger }],
     extraBadges: (it) => [
       it.slot    && { label: "slot " + it.slot, className: "badge" },
       it.trigger && { label: it.trigger,        className: "badge" },
@@ -197,14 +127,14 @@ const CATEGORIES = [
       it.corner_state && { label: "Corner", value: it.corner_state },
       it.edge_state   && { label: "Edge",   value: it.edge_state },
     ].filter(Boolean),
-    imageUrl: (it) => vcImage({ caseAlg: it.algorithm, stage: "f2l", size: 160 }),
+    imageUrl: (it) => vcImage({ caseAlg: it.algorithm, stage: "f2l", size: 140 }),
     drillable: false,
   },
   {
     key: "f2l_beg",
     label: "F2L (beginner)",
     shortLabel: "F2L−",
-    accent: "var(--cat-f2l-beg)",
+    accent: "var(--cube-red)",
     getItems: (d) => d.f2l.beginner,
     titleOf: (it) => it.name,
     idOf: (it) => it.id,
@@ -215,62 +145,151 @@ const CATEGORIES = [
       it.method && { label: "Method", value: it.method },
       it.notes  && { label: "Notes",  value: it.notes },
     ].filter(Boolean),
-    imageUrl: (it) => vcImage({ caseAlg: it.algorithm, stage: "f2l", size: 160 }),
+    imageUrl: (it) => vcImage({ caseAlg: it.algorithm, stage: "f2l", size: 140 }),
+    drillable: false,
+  },
+  {
+    key: "notation",
+    label: "Notation",
+    accent: "var(--cube-green)",
+    getItems: () => NOTATION_DATA,
+    titleOf: (it) => it.name,
+    idOf: (it) => it.algorithm,
+    searchFields: ["id", "name", "category", "description", "algorithm"],
+    filterFacets: [{ key: "category", label: "Category", from: (it) => it.category }],
+    extraBadges: (it) => [{ label: it.category, className: "badge" }],
+    metaRows: (it) => [{ label: "Description", value: it.description }],
+    imageUrl: (it) => vcImage({ setup: it.setup, view: "trans", size: 140, sch: "wrgyob" }),
     drillable: false,
   },
 ];
 
 export const categoryByKey = (key) => CATEGORIES.find((c) => c.key === key);
-export { CATEGORIES, state };
+export const state = { data: null, category: "pll", search: "", filters: {} };  // legacy export shape
+export { CATEGORIES };
 
-/* ---------- bootstrap ---------- */
+/* ============================================================ */
+/* App state                                                      */
+/* ============================================================ */
+
+const appState = {
+  data: null,
+  activePage: "home",
+};
+
+const browseState = {
+  category: "pll",
+  search: "",
+  filters: {},        // { facetKey: Set<string> }
+};
+
+const practiceState = {
+  submode: "drill",   // drill | recognition | batch | weak
+};
+
+const statsPageState = {
+  range: "all",       // 7 | 30 | "all"
+};
+
+/* Session-only set of case-keys the user has "Skip"ped from the Home
+ * focus strip. Cleared on page reload — the SRS schedule (or actual
+ * practice) determines next-day focus. */
+const skippedFocusKeys = new Set();
+
+/* ============================================================ */
+/* Boot                                                            */
+/* ============================================================ */
 
 async function init() {
   try {
     const resp = await fetch(DATA_URL);
     if (!resp.ok) throw new Error("HTTP " + resp.status);
-    state.data = await resp.json();
+    appState.data = await resp.json();
+    state.data = appState.data;
   } catch (err) {
-    document.getElementById("grid").innerHTML =
-      `<div class="empty">Could not load <code>${DATA_URL}</code>: ${escapeHtml(err.message)}.<br>` +
-      `Serve this folder over HTTP (e.g. <code>python3 -m http.server</code>). Opening index.html directly via file:// will not work.</div>`;
+    document.getElementById("page-home").innerHTML = `
+      <div class="page-body">
+        <p class="page-eyebrow">Error</p>
+        <h1 class="page-title">Could not load data</h1>
+        <p class="page-subtitle">
+          ${escapeHtml(err.message)}. Serve this folder over HTTP
+          (e.g. <code>python3 -m http.server</code>). Opening index.html
+          directly via file:// will not work.
+        </p>
+      </div>`;
     return;
   }
 
-  renderTabs();
-  bindSearch();
-  applyStoredTheme();
-  bindSelectionToolbar();
-  bindSettings();
-  bindOpenTimer();
+  bindWorkspaceBar();
   bindAccount();
-  selection.subscribe(updateSelectionUI);
-  // Re-render cards when stats change so the badges stay fresh
-  stats.subscribe(() => render());
-  selectCategory(state.category);
+  bindHiddenTriggers();
+
+  selection.subscribe(() => {
+    if (appState.activePage === "browse")   renderBrowse();
+    if (appState.activePage === "practice") renderPractice();
+  });
+  stats.subscribe(() => {
+    if (appState.activePage === "home")    renderHome();
+    if (appState.activePage === "browse")  renderBrowse();
+    if (appState.activePage === "stats")   renderStats();
+  });
+  sessions.subscribe(() => {
+    if (appState.activePage === "home")     renderHome();
+    if (appState.activePage === "timer")    renderTimer();
+    if (appState.activePage === "stats")    renderStats();
+    if (appState.activePage === "settings") renderSettings();
+  });
+
+  renderHome();
 }
 
-/* ---------- account / cloud sync ----------
- * The account button lives next to the settings gear. When cloud sync isn't
- * configured (supabase-config.js placeholders still empty), the button
- * stays hidden — the app behaves identically to the no-account version.
- * Otherwise we boot the auth client + cloud-sync layer, and the button
- * reflects current auth state. */
+function bindWorkspaceBar() {
+  for (const btn of document.querySelectorAll(".ws-mode")) {
+    btn.addEventListener("click", () => setActivePage(btn.dataset.page));
+  }
+}
+
+function setActivePage(page) {
+  appState.activePage = page;
+  for (const btn of document.querySelectorAll(".ws-mode")) {
+    btn.classList.toggle("active", btn.dataset.page === page);
+  }
+  for (const section of document.querySelectorAll(".page")) {
+    section.classList.toggle("active", section.dataset.page === page);
+  }
+  const renderer = ({
+    home: renderHome,
+    browse: renderBrowse,
+    practice: renderPractice,
+    timer: renderTimer,
+    stats: renderStats,
+    settings: renderSettings,
+  })[page];
+  if (renderer) renderer();
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+/* Account chip in the workspace bar. When cloud sync isn't configured
+ * (supabase-config.js placeholders empty), the chip stays as a static
+ * "Sign in" — clicking it just opens the modal which will offer no
+ * providers. To keep the UI honest we hide it in that case. */
 function bindAccount() {
-  if (!auth.isCloudEnabled()) return;     // no UI when not configured
+  const btn = document.getElementById("ws-account");
+  const label = document.getElementById("ws-account-label");
+  const dot = document.getElementById("ws-account-dot");
+
+  if (!auth.isCloudEnabled()) {
+    btn.style.display = "none";
+    return;
+  }
+
   auth.boot();
   cloudSync.init();
 
-  const btn = document.getElementById("open-account");
-  if (!btn) return;
-  btn.classList.remove("hidden");
   btn.addEventListener("click", async () => {
     const user = auth.currentUser();
     if (user) {
-      // Already signed in — surface the settings popover, which has the
-      // sign-out button. Keeps the header chip click action consistent
-      // (click → see account info).
-      toggleSettingsPopover(document.getElementById("open-settings"));
+      setActivePage("settings");
     } else {
       const mod = await import("./auth-ui.js");
       mod.openSignIn();
@@ -278,565 +297,1395 @@ function bindAccount() {
   });
 
   auth.onAuthChange((user) => {
-    const label = btn.querySelector(".account-btn-label");
     if (user) {
-      // Use the part before the @ as a short identifier
       const short = (user.email || "").split("@")[0] || "Account";
+      label.textContent = short;
+      dot.style.display = "inline-block";
       btn.title = user.email || "Account";
-      if (label) label.textContent = short;
-      btn.classList.add("signed-in");
     } else {
+      label.textContent = "Sign in";
+      dot.style.display = "none";
       btn.title = "Sign in";
-      if (label) label.textContent = "Sign in";
-      btn.classList.remove("signed-in");
     }
+    if (appState.activePage === "settings") renderSettings();
   });
 }
 
-function bindSettings() {
-  const btn = document.getElementById("open-settings");
-  if (!btn) return;
-  btn.addEventListener("click", () => toggleSettingsPopover(btn));
-}
-
-function toggleSettingsPopover(anchor) {
-  const existing = document.querySelector(".header-settings-pop");
-  if (existing) { existing.remove(); return; }
-
-  const pop = document.createElement("div");
-  pop.className = "header-settings-pop";
-
-  // Dark mode toggle
-  const themeRow = document.createElement("label");
-  themeRow.className = "header-settings-row";
-  const themeCb = document.createElement("input");
-  themeCb.type = "checkbox";
-  themeCb.checked = document.documentElement.getAttribute("data-theme") === "dark";
-  themeCb.addEventListener("change", () => {
-    const next = themeCb.checked ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("rs-theme", next);
-  });
-  themeRow.append(themeCb, document.createTextNode(" Dark mode"));
-  pop.appendChild(themeRow);
-
-  // Divider
-  const hr = document.createElement("hr");
-  hr.className = "header-settings-divider";
-  pop.appendChild(hr);
-
-  // Reset stats action
-  const resetBtn = document.createElement("button");
-  resetBtn.type = "button";
-  resetBtn.className = "header-settings-action header-settings-danger";
-  resetBtn.textContent = "Reset drill + recognition stats";
-  resetBtn.addEventListener("click", () => {
-    if (confirm("Reset all drill + recognition stats? This cannot be undone.")) {
-      stats.resetAll();
-      pop.remove();
-    }
-  });
-  pop.appendChild(resetBtn);
-
-  // Account section (only when cloud sync is configured)
-  if (auth.isCloudEnabled()) {
-    const hr2 = document.createElement("hr");
-    hr2.className = "header-settings-divider";
-    pop.appendChild(hr2);
-
-    const user = auth.currentUser();
-    if (user) {
-      const who = document.createElement("div");
-      who.className = "header-settings-row header-settings-info";
-      who.textContent = "Signed in as " + (user.email || "(unknown)");
-      pop.appendChild(who);
-
-      const outBtn = document.createElement("button");
-      outBtn.type = "button";
-      outBtn.className = "header-settings-action";
-      outBtn.textContent = "Sign out";
-      outBtn.addEventListener("click", async () => {
-        await auth.signOut();
-        pop.remove();
-      });
-      pop.appendChild(outBtn);
-    } else {
-      const inBtn = document.createElement("button");
-      inBtn.type = "button";
-      inBtn.className = "header-settings-action";
-      inBtn.textContent = "Sign in / create account";
-      inBtn.addEventListener("click", async () => {
-        pop.remove();
-        const mod = await import("./auth-ui.js");
-        mod.openSignIn();
-      });
-      pop.appendChild(inBtn);
-    }
-  }
-
-  // Click outside to close
-  const onDocClick = (e) => {
-    if (!pop.contains(e.target) && e.target !== anchor) {
-      pop.remove();
-      document.removeEventListener("click", onDocClick);
-    }
-  };
-  setTimeout(() => document.addEventListener("click", onDocClick), 0);
-
-  anchor.insertAdjacentElement("afterend", pop);
-}
-
-function applyStoredTheme() {
-  const stored = localStorage.getItem("rs-theme");
-  if (stored) document.documentElement.setAttribute("data-theme", stored);
-}
-
-function bindOpenTimer() {
-  document.getElementById("open-timer")?.addEventListener("click", async () => {
+function bindHiddenTriggers() {
+  document.getElementById("open-timer").addEventListener("click", async () => {
     const mod = await import("./timer.js");
     mod.openTimer();
   });
-  document.getElementById("open-weak-cases")?.addEventListener("click", async () => {
+  document.getElementById("open-weak-cases").addEventListener("click", async () => {
     const mod = await import("./weak-cases.js");
-    mod.start(state.data);
+    mod.start(appState.data);
   });
-}
-
-/* ---------- selection toolbar ---------- */
-
-function bindSelectionToolbar() {
-  document.getElementById("select-all")?.addEventListener("click", () => {
-    const cat = categoryByKey(state.category);
-    const items = cat.getItems(state.data).filter((it) => matchesFilters(it, cat));
-    selection.selectMany(cat.key, items);
-  });
-  document.getElementById("clear-selection")?.addEventListener("click", () => {
-    selection.clear();
-  });
-  document.getElementById("drill-selected")?.addEventListener("click", async () => {
+  document.getElementById("drill-selected").addEventListener("click", async () => {
+    if (selection.size() === 0) return showToast("Select cases in Browse first", "error");
     const mod = await import("./drill.js");
-    mod.start(state.data, selection.allKeys());
+    mod.start(appState.data, selection.allKeys());
   });
-  document.getElementById("batch-selected")?.addEventListener("click", async () => {
+  document.getElementById("batch-selected").addEventListener("click", async () => {
+    const pllKeys = selection.allKeys().filter((k) => k.startsWith("pll/"));
+    if (pllKeys.length === 0) return showToast("Batch needs PLL cases — select some in Browse", "error");
     const mod = await import("./batch.js");
-    mod.start(state.data, selection.allKeys());
+    mod.start(appState.data, pllKeys);
   });
-  document.getElementById("recog-selected")?.addEventListener("click", async () => {
+  document.getElementById("recog-selected").addEventListener("click", async () => {
+    if (selection.size() === 0) return showToast("Select cases in Browse first", "error");
     const mod = await import("./recognition.js");
-    mod.start(state.data, selection.allKeys());
+    mod.start(appState.data, selection.allKeys());
   });
 }
 
-function updateSelectionUI() {
-  const cat = categoryByKey(state.category);
-  const count = selection.size();
-  const counter = document.getElementById("selection-count");
-  if (counter) counter.textContent = count === 0 ? "" : `${count} selected`;
-  // Update card checkboxes that are currently rendered
-  for (const cb of document.querySelectorAll(".card-checkbox")) {
-    const k = cb.dataset.key;
-    if (k) cb.checked = selection.allKeys().includes(k);
+/* ============================================================ */
+/* HOME                                                           */
+/* ============================================================ */
+
+function renderHome() {
+  const root = document.getElementById("page-home");
+  if (!appState.data) return;
+
+  const weakAll = rankWeakCases(["pll", "oll"], 24);
+  const weak = weakAll.filter((c) => !skippedFocusKeys.has(c.key));
+  const focus = weak[0] || null;
+  const upNext = weak.slice(1, 5);
+  const week = computeWeekStats();
+  const recents = computeRecentSessions();
+  const milestones = computeMilestones();
+
+  /* Focus strip */
+  const focusEl = document.createElement("div");
+  focusEl.className = "focus-strip";
+  if (focus) {
+    focusEl.innerHTML = `
+      <div class="focus-face">
+        <img src="${vcImageFor(focus)}" alt="${escapeHtml(focus.item.name)}" loading="lazy" />
+      </div>
+      <div class="focus-meta">
+        <span class="focus-eyebrow">${focusEyebrow(focus)}</span>
+        <h1 class="focus-name">${focus.category.toUpperCase()} · ${escapeHtml(focus.item.name)}</h1>
+        <div class="focus-alg">${colorizeAlg(focus.item.algorithm)}</div>
+      </div>
+      <div class="focus-actions">
+        <button class="btn" data-act="skip">Skip</button>
+        <button class="btn btn-primary" data-act="start">Start drill →</button>
+      </div>`;
+    focusEl.querySelector('[data-act="skip"]').addEventListener("click", () => {
+      // Mark this case as skipped for the rest of the session — the next
+      // renderHome() will surface the next-weakest as the focus. Skipped
+      // set is in-memory only (cleared on reload) since the underlying
+      // SRS schedule + actual practice is what determines tomorrow's focus.
+      skippedFocusKeys.add(focus.key);
+      renderHome();
+    });
+    focusEl.querySelector('[data-act="start"]').addEventListener("click", () => {
+      selection.clear();
+      selection.toggle(focus.category, focus.item.id);
+      document.getElementById("drill-selected").click();
+    });
+  } else {
+    focusEl.style.gridTemplateColumns = "1fr auto";
+    focusEl.innerHTML = `
+      <div class="focus-meta">
+        <span class="focus-eyebrow">Today's drill</span>
+        <h1 class="focus-name">Pick a starting point.</h1>
+        <div class="focus-alg" style="color: var(--text-soft);">
+          Head to Browse and select a few PLL or OLL cases to start drilling.
+          We'll surface the weakest ones here as you practice.
+        </div>
+      </div>
+      <div class="focus-actions">
+        <button class="btn btn-primary" data-act="browse">Browse algorithms →</button>
+      </div>`;
+    focusEl.querySelector('[data-act="browse"]').addEventListener("click", () => setActivePage("browse"));
   }
-  // Enable/disable selection-driven action buttons
-  for (const id of ["drill-selected", "batch-selected", "recog-selected", "clear-selection"]) {
-    const btn = document.getElementById(id);
-    if (btn) btn.disabled = count === 0;
+
+  /* Workshop grid */
+  const grid = document.createElement("div");
+  grid.className = "home-grid";
+
+  // Milestones column
+  const col1 = document.createElement("div");
+  col1.innerHTML = `
+    <h2 class="home-col-title">
+      Your path
+      <span class="home-col-title-meta">${milestones.filter(m=>m.done).length} of ${milestones.length}</span>
+    </h2>
+    <ul class="milestone-list">
+      ${milestones.map((m, i) => `
+        <li class="milestone ${m.done ? "done" : ""} ${m.current ? "current" : ""}">
+          <span class="milestone-num">${String(i + 1).padStart(2, "0")}</span>
+          <span class="milestone-name">${escapeHtml(m.name)}</span>
+          <span class="milestone-meta">${escapeHtml(m.meta)}</span>
+        </li>`).join("")}
+    </ul>`;
+  grid.appendChild(col1);
+
+  // Recommended next
+  const col2 = document.createElement("div");
+  const upHtml = upNext.length
+    ? upNext.map((c) => `
+        <div class="upnext" data-key="${escapeHtml(c.key)}">
+          <div class="upnext-face">
+            <img src="${vcImageFor(c, 80)}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
+          </div>
+          <div class="upnext-meta">
+            <span class="upnext-cat">${c.category.toUpperCase()}${c.item.group ? " · " + escapeHtml(c.item.group) : ""}${c.item.shape ? " · " + escapeHtml(c.item.shape) : ""}</span>
+            <span class="upnext-name">${escapeHtml(c.item.name)}</span>
+            <span class="upnext-alg">${colorizeAlg(c.item.algorithm)}</span>
+          </div>
+          <button class="btn btn-small" data-act="drill">Drill →</button>
+        </div>`).join("")
+    : `<div class="upnext" style="grid-template-columns: 1fr; cursor:default;"><div class="upnext-meta"><span class="upnext-cat">No recommendations yet</span><span class="upnext-name" style="font-size:14px; font-weight:500;">Drill a few cases to start the spaced-repetition queue.</span></div></div>`;
+  col2.innerHTML = `
+    <h2 class="home-col-title">
+      Recommended next
+      <span class="home-col-title-meta">${upNext.length} cases</span>
+    </h2>
+    <div class="upnext-list">${upHtml}</div>`;
+  for (const el of col2.querySelectorAll(".upnext[data-key]")) {
+    const key = el.dataset.key;
+    const startDrill = () => {
+      const parts = key.split("/");
+      selection.clear();
+      selection.toggle(parts[0], parts.slice(1).join("/"));
+      document.getElementById("drill-selected").click();
+    };
+    el.addEventListener("click", (e) => {
+      if (e.target.closest("[data-act='drill']")) startDrill();
+      else startDrill();
+    });
   }
-  // Selection toolbar always shows Timer; hide the selection-specific
-  // controls (drill, recognition, select-all, etc.) when category isn't drillable.
-  for (const el of document.querySelectorAll(".selection-only")) {
-    el.classList.toggle("hidden", !cat.drillable);
+  grid.appendChild(col2);
+
+  // This week stats
+  const col3 = document.createElement("div");
+  col3.innerHTML = `
+    <h2 class="home-col-title">
+      This week
+      <span class="home-col-title-meta">Last 7 days</span>
+    </h2>
+    <div class="stat-tile">
+      <p class="stat-label">Solves</p>
+      <p class="stat-value">${week.solves}</p>
+      <p class="stat-delta ${week.solvesDelta < 0 ? "negative" : week.solvesDelta === 0 ? "neutral" : ""}">${formatDelta(week.solvesDelta, "vs last week")}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">ao12</p>
+      <p class="stat-value">${week.ao12 != null ? sessions.fmtMs(week.ao12) : "-"}</p>
+      <p class="stat-delta neutral">${week.solves >= 12 ? "session ao12" : "more solves needed"}</p>
+    </div>
+    <div class="stat-tile">
+      <p class="stat-label">Drill reps</p>
+      <p class="stat-value">${week.drillReps}</p>
+      <p class="stat-delta ${week.drillRepsDelta < 0 ? "negative" : week.drillRepsDelta === 0 ? "neutral" : ""}">${formatDelta(week.drillRepsDelta, "vs last week")}</p>
+    </div>`;
+  grid.appendChild(col3);
+
+  /* Recent sessions strip */
+  const strip = document.createElement("div");
+  strip.className = "recent-strip";
+  if (recents.length === 0) {
+    strip.innerHTML = `
+      <div class="recent-head">
+        <h2>Recent sessions</h2>
+        <a data-act="open-timer">Open the timer →</a>
+      </div>
+      <div class="recent-grid"><div style="grid-column:1/-1; padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r-md); color: var(--muted); text-align:center; font-family: var(--font-mono); font-size: 12px;">No timer sessions yet. Press "Open the timer" above to start a session.</div></div>`;
+    strip.querySelector('[data-act="open-timer"]').addEventListener("click", () => setActivePage("timer"));
+  } else {
+    strip.innerHTML = `
+      <div class="recent-head">
+        <h2>Recent sessions</h2>
+        <a data-act="see-all">See all →</a>
+      </div>
+      <div class="recent-grid">
+        ${recents.map((r) => `
+          <div class="recent-card" data-id="${escapeHtml(r.id)}">
+            <div class="recent-card-head"><span>${escapeHtml(r.dateLabel)}</span><span>${r.count} solve${r.count===1?"":"s"}</span></div>
+            <div class="recent-card-best">${r.last != null ? sessions.fmtMs(r.last) : "-"}</div>
+            <div class="recent-card-meta">
+              <span>ao5 <b>${r.ao5 != null ? sessions.fmtMs(r.ao5) : "-"}</b></span>
+              <span>best <b>${r.best != null ? sessions.fmtMs(r.best) : "-"}</b></span>
+            </div>
+          </div>`).join("")}
+      </div>`;
+    strip.querySelector('[data-act="see-all"]').addEventListener("click", () => setActivePage("timer"));
+    for (const card of strip.querySelectorAll(".recent-card")) {
+      card.addEventListener("click", () => {
+        const id = card.dataset.id;
+        if (id) sessions.setActiveSession(id);
+        setActivePage("timer");
+      });
+    }
   }
-  const divider = document.getElementById("selection-divider");
-  if (divider) divider.classList.toggle("hidden", !cat.drillable);
+
+  root.replaceChildren(focusEl, grid, strip);
 }
 
+function computeMilestones() {
+  const all = stats.getAll();
+  const pllCount = appState.data.pll.length;       // 21
+  const ollCount = appState.data.oll.length;       // 57
 
-/* ---------- tabs ---------- */
+  const pllPracticed = appState.data.pll.filter((it) => all[`pll/${it.id}`]?.drill?.n > 0).length;
+  const ollPracticed = appState.data.oll.filter((it) => all[`oll/${it.id}`]?.drill?.n > 0).length;
 
-function renderTabs() {
-  const host = document.getElementById("tabs");
-  host.innerHTML = "";
-  for (const cat of CATEGORIES) {
-    const btn = document.createElement("button");
-    btn.className = "tab";
-    btn.type = "button";
-    btn.setAttribute("role", "tab");
-    btn.dataset.cat = cat.key;
-    btn.style.setProperty("--tab-accent", cat.accent);
-    const count = cat.getItems(state.data).length;
-    const shortLabel = cat.shortLabel || cat.label;
-    btn.innerHTML = `<span class="tab-label-full">${escapeHtml(cat.label)}</span><span class="tab-label-short">${escapeHtml(shortLabel)}</span><span class="tab-count">${count}</span>`;
-    btn.addEventListener("click", () => selectCategory(cat.key));
-    host.appendChild(btn);
-  }
+  // Best ao12 across all sessions for sub-X gates
+  const allSolves = sessions.listSessions().flatMap((s) => s.solves);
+  const bestAo12 = sessions.bestAverage(allSolves, 12);
+  const bestSecs = bestAo12 != null && isFinite(bestAo12) ? bestAo12 / 1000 : null;
+
+  const milestones = [
+    { name: "Two-look CFOP", meta: pllPracticed >= 7 && ollPracticed >= 10 ? "Complete" : `${pllPracticed + ollPracticed}/17`, done: pllPracticed >= 7 && ollPracticed >= 10 },
+    { name: "Full PLL", meta: pllPracticed === pllCount ? "Complete" : `${pllPracticed}/${pllCount}`, done: pllPracticed === pllCount },
+    { name: "Full OLL", meta: ollPracticed === ollCount ? "Complete" : `${ollPracticed}/${ollCount}`, done: ollPracticed === ollCount },
+    { name: "Sub-20",   meta: bestSecs != null ? (bestSecs <= 20 ? "Complete" : `ao12 ${bestSecs.toFixed(2)}s`) : "Locked", done: bestSecs != null && bestSecs <= 20 },
+    { name: "Sub-15",   meta: bestSecs != null ? (bestSecs <= 15 ? "Complete" : `ao12 ${bestSecs.toFixed(2)}s`) : "Locked", done: bestSecs != null && bestSecs <= 15 },
+  ];
+  // Mark first not-done as "current"
+  const nextIdx = milestones.findIndex((m) => !m.done);
+  if (nextIdx >= 0) milestones[nextIdx].current = true;
+  return milestones;
 }
 
-function selectCategory(key) {
-  state.category = key;
-  state.filters = {};
-  for (const tab of document.querySelectorAll(".tab")) {
-    tab.classList.toggle("active", tab.dataset.cat === key);
-  }
-  renderFilters();
-  render();
-  updateSelectionUI();
-}
-
-/* ---------- search ---------- */
-
-function bindSearch() {
-  const input = document.getElementById("search");
-  input.addEventListener("input", () => {
-    state.search = input.value.trim().toLowerCase();
-    render();
+function computeWeekStats() {
+  const allSessions = sessions.listSessions();
+  const allSolves = allSessions.flatMap((s) => s.solves);
+  const nowMs = Date.now();
+  const weekMs = 7 * 86400 * 1000;
+  const thisWeek = allSolves.filter((s) => nowMs - s.date < weekMs);
+  const lastWeek = allSolves.filter((s) => {
+    const age = nowMs - s.date;
+    return age >= weekMs && age < 2 * weekMs;
   });
+  const ao12 = sessions.trimmedAverage(thisWeek, 12);
+
+  // Drill reps from stats.lastAt — count reps that happened in last 7 days
+  const allStats = stats.getAll();
+  const weekSec = nowMs / 1000 - 7 * 86400;
+  let drillRepsThisWeek = 0;
+  let drillRepsLastWeek = 0;
+  for (const slot of Object.values(allStats)) {
+    if (!slot?.drill) continue;
+    // We don't store per-rep timestamps, only n + lastAt. Approximate: if
+    // lastAt is within last 7 days, attribute the recent times count.
+    if (slot.drill.lastAt && slot.drill.lastAt >= weekSec) {
+      drillRepsThisWeek += Math.min(slot.drill.times?.length || 0, slot.drill.n || 0);
+    }
+  }
+  return {
+    solves: thisWeek.length,
+    solvesDelta: thisWeek.length - lastWeek.length,
+    ao12: ao12 != null && isFinite(ao12) ? ao12 : null,
+    drillReps: drillRepsThisWeek,
+    drillRepsDelta: drillRepsThisWeek - drillRepsLastWeek,
+  };
 }
 
-/* ---------- filters ---------- */
+function computeRecentSessions() {
+  const list = sessions.listSessions().slice().reverse(); // newest first by createdAt
+  const out = [];
+  for (const sess of list) {
+    if (sess.solves.length === 0) continue;
+    out.push({
+      id: sess.id,
+      dateLabel: sess.name || formatDateLabel(sess.createdAt),
+      count: sess.solves.length,
+      last: sessions.effectiveMs(sess.solves[sess.solves.length - 1]),
+      ao5: sessions.trimmedAverage(sess.solves, 5),
+      best: sessions.bestSingle(sess.solves),
+    });
+    if (out.length >= 4) break;
+  }
+  return out;
+}
 
-function renderFilters() {
-  const cat = categoryByKey(state.category);
-  const host = document.getElementById("filters");
-  host.innerHTML = "";
+function formatDateLabel(ms) {
+  const d = new Date(ms);
+  const today = new Date();
+  const isToday = d.toDateString() === today.toDateString();
+  if (isToday) return "Today";
+  const yesterday = new Date(today.getTime() - 86400000);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
 
-  const items = cat.getItems(state.data);
+function formatDelta(n, suffix) {
+  if (n === 0) return `± 0 ${suffix}`;
+  const arrow = n > 0 ? "↑" : "↓";
+  return `${arrow} ${Math.abs(n)} ${suffix}`;
+}
+
+function focusEyebrow(c) {
+  if (c.isDue) {
+    const overdue = Math.max(0, Math.floor((-(c.dueDelta || 0)) / 86400));
+    if (overdue === 0) return "Today's drill · Due now";
+    return `Today's drill · Due ${overdue}d ago`;
+  }
+  if (c.isUnpracticed) return "Today's drill · Never drilled";
+  return "Today's drill · Weakest recent";
+}
+
+function vcImageFor(c, size = 140) {
+  const it = c.item;
+  if (c.category === "pll") return vcImage({ setup: it.setup, stage: "pll", view: "plan", size });
+  if (c.category === "oll") return vcImage({ setup: it.setup, stage: "oll", view: "plan", size });
+  return vcImage({ caseAlg: it.algorithm, size });
+}
+
+function rankWeakCases(categories = ["pll", "oll"], limit = 10) {
+  if (!appState.data) return [];
+  const all = stats.getAll();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const out = [];
+  for (const cat of categories) {
+    const items = cat === "pll" ? appState.data.pll : appState.data.oll;
+    if (!items) continue;
+    for (const item of items) {
+      if (typeof item.setup !== "string") continue;
+      const slot = all[`${cat}/${item.id}`];
+      const drill = slot?.drill;
+      const srs = slot?.srs;
+      const isUnpracticed = !drill || drill.n === 0;
+      const isDue = !!srs && srs.dueAt > 0 && srs.dueAt <= nowSec;
+      out.push({
+        category: cat, item,
+        key: selection.key(cat, item.id),
+        drill, srs, isUnpracticed, isDue,
+        dueDelta: srs?.dueAt ? srs.dueAt - nowSec : null,
+        best: drill?.best ?? null,
+        lastAt: drill?.lastAt ?? 0,
+      });
+    }
+  }
+  const due = out.filter((c) => c.isDue).sort((a, b) => (a.dueDelta ?? 0) - (b.dueDelta ?? 0));
+  const unpracticed = out.filter((c) => c.isUnpracticed && !c.isDue).sort((a, b) => String(a.item.id).localeCompare(String(b.item.id)));
+  const future = out.filter((c) => !c.isUnpracticed && !c.isDue).sort((a, b) => (b.best - a.best) || (a.lastAt - b.lastAt));
+  return [...due, ...unpracticed, ...future].slice(0, limit);
+}
+
+/* ============================================================ */
+/* BROWSE                                                          */
+/* ============================================================ */
+
+function renderBrowse() {
+  const root = document.getElementById("page-browse");
+  if (!appState.data) return;
+
+  const cat = categoryByKey(browseState.category);
+  const allItems = cat.getItems(appState.data);
+  const items = allItems.filter((it) => matchesFilters(it, cat));
+
+  /* Header */
+  const head = document.createElement("div");
+  head.className = "page-head";
+  head.innerHTML = `
+    <div>
+      <h1 class="page-title">Browse</h1>
+      <p class="page-subtitle">${escapeHtml(catSubtitle(cat))}</p>
+    </div>
+    <div class="row" style="gap: var(--s-2);">
+      <span class="meta-label" id="browse-count">${items.length === allItems.length ? `${allItems.length} ${cat.label.toLowerCase()}` : `${items.length} / ${allItems.length} ${cat.label.toLowerCase()}`}</span>
+    </div>`;
+
+  /* Category + search toolbar */
+  const toolbar = document.createElement("div");
+  toolbar.className = "toolbar";
+  toolbar.innerHTML = `
+    <input type="text" class="search" id="browse-search" placeholder="Search by name, id, algorithm, recognition…" value="${escapeHtml(browseState.search)}" />
+    ${CATEGORIES.map((c) => `<button class="chip ${c.key === browseState.category ? "accent" : ""}" data-cat="${c.key}">${escapeHtml(c.shortLabel || c.label)}</button>`).join("")}
+    <button class="chip planned" tabindex="-1" disabled>COLL</button>
+    <button class="chip planned" tabindex="-1" disabled>ZBLL</button>
+    <button class="chip planned" tabindex="-1" disabled>OH</button>
+    <button class="chip planned" tabindex="-1" disabled>Roux</button>`;
+
+  // Wire category chips
+  for (const chip of toolbar.querySelectorAll("[data-cat]")) {
+    chip.addEventListener("click", () => {
+      browseState.category = chip.dataset.cat;
+      browseState.filters = {};
+      browseState.search = "";
+      renderBrowse();
+    });
+  }
+  // Wire search
+  const searchInput = toolbar.querySelector("#browse-search");
+  searchInput.addEventListener("input", () => {
+    browseState.search = searchInput.value.trim().toLowerCase();
+    updateBrowseGrid();
+  });
+
+  /* Facet filter row */
+  const facetEl = renderFacetRow(cat, allItems);
+
+  /* Selection action bar — only shown for drillable categories */
+  const actions = document.createElement("div");
+  if (cat.drillable) {
+    actions.className = "toolbar";
+    actions.style.borderTop = "none";
+    actions.innerHTML = `
+      <button class="btn btn-small" id="browse-select-all">Select all in view</button>
+      <button class="btn btn-small" id="browse-clear" ${selection.size() === 0 ? "disabled" : ""}>Clear selection</button>
+      <span class="meta-label" id="browse-selcount">${selection.size() === 0 ? "Nothing selected — click a card or use the checkbox" : `${selection.size()} selected`}</span>
+      <span style="margin-left:auto"></span>
+      <button class="btn btn-primary btn-small" id="browse-drill" ${selection.size() === 0 ? "disabled" : ""}>Drill selected →</button>
+      <button class="btn btn-small" id="browse-batch" ${selection.allKeys().filter(k=>k.startsWith("pll/")).length === 0 ? "disabled" : ""} title="Solve 5 PLLs under one continuous timer">Batch (5)</button>
+      <button class="btn btn-small" id="browse-recog" ${selection.size() === 0 ? "disabled" : ""}>Train recognition</button>`;
+    actions.querySelector("#browse-select-all").addEventListener("click", () => {
+      selection.selectMany(cat.key, items);
+    });
+    actions.querySelector("#browse-clear").addEventListener("click", () => selection.clear());
+    actions.querySelector("#browse-drill").addEventListener("click", () => {
+      document.getElementById("drill-selected").click();
+    });
+    actions.querySelector("#browse-batch").addEventListener("click", () => {
+      document.getElementById("batch-selected").click();
+    });
+    actions.querySelector("#browse-recog").addEventListener("click", () => {
+      document.getElementById("recog-selected").click();
+    });
+  }
+
+  /* Grid */
+  const grid = document.createElement("div");
+  grid.className = "browse-grid";
+  grid.id = "browse-grid";
+  if (items.length === 0) {
+    grid.innerHTML = `<div class="empty-grid">No algorithms match the current filters.</div>`;
+  } else {
+    for (const it of items) grid.appendChild(renderBrowseCard(it, cat));
+  }
+
+  const parts = [head, toolbar];
+  if (facetEl) parts.push(facetEl);
+  if (cat.drillable) parts.push(actions);
+  parts.push(grid);
+  root.replaceChildren(...parts);
+
+  // Concurrency-capped image loader (cards have <img> with src already; the
+  // browser handles this natively. We rely on loading="lazy" + the SW cache).
+}
+
+function updateBrowseGrid() {
+  // Lightweight re-render of just the cards + counter when search/filters change
+  const cat = categoryByKey(browseState.category);
+  const allItems = cat.getItems(appState.data);
+  const items = allItems.filter((it) => matchesFilters(it, cat));
+  const grid = document.getElementById("browse-grid");
+  if (grid) {
+    grid.innerHTML = "";
+    if (items.length === 0) {
+      grid.innerHTML = `<div class="empty-grid">No algorithms match the current filters.</div>`;
+    } else {
+      for (const it of items) grid.appendChild(renderBrowseCard(it, cat));
+    }
+  }
+  const counter = document.getElementById("browse-count");
+  if (counter) counter.textContent = items.length === allItems.length
+    ? `${allItems.length} ${cat.label.toLowerCase()}`
+    : `${items.length} / ${allItems.length} ${cat.label.toLowerCase()}`;
+}
+
+function renderFacetRow(cat, items) {
+  if (!cat.filterFacets || cat.filterFacets.length === 0) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "facet-row";
+  let any = false;
   for (const facet of cat.filterFacets) {
     const values = uniqueSorted(items.map(facet.from).filter(Boolean));
     if (values.length === 0) continue;
-
-    const group = document.createElement("div");
-    group.className = "filter-group";
-    group.style.display = "flex";
-    group.style.gap = "4px";
-    group.style.flexWrap = "wrap";
-
-    for (const value of values) {
+    any = true;
+    const label = document.createElement("span");
+    label.className = "facet-label";
+    label.textContent = facet.label;
+    wrap.appendChild(label);
+    for (const v of values) {
       const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chip";
-      chip.textContent = value;
-      chip.dataset.facet = facet.key;
-      chip.dataset.value = value;
-      chip.addEventListener("click", () => toggleFilter(facet.key, value));
-      group.appendChild(chip);
-    }
-    host.appendChild(group);
-  }
-}
-
-function toggleFilter(facetKey, value) {
-  const set = state.filters[facetKey] || new Set();
-  if (set.has(value)) set.delete(value); else set.add(value);
-  if (set.size === 0) delete state.filters[facetKey];
-  else state.filters[facetKey] = set;
-
-  for (const chip of document.querySelectorAll(".chip")) {
-    if (chip.dataset.facet === facetKey && chip.dataset.value === value) {
-      chip.classList.toggle("active", set.has(value));
+      chip.className = "chip facet" + ((browseState.filters[facet.key]?.has(v)) ? " active" : "");
+      chip.textContent = v;
+      chip.addEventListener("click", () => {
+        const set = browseState.filters[facet.key] || new Set();
+        if (set.has(v)) set.delete(v); else set.add(v);
+        if (set.size === 0) delete browseState.filters[facet.key];
+        else browseState.filters[facet.key] = set;
+        renderBrowse();
+      });
+      wrap.appendChild(chip);
     }
   }
-  render();
+  return any ? wrap : null;
 }
 
-/* ---------- main render ---------- */
+function catSubtitle(cat) {
+  if (cat.key === "pll") return "21 last-layer permutations. Click cards to select; drill the selection from the bar below.";
+  if (cat.key === "oll") return "57 last-layer orientations. Click cards to select; drill the selection from the bar below.";
+  if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only — not drillable.";
+  if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only — not drillable.";
+  if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
+  return "";
+}
 
-function render() {
-  const cat = categoryByKey(state.category);
-  const grid = document.getElementById("grid");
-  const empty = document.getElementById("empty");
-  const stats = document.getElementById("stats");
+function renderBrowseCard(it, cat) {
+  const card = document.createElement("article");
+  card.className = "alg-card";
+  card.style.setProperty("--card-accent", cat.accent);
 
-  const items = cat.getItems(state.data).filter((it) => matchesFilters(it, cat));
+  const key = selection.key(cat.key, it.id);
+  if (cat.drillable && selection.isSelected(cat.key, it.id)) {
+    card.classList.add("selected");
+  }
 
-  grid.innerHTML = "";
-  for (const it of items) grid.appendChild(renderCard(it, cat));
+  // Selection checkbox (drillable categories only)
+  if (cat.drillable) {
+    const check = document.createElement("div");
+    check.className = "alg-card-check";
+    check.setAttribute("role", "checkbox");
+    check.setAttribute("aria-checked", String(selection.isSelected(cat.key, it.id)));
+    check.title = "Toggle selection";
+    card.appendChild(check);
+  }
 
-  empty.classList.toggle("hidden", items.length > 0);
-  const total = cat.getItems(state.data).length;
-  stats.textContent = items.length === total
-    ? `${total} ${cat.label.toLowerCase()}`
-    : `${items.length} / ${total} ${cat.label.toLowerCase()}`;
+  // Image
+  const img = document.createElement("div");
+  img.className = "alg-img";
+  if (cat.key === "notation") {
+    // For notation, show the move letter big and bold instead of a tiny SVG
+    img.classList.add("notation-letter");
+    img.innerHTML = `<div>${colorizeAlg(it.algorithm)}</div>`;
+  } else if (cat.imageUrl && it.algorithm) {
+    const imgEl = document.createElement("img");
+    imgEl.src = cat.imageUrl(it);
+    imgEl.alt = `${cat.titleOf(it)} case state`;
+    imgEl.loading = "lazy";
+    imgEl.decoding = "async";
+    img.appendChild(imgEl);
+  }
+  card.appendChild(img);
 
-  // Auto-load all visible case images. Concurrency-capped inside loadAllImages
-  // so VisualCube isn't flooded; the SW caches each response so subsequent
-  // renders (e.g. filter changes) hit the cache.
-  loadAllImages();
+  // Title
+  const title = document.createElement("h3");
+  title.className = "alg-title";
+  title.innerHTML = `${escapeHtml(cat.titleOf(it))} <span style="color:var(--muted); font-weight:500; font-family:var(--font-mono); font-size:12px; margin-left:6px;">${escapeHtml(cat.idOf(it))}</span>`;
+  card.appendChild(title);
+
+  // Notation
+  if (it.algorithm && cat.key !== "notation") {
+    const note = document.createElement("p");
+    note.className = "alg-notation";
+    note.innerHTML = colorizeAlg(it.algorithm);
+    card.appendChild(note);
+  } else if (cat.key === "notation") {
+    const note = document.createElement("p");
+    note.className = "alg-notation";
+    note.innerHTML = colorizeAlg(it.algorithm);
+    card.appendChild(note);
+  }
+
+  // Meta (description for notation, recognition for PLL/OLL, etc.)
+  for (const m of cat.metaRows(it) || []) {
+    const meta = document.createElement("p");
+    meta.className = "alg-meta";
+    meta.innerHTML = `<strong style="color: var(--text-soft); font-weight: 600;">${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`;
+    card.appendChild(meta);
+  }
+
+  // Footer stats
+  const footer = document.createElement("div");
+  if (cat.drillable) {
+    const drill = stats.getDrill(cat.key, it.id);
+    const recog = stats.getRecog(cat.key, it.id);
+    footer.className = "alg-stats";
+    if (drill || recog) {
+      const parts = [];
+      if (drill) parts.push(`<span>best <strong>${escapeHtml(stats.fmtTime(drill.best))}</strong></span>`);
+      if (drill) parts.push(`<span>reps <strong>${drill.n}</strong></span>`);
+      if (recog) parts.push(`<span>recog <strong>${escapeHtml(stats.fmtAccuracy(recog))}</strong></span>`);
+      footer.innerHTML = parts.join("");
+    } else {
+      footer.classList.add("empty");
+      footer.innerHTML = `<span>untried</span><span></span>`;
+    }
+  } else {
+    footer.className = "alg-stats empty";
+    footer.innerHTML = `<span>${escapeHtml(cat.label.toLowerCase())}</span><span></span>`;
+  }
+  card.appendChild(footer);
+
+  // Click anywhere on a drillable card toggles selection (except inside the
+  // alg-notation block, which users will sometimes want to triple-click +
+  // copy). Use a stopPropagation guard there.
+  if (cat.drillable) {
+    card.addEventListener("click", (e) => {
+      // Allow selecting text in algorithm block without toggling
+      if (e.target.closest(".alg-notation")) return;
+      selection.toggle(cat.key, it.id);
+    });
+    const note = card.querySelector(".alg-notation");
+    if (note) note.style.userSelect = "text";
+  }
+  return card;
 }
 
 function matchesFilters(it, cat) {
-  // facet filters
-  for (const [facetKey, set] of Object.entries(state.filters)) {
+  for (const [facetKey, set] of Object.entries(browseState.filters)) {
     const facet = cat.filterFacets.find((f) => f.key === facetKey);
     if (!facet) continue;
     const v = facet.from(it);
     if (!set.has(v)) return false;
   }
-  // search
-  if (state.search) {
+  if (browseState.search) {
     const haystack = cat.searchFields
       .map((k) => (it[k] != null ? String(it[k]) : ""))
       .join(" ")
       .toLowerCase();
-    if (!haystack.includes(state.search)) return false;
+    if (!haystack.includes(browseState.search)) return false;
   }
   return true;
 }
 
-/* ---------- card rendering ---------- */
+/* ============================================================ */
+/* PRACTICE                                                       */
+/* ============================================================ */
 
-function renderCard(it, cat) {
-  const card = document.createElement("article");
-  card.className = "card";
-  card.setAttribute("role", "listitem");
-  card.style.setProperty("--card-accent", cat.accent);
+function renderPractice() {
+  const root = document.getElementById("page-practice");
+  if (!appState.data) return;
 
-  // head
+  const selectedKeys = selection.allKeys();
+  const pllCount = selectedKeys.filter((k) => k.startsWith("pll/")).length;
+  const ollCount = selectedKeys.filter((k) => k.startsWith("oll/")).length;
+  const totalSel = selectedKeys.length;
+
+  /* Header */
   const head = document.createElement("div");
-  head.className = "card-head";
+  head.className = "page-head";
+  head.innerHTML = `
+    <div>
+      <h1 class="page-title">Practice</h1>
+      <p class="page-subtitle">Drill, recognition, batch, or today's spaced-repetition pick.</p>
+    </div>
+    <div class="row" style="gap:var(--s-2);">
+      <button class="btn btn-ghost" id="practice-clear" ${totalSel === 0 ? "disabled" : ""}>Clear selection</button>
+    </div>`;
+  head.querySelector("#practice-clear").addEventListener("click", () => selection.clear());
 
-  // Selection checkbox (only for drillable categories) — first in the head row
-  if (cat.drillable) {
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.className = "card-checkbox";
-    cb.dataset.key = selection.key(cat.key, it.id);
-    cb.checked = selection.isSelected(cat.key, it.id);
-    cb.setAttribute("aria-label", `Select ${cat.titleOf(it)}`);
-    cb.addEventListener("change", () => selection.toggle(cat.key, it.id));
-    cb.addEventListener("click", (e) => e.stopPropagation());
-    head.appendChild(cb);
-  }
-
-  const title = document.createElement("h2");
-  title.className = "card-title";
-  title.textContent = cat.titleOf(it);
-  head.appendChild(title);
-  const idBadge = document.createElement("span");
-  idBadge.className = "card-id";
-  idBadge.textContent = cat.idOf(it);
-  head.appendChild(idBadge);
-  card.appendChild(head);
-
-  // badges row
-  const badges = document.createElement("div");
-  badges.className = "badges";
-  for (const b of cat.extraBadges(it) || []) {
-    badges.appendChild(badge(b.label, b.className));
-  }
-  if (badges.children.length) card.appendChild(badges);
-
-  // case image (VisualCube) — click-to-load to avoid flooding the API
-  if (cat.imageUrl && it.algorithm) {
-    card.appendChild(imageSlot(cat.imageUrl(it), cat.titleOf(it)));
-  }
-
-  // primary algorithm
-  if (it.algorithm) {
-    card.appendChild(algRow(it.algorithm));
-  }
-
-  // meta rows. On portrait mobile the meta text gets line-clamped to 2
-  // lines (CSS), but we'd rather not silently truncate — so each meta gets
-  // a "more"/"collapse" toggle that only renders when overflow is real
-  // (detected post-layout via scrollHeight > clientHeight). The full text
-  // also lives in the title attribute as a backup for tap-and-hold.
-  for (const m of cat.metaRows(it) || []) {
-    card.appendChild(metaRowWithToggle(m));
-  }
-
-  // stats badge (drillable categories only)
-  if (cat.drillable) {
-    const drill = stats.getDrill(cat.key, it.id);
-    const recog = stats.getRecog(cat.key, it.id);
-    if (drill || recog) {
-      const row = document.createElement("div");
-      row.className = "card-stats";
-      const parts = [];
-      if (drill) parts.push(`<span title="Best drill time of ${drill.n} attempts">best ${stats.fmtTime(drill.best)}</span>`);
-      if (recog) parts.push(`<span title="Recognition accuracy over ${recog.n} attempts">${stats.fmtAccuracy(recog)} recog</span>`);
-      const resetBtn = `<button class="card-stats-reset" type="button" title="Reset stats for this case" data-key="${selection.key(cat.key, it.id)}">↺</button>`;
-      row.innerHTML = parts.join(" · ") + " " + resetBtn;
-      const resetEl = row.querySelector(".card-stats-reset");
-      resetEl.addEventListener("click", (e) => {
-        e.stopPropagation();
-        stats.resetCase(cat.key, it.id);
+  /* Sub-mode row */
+  const submodeRow = document.createElement("div");
+  submodeRow.className = "submode-row";
+  const submodes = [
+    { key: "drill",     label: "Drill",            planned: false },
+    { key: "weak",      label: "Today's drill",    planned: false },
+    { key: "recognition", label: "Recognition",    planned: false },
+    { key: "batch",     label: "Batch (5)",        planned: false },
+    { key: "finger",    label: "Fingertricks",     planned: true  },
+  ];
+  for (const sm of submodes) {
+    const btn = document.createElement("button");
+    btn.className = "submode" + (sm.planned ? " planned" : "") + (practiceState.submode === sm.key ? " active" : "");
+    btn.textContent = sm.label;
+    if (!sm.planned) {
+      btn.addEventListener("click", () => {
+        practiceState.submode = sm.key;
+        renderPractice();
       });
-      card.appendChild(row);
-    }
-  }
-
-  /* extension hook: future per-card actions could be appended here,
-     e.g. a row of buttons for "animate", "drill", "favorite". */
-
-  return card;
-}
-
-/* Build an image slot that loads on user click (or programmatically).
-   Avoids flooding VisualCube with 50+ parallel requests on tab open. */
-function imageSlot(src, label) {
-  const wrap = document.createElement("div");
-  wrap.className = "card-img-wrap empty";
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "load-img-btn";
-  btn.textContent = "Show case image";
-  btn.dataset.src = src;
-  btn.dataset.label = label;
-
-  btn.addEventListener("click", () => loadImage(wrap, btn));
-  wrap.appendChild(btn);
-  return wrap;
-}
-
-function loadImage(wrap, btn) {
-  const src = btn.dataset.src;
-  const label = btn.dataset.label;
-  btn.disabled = true;
-  btn.textContent = "Loading…";
-
-  const img = new Image();
-  img.className = "card-img";
-  img.alt = `${label} case state`;
-  img.decoding = "async";
-  img.addEventListener("load", () => {
-    wrap.classList.remove("empty", "img-failed");
-    wrap.classList.add("loaded");
-    wrap.replaceChildren(img);
-  });
-  img.addEventListener("error", () => {
-    wrap.classList.add("img-failed");
-    btn.disabled = false;
-    btn.textContent = "Retry";
-  });
-  img.src = src;
-}
-
-/* Load all currently-rendered image slots, with a small concurrency cap
-   so VisualCube isn't flooded. Called from the "Load all" toolbar button. */
-async function loadAllImages() {
-  const buttons = Array.from(document.querySelectorAll(".load-img-btn:not(:disabled)"));
-  const CONCURRENCY = 4;
-  let i = 0;
-  async function worker() {
-    while (i < buttons.length) {
-      const btn = buttons[i++];
-      const wrap = btn.closest(".card-img-wrap");
-      if (!wrap || !btn.dataset.src) continue;
-      await new Promise((resolve) => {
-        const img = new Image();
-        img.className = "card-img";
-        img.alt = `${btn.dataset.label} case state`;
-        img.decoding = "async";
-        img.addEventListener("load", () => {
-          wrap.classList.remove("empty", "img-failed");
-          wrap.classList.add("loaded");
-          wrap.replaceChildren(img);
-          resolve();
-        });
-        img.addEventListener("error", () => {
-          wrap.classList.add("img-failed");
-          btn.disabled = false;
-          btn.textContent = "Retry";
-          resolve();
-        });
-        img.src = btn.dataset.src;
-      });
-    }
-  }
-  await Promise.all(Array.from({ length: CONCURRENCY }, worker));
-}
-
-/* Build a meta row (e.g. "Recognition: ..." / "Description: ...") with a
- * "more"/"collapse" toggle that appears ONLY when the text is actually
- * truncated by a CSS line-clamp. Detection runs post-layout via
- * requestAnimationFrame, so it picks up whichever font-size + clamp the
- * current breakpoint resolved to (no JS-side hardcoded thresholds). */
-function metaRowWithToggle(m) {
-  const wrap = document.createElement("div");
-  wrap.className = "card-meta-wrap";
-
-  const text = document.createElement("div");
-  text.className = "card-meta";
-  text.title = `${m.label}: ${m.value}`;
-  text.innerHTML = `<strong>${escapeHtml(m.label)}:</strong> ${escapeHtml(m.value)}`;
-  wrap.appendChild(text);
-
-  const toggle = document.createElement("button");
-  toggle.type = "button";
-  toggle.className = "card-meta-toggle hidden";
-  toggle.textContent = "more";
-  toggle.addEventListener("click", () => {
-    const wasExpanded = text.classList.contains("expanded");
-    if (wasExpanded) {
-      text.classList.remove("expanded");
-      // Force layout flush — Safari / older Chromium can be sticky re-applying
-      // -webkit-line-clamp after a display:block override unless we touch
-      // a layout-triggering property here. Reading offsetHeight is the
-      // canonical reflow nudge.
-      void text.offsetHeight;
-      toggle.textContent = "more";
     } else {
-      text.classList.add("expanded");
-      toggle.textContent = "collapse";
+      btn.addEventListener("click", () => showToast("Fingertricks", "info"));
+    }
+    submodeRow.appendChild(btn);
+  }
+
+  /* Stage — different content per submode */
+  const shell = document.createElement("div");
+  shell.className = "practice-shell";
+
+  const stage = document.createElement("div");
+  stage.className = "practice-stage";
+  const stageContent = practiceStageContent(practiceState.submode, { selectedKeys, pllCount, ollCount, totalSel });
+  stage.append(...stageContent);
+
+  /* Side panel */
+  const side = document.createElement("div");
+  side.className = "practice-side";
+  side.append(...practiceSidePanel());
+
+  shell.append(stage, side);
+  root.replaceChildren(head, submodeRow, shell);
+}
+
+function practiceStageContent(submode, ctx) {
+  const out = [];
+  const headline = document.createElement("h2");
+  headline.className = "practice-headline";
+  const sub = document.createElement("p");
+  sub.className = "practice-sub";
+  const countPill = document.createElement("div");
+  countPill.className = "practice-count-pill";
+  const ctaRow = document.createElement("div");
+  ctaRow.className = "practice-cta-row";
+
+  if (submode === "drill") {
+    headline.textContent = "Drill selected cases";
+    sub.textContent = "Cstimer-style spacebar timer. Each case is scrambled and you solve it under the clock. Drill times update spaced-repetition automatically.";
+    countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}`;
+    const start = btn("btn btn-primary btn-lg", "Start drill →");
+    start.disabled = ctx.totalSel === 0;
+    start.addEventListener("click", () => document.getElementById("drill-selected").click());
+    const browse = btn("btn", "Pick cases in Browse");
+    browse.addEventListener("click", () => setActivePage("browse"));
+    ctaRow.append(start, browse);
+  } else if (submode === "weak") {
+    headline.textContent = "Today's drill — weakest cases";
+    sub.textContent = "Surface the cases you've practiced least, are slowest on, or are overdue for spaced-repetition review. Opens a picker so you can confirm the lineup before starting.";
+    const weak = rankWeakCases(["pll", "oll"], 20);
+    const dueCount = weak.filter((c) => c.isDue).length;
+    const newCount = weak.filter((c) => c.isUnpracticed && !c.isDue).length;
+    countPill.innerHTML = `<b>${dueCount}</b> due now · <b>${newCount}</b> never drilled`;
+    const start = btn("btn btn-primary btn-lg", "Open today's drill →");
+    start.addEventListener("click", () => document.getElementById("open-weak-cases").click());
+    ctaRow.append(start);
+  } else if (submode === "recognition") {
+    headline.textContent = "Train recognition";
+    sub.textContent = "Show the case, name it before time runs out. Opens a settings screen first so you can tune options like time limit and OLL choice count.";
+    countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected`;
+    const start = btn("btn btn-primary btn-lg", "Start recognition →");
+    start.disabled = ctx.totalSel === 0;
+    start.addEventListener("click", () => document.getElementById("recog-selected").click());
+    const browse = btn("btn", "Pick cases in Browse");
+    browse.addEventListener("click", () => setActivePage("browse"));
+    ctaRow.append(start, browse);
+  } else if (submode === "batch") {
+    headline.textContent = "Batch — 5 PLLs, one continuous timer";
+    sub.textContent = "Pulls 5 random PLLs from your selection, then issues a single short scramble that's equivalent to the composed setup. You execute all 5 algorithms under one timer; the cube ends solved.";
+    countPill.innerHTML = `<b>${ctx.pllCount}</b> PLL case${ctx.pllCount === 1 ? "" : "s"} selected${ctx.pllCount < 5 ? " · need 5+ for variety" : ""}`;
+    const start = btn("btn btn-primary btn-lg", "Start batch →");
+    start.disabled = ctx.pllCount === 0;
+    start.addEventListener("click", () => document.getElementById("batch-selected").click());
+    const browse = btn("btn", "Pick PLLs in Browse");
+    browse.addEventListener("click", () => {
+      browseState.category = "pll";
+      setActivePage("browse");
+    });
+    ctaRow.append(start, browse);
+  }
+
+  out.push(headline, sub, countPill, ctaRow);
+  return out;
+}
+
+function practiceSidePanel() {
+  const out = [];
+
+  // Selection summary
+  const selBlock = document.createElement("div");
+  selBlock.className = "side-block";
+  const selKeys = selection.allKeys();
+  const pllKeys = selKeys.filter((k) => k.startsWith("pll/"));
+  const ollKeys = selKeys.filter((k) => k.startsWith("oll/"));
+  selBlock.innerHTML = `
+    <h3 class="side-block-title">Selection</h3>
+    <div class="side-stats-row"><span class="side-stat-label">Total</span><span class="side-stat-value">${selKeys.length}</span></div>
+    <div class="side-stats-row"><span class="side-stat-label">PLL</span><span class="side-stat-value">${pllKeys.length}</span></div>
+    <div class="side-stats-row"><span class="side-stat-label">OLL</span><span class="side-stat-value">${ollKeys.length}</span></div>`;
+  out.push(selBlock);
+
+  // Last 7 days drill stats
+  const allStats = stats.getAll();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const weekStart = nowSec - 7 * 86400;
+  let weekReps = 0;
+  let bestThisWeek = null;
+  for (const slot of Object.values(allStats)) {
+    if (!slot?.drill) continue;
+    if (slot.drill.lastAt >= weekStart) {
+      weekReps += slot.drill.n || 0;
+      if (slot.drill.best != null && (bestThisWeek == null || slot.drill.best < bestThisWeek)) {
+        bestThisWeek = slot.drill.best;
+      }
+    }
+  }
+
+  const weekBlock = document.createElement("div");
+  weekBlock.className = "side-block";
+  weekBlock.innerHTML = `
+    <h3 class="side-block-title">Last 7 days</h3>
+    <div class="side-stats-row"><span class="side-stat-label">Drill reps</span><span class="side-stat-value">${weekReps}</span></div>
+    <div class="side-stats-row"><span class="side-stat-label">Best single</span><span class="side-stat-value">${bestThisWeek != null ? stats.fmtTime(bestThisWeek) : "-"}</span></div>`;
+  out.push(weekBlock);
+
+  // Weak cases preview
+  const weak = rankWeakCases(["pll", "oll"], 6);
+  const weakBlock = document.createElement("div");
+  weakBlock.className = "side-block";
+  const itemsHtml = weak.length
+    ? weak.map((c, i) => `
+        <div class="session-item ${i === 0 ? "best" : ""}">
+          <span>${escapeHtml(c.item.name)}</span>
+          <span class="session-meta">${c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "-")}</span>
+        </div>`).join("")
+    : `<div class="session-meta" style="padding: var(--s-2) 0;">No drill data yet</div>`;
+  weakBlock.innerHTML = `
+    <h3 class="side-block-title">Weakest cases</h3>
+    <div class="session-list">${itemsHtml}</div>`;
+  out.push(weakBlock);
+
+  return out;
+}
+
+function btn(className, text) {
+  const b = document.createElement("button");
+  b.className = className;
+  b.textContent = text;
+  b.type = "button";
+  return b;
+}
+
+/* ============================================================ */
+/* TIMER                                                          */
+/* ============================================================ */
+
+function renderTimer() {
+  const root = document.getElementById("page-timer");
+  if (!appState.data) return;
+
+  const sess = sessions.getActiveSession();
+  const solves = sess?.solves || [];
+  const best = sessions.bestSingle(solves);
+  const mean = sessions.mean(solves);
+  const ao5 = sessions.trimmedAverage(solves, 5);
+  const ao12 = sessions.trimmedAverage(solves, 12);
+
+  /* Header */
+  const head = document.createElement("div");
+  head.className = "page-head";
+  head.innerHTML = `
+    <div>
+      <h1 class="page-title">Timer</h1>
+      <p class="page-subtitle">Cstimer-style speedcubing timer with WCA inspection, sessions, and per-solve notes. Press the big button to enter the fullscreen timer.</p>
+    </div>
+    <div class="row" style="gap:var(--s-2);">
+      <span class="meta-label">Session</span>
+      <strong style="color: var(--text); font-family: var(--font-display);">${escapeHtml(sess?.name || "—")}</strong>
+      <button class="btn btn-small" id="timer-open">Open timer →</button>
+    </div>`;
+  head.querySelector("#timer-open").addEventListener("click", () => document.getElementById("open-timer").click());
+
+  /* Stage + side */
+  const shell = document.createElement("div");
+  shell.className = "timer-shell";
+
+  const stage = document.createElement("div");
+  stage.className = "timer-stage";
+  stage.innerHTML = `
+    <h2 class="timer-stage-headline">${escapeHtml(sess?.name || "Default session")}</h2>
+    <p class="timer-stage-sub">${solves.length} solve${solves.length === 1 ? "" : "s"} in this session.${sessions.getInspection() ? " WCA inspection on (" + sessions.getInspectionDurationSec() + "s)." : " Inspection off."}</p>
+    <div class="timer-stage-display">${best != null ? sessions.fmtMs(best) : "0.00"}</div>
+    <p class="timer-hint">best single this session</p>
+    <button class="btn btn-primary btn-lg" id="timer-launch">Launch fullscreen timer →</button>`;
+  stage.querySelector("#timer-launch").addEventListener("click", () => document.getElementById("open-timer").click());
+
+  const side = document.createElement("div");
+  side.className = "timer-side";
+  side.innerHTML = `
+    <div class="timer-stats-grid">
+      <div class="timer-stat-cell"><p class="stat-label">Best</p><p class="stat-value">${best != null ? sessions.fmtMs(best) : "-"}</p></div>
+      <div class="timer-stat-cell"><p class="stat-label">Mean</p><p class="stat-value">${mean != null ? sessions.fmtMs(mean) : "-"}</p></div>
+      <div class="timer-stat-cell"><p class="stat-label">ao5</p><p class="stat-value">${ao5 != null ? sessions.fmtMs(ao5) : "-"}</p></div>
+      <div class="timer-stat-cell"><p class="stat-label">ao12</p><p class="stat-value">${ao12 != null ? sessions.fmtMs(ao12) : "-"}</p></div>
+    </div>
+    <div class="side-block">
+      <h3 class="side-block-title">Recent solves</h3>
+      <div class="session-list">
+        ${solves.slice(-15).reverse().map((s, i) => {
+          const t = sessions.effectiveMs(s);
+          const isBest = best != null && t === best;
+          return `
+            <div class="session-item ${isBest ? "best" : ""}">
+              <span>${sessions.fmtSolve(s)}</span>
+              <span class="session-meta">#${solves.length - i}${isBest ? " · best" : ""}</span>
+            </div>`;
+        }).join("") || `<div class="session-meta" style="padding: var(--s-2) 0;">No solves yet — launch the timer.</div>`}
+      </div>
+    </div>`;
+
+  shell.append(stage, side);
+  root.replaceChildren(head, shell);
+}
+
+/* ============================================================ */
+/* STATS                                                          */
+/* ============================================================ */
+
+function renderStats() {
+  const root = document.getElementById("page-stats");
+  if (!appState.data) return;
+
+  const allSessions = sessions.listSessions();
+  const allSolves = allSessions.flatMap((s) => s.solves);
+  const filtered = filterByRange(allSolves, statsPageState.range);
+
+  const total = filtered.length;
+  const best = sessions.bestSingle(filtered);
+  const ao5 = sessions.trimmedAverage(filtered, 5);
+  const ao12 = sessions.trimmedAverage(filtered, 12);
+
+  const head = document.createElement("div");
+  head.className = "page-head";
+  head.innerHTML = `
+    <div>
+      <h1 class="page-title">Stats &amp; <em>trends</em></h1>
+      <p class="page-subtitle">Real WCA averages from your timer sessions, plus per-case drill mastery.</p>
+    </div>
+    <div class="row" style="gap:var(--s-2);">
+      <button class="chip ${statsPageState.range === 7 ? "accent" : ""}" data-range="7">7 days</button>
+      <button class="chip ${statsPageState.range === 30 ? "accent" : ""}" data-range="30">30 days</button>
+      <button class="chip ${statsPageState.range === "all" ? "accent" : ""}" data-range="all">All time</button>
+    </div>`;
+  for (const chip of head.querySelectorAll("[data-range]")) {
+    chip.addEventListener("click", () => {
+      const r = chip.dataset.range;
+      statsPageState.range = r === "all" ? "all" : Number(r);
+      renderStats();
+    });
+  }
+
+  const submodeRow = document.createElement("div");
+  submodeRow.className = "submode-row";
+  submodeRow.innerHTML = `
+    <button class="submode active">Overview</button>
+    <button class="submode planned">Solve analysis</button>
+    <button class="submode planned">Achievements</button>
+    <button class="submode planned">Sharing</button>`;
+  for (const sm of submodeRow.querySelectorAll(".submode.planned")) {
+    sm.addEventListener("click", () => showToast(sm.textContent.trim(), "info"));
+  }
+
+  const body = document.createElement("div");
+  body.className = "page-body";
+  body.innerHTML = `
+    <div class="stats-grid">
+      <div class="stats-cell">
+        <p class="stat-label">Solves</p>
+        <p class="stat-value">${total}</p>
+        <p class="stat-delta neutral">${rangeLabel(statsPageState.range)}</p>
+      </div>
+      <div class="stats-cell">
+        <p class="stat-label">Best single</p>
+        <p class="stat-value">${best != null ? sessions.fmtMs(best) : "-"}</p>
+        <p class="stat-delta ${best != null ? "" : "neutral"}">${best != null ? "personal record" : "no solves yet"}</p>
+      </div>
+      <div class="stats-cell">
+        <p class="stat-label">ao5</p>
+        <p class="stat-value">${ao5 != null ? sessions.fmtMs(ao5) : "-"}</p>
+        <p class="stat-delta neutral">last 5 in range</p>
+      </div>
+      <div class="stats-cell">
+        <p class="stat-label">ao12</p>
+        <p class="stat-value">${ao12 != null ? sessions.fmtMs(ao12) : "-"}</p>
+        <p class="stat-delta neutral">last 12 in range</p>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="chart-cell">
+        <p class="meta-label">Trend</p>
+        <h3 class="section-title" style="margin: var(--s-2) 0 0;">Average over time</h3>
+        <div class="chart-area" id="stats-chart"></div>
+      </div>
+      <div class="chart-cell">
+        <p class="meta-label">Activity</p>
+        <h3 class="section-title" style="margin: var(--s-2) 0 0;">14-week heatmap</h3>
+        <div class="heatmap" id="stats-heatmap"></div>
+      </div>
+    </div>
+
+    <div class="recent-head" style="margin-top: var(--s-6); margin-bottom: 0;">
+      <h2>Algorithm mastery</h2>
+      <a id="stats-go-browse">Browse all cases →</a>
+    </div>
+    <div class="mastery-grid" id="stats-mastery"></div>`;
+
+  // Draw the chart (best-of-rolling-ao5 over time)
+  const chartHost = body.querySelector("#stats-chart");
+  drawTrendChart(chartHost, filtered);
+
+  // Heatmap of solves per (week, day-of-week) for last 14 weeks
+  const heatmapHost = body.querySelector("#stats-heatmap");
+  drawHeatmap(heatmapHost, allSolves);
+
+  // Mastery grid — top 6 drilled cases by best time (ascending)
+  const masteryHost = body.querySelector("#stats-mastery");
+  drawMastery(masteryHost);
+
+  body.querySelector("#stats-go-browse").addEventListener("click", () => setActivePage("browse"));
+
+  root.replaceChildren(head, submodeRow, body);
+}
+
+function rangeLabel(r) {
+  if (r === 7) return "last 7 days";
+  if (r === 30) return "last 30 days";
+  return "all time";
+}
+
+function filterByRange(solves, range) {
+  if (range === "all") return solves;
+  const cutoff = Date.now() - range * 86400 * 1000;
+  return solves.filter((s) => s.date >= cutoff);
+}
+
+function drawTrendChart(host, solves) {
+  if (!solves || solves.length < 2) {
+    host.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-family:var(--font-mono); font-size:12px;">Need at least 2 solves to plot a trend.</div>`;
+    return;
+  }
+  const points = solves
+    .map((s, i) => ({ x: i, y: sessions.effectiveMs(s) }))
+    .filter((p) => isFinite(p.y));
+  if (points.length < 2) {
+    host.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-family:var(--font-mono); font-size:12px;">All solves in range are DNF.</div>`;
+    return;
+  }
+  const minY = Math.min(...points.map((p) => p.y));
+  const maxY = Math.max(...points.map((p) => p.y));
+  const range = Math.max(maxY - minY, 1);
+  const w = 600, h = 200;
+  const pad = 10;
+  const innerW = w - pad * 2;
+  const innerH = h - pad * 2;
+  const xs = (x) => pad + (x / Math.max(points.length - 1, 1)) * innerW;
+  const ys = (y) => pad + innerH - ((y - minY) / range) * innerH;
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(" ");
+  host.innerHTML = `
+    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" />
+      ${points.slice(-1).map((p) => `<circle cx="${xs(p.x).toFixed(1)}" cy="${ys(p.y).toFixed(1)}" r="3" fill="var(--accent)" />`).join("")}
+    </svg>`;
+}
+
+function drawHeatmap(host, solves) {
+  const cells = [];
+  const now = new Date();
+  // Build 14 columns × 7 rows. Each cell = one day. Columns ordered oldest→newest left→right.
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const oldest = new Date(today);
+  oldest.setDate(today.getDate() - (14 * 7 - 1));
+  // Count solves per day
+  const counts = new Map();
+  for (const s of solves) {
+    const d = new Date(s.date);
+    const key = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  // We render row-by-day, with 14 columns. We need cells in row-major order
+  // for CSS grid (which the .heatmap uses 14 columns).
+  // Build a 14*7 array, going week-by-week, day-by-day.
+  for (let row = 0; row < 7; row++) {
+    for (let col = 0; col < 14; col++) {
+      const dayOffset = col * 7 + row;
+      const d = new Date(oldest);
+      d.setDate(oldest.getDate() + dayOffset);
+      const key = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
+      const c = counts.get(key) || 0;
+      let cls = "";
+      if (c >= 30) cls = "l4";
+      else if (c >= 15) cls = "l3";
+      else if (c >= 5) cls = "l2";
+      else if (c >= 1) cls = "l1";
+      cells.push(`<div class="heatmap-cell ${cls}" title="${d.toDateString()} · ${c} solve${c === 1 ? "" : "s"}"></div>`);
+    }
+  }
+  host.innerHTML = cells.join("");
+}
+
+function drawMastery(host) {
+  const all = stats.getAll();
+  const candidates = [];
+  for (const [key, slot] of Object.entries(all)) {
+    if (!slot?.drill || slot.drill.n === 0) continue;
+    const [cat, ...rest] = key.split("/");
+    const id = rest.join("/");
+    if (cat !== "pll" && cat !== "oll") continue;
+    const items = cat === "pll" ? appState.data.pll : appState.data.oll;
+    const item = items.find((it) => String(it.id) === id);
+    if (!item) continue;
+    candidates.push({ cat, item, best: slot.drill.best, n: slot.drill.n });
+  }
+  candidates.sort((a, b) => a.best - b.best);
+  const top = candidates.slice(0, 12);
+  if (top.length === 0) {
+    host.innerHTML = `<div style="grid-column:1/-1; padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r-md); color: var(--muted); text-align:center; font-family: var(--font-mono); font-size: 12px;">No drill data yet. Drill a few PLL or OLL cases to see your mastery here.</div>`;
+    return;
+  }
+  host.innerHTML = top.map((c) => `
+    <div class="mastery-cell" title="${escapeHtml(c.item.name)} · ${c.n} reps">
+      <div class="mastery-face">
+        <img src="${vcImage({ setup: c.item.setup, stage: c.cat, view: "plan", size: 80 })}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
+      </div>
+      <div class="mastery-name">${escapeHtml(c.item.name)}</div>
+      <div class="mastery-best">${escapeHtml(stats.fmtTime(c.best))}</div>
+    </div>`).join("");
+}
+
+/* ============================================================ */
+/* SETTINGS                                                       */
+/* ============================================================ */
+
+function renderSettings() {
+  const root = document.getElementById("page-settings");
+
+  const head = document.createElement("div");
+  head.className = "page-head";
+  head.innerHTML = `
+    <div>
+      <h1 class="page-title">Settings</h1>
+      <p class="page-subtitle">Account, timer preferences, and data management.</p>
+    </div>`;
+
+  const body = document.createElement("div");
+  body.className = "page-body";
+
+  const shell = document.createElement("div");
+  shell.className = "settings-shell";
+
+  /* Account */
+  const accountCol = document.createElement("div");
+  accountCol.className = "settings-col";
+  const user = auth.isCloudEnabled() ? auth.currentUser() : null;
+  const cloudConfigured = auth.isCloudEnabled();
+  accountCol.innerHTML = `
+    <p class="settings-section-title">Account</p>
+    <div class="settings-section">
+      ${cloudConfigured ? `
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">${user ? "Email" : "Sign in / create account"}</div>
+            <div class="settings-desc">${user ? escapeHtml(user.email || "(unknown)") : "Email magic-link or Google sign-in"}</div>
+          </div>
+          ${user ? `<button class="btn" id="set-signout">Sign out</button>` : `<button class="btn btn-primary" id="set-signin">Sign in</button>`}
+        </div>
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Cloud sync</div>
+            <div class="settings-desc">${user ? "Active — drill + sessions sync across devices" : "Sign in to enable cloud sync"}</div>
+          </div>
+          <span class="chip ${user ? "accent" : ""}">${user ? "Connected" : "Off"}</span>
+        </div>` : `
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Cloud sync</div>
+            <div class="settings-desc">Not configured. Fill <code>supabase-config.js</code> to enable accounts + cloud sync.</div>
+          </div>
+          <span class="chip">Local only</span>
+        </div>`}
+    </div>`;
+  if (cloudConfigured) {
+    const signinBtn = accountCol.querySelector("#set-signin");
+    if (signinBtn) signinBtn.addEventListener("click", async () => {
+      const mod = await import("./auth-ui.js");
+      mod.openSignIn();
+    });
+    const signoutBtn = accountCol.querySelector("#set-signout");
+    if (signoutBtn) signoutBtn.addEventListener("click", async () => {
+      if (confirm("Sign out? Your local data stays on this device.")) {
+        await auth.signOut();
+      }
+    });
+  }
+
+  /* Preferences */
+  const prefCol = document.createElement("div");
+  prefCol.className = "settings-col";
+  const inspection = sessions.getInspection();
+  const inspectionDur = sessions.getInspectionDurationSec();
+  prefCol.innerHTML = `
+    <p class="settings-section-title">Timer preferences</p>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">WCA inspection</div>
+          <div class="settings-desc">Countdown before each solve. Overrun adds +2 / DNF.</div>
+        </div>
+        <div class="toggle ${inspection ? "on" : ""}" id="set-inspection"></div>
+      </div>
+      <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: var(--s-3);">
+        <div>
+          <div class="settings-label">Inspection duration</div>
+          <div class="settings-desc">Standard is 15 seconds. Pick a preset or type your own.</div>
+        </div>
+        <div style="display:flex; gap: var(--s-2); flex-wrap: wrap; align-items: center;">
+          <div class="settings-pill-row" id="set-inspection-pills">
+            ${[8,15,30,60].map((n) => `<button class="settings-pill ${inspectionDur === n ? "active" : ""}" data-dur="${n}">${n}s</button>`).join("")}
+          </div>
+          <input class="settings-num" id="set-inspection-num" type="number" min="1" max="999" value="${inspectionDur}" title="Custom duration in seconds" />
+        </div>
+      </div>
+    </div>`;
+  prefCol.querySelector("#set-inspection").addEventListener("click", () => {
+    sessions.setInspection(!sessions.getInspection());
+  });
+  for (const pill of prefCol.querySelectorAll("[data-dur]")) {
+    pill.addEventListener("click", () => {
+      sessions.setInspectionDurationSec(Number(pill.dataset.dur));
+    });
+  }
+  const numInput = prefCol.querySelector("#set-inspection-num");
+  const commitNum = () => {
+    const n = Number(numInput.value);
+    if (n > 0 && n < 1000) sessions.setInspectionDurationSec(n);
+  };
+  numInput.addEventListener("change", commitNum);
+  numInput.addEventListener("keydown", (e) => { if (e.key === "Enter") commitNum(); });
+
+  /* Data */
+  const dataCol = document.createElement("div");
+  dataCol.className = "settings-col";
+  const allSolves = sessions.listSessions().reduce((n, s) => n + s.solves.length, 0);
+  const allDrills = Object.keys(stats.getAll()).length;
+  dataCol.innerHTML = `
+    <p class="settings-section-title">Data</p>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Export sessions</div>
+          <div class="settings-desc">Download all timer sessions + solves as JSON.</div>
+        </div>
+        <button class="btn" id="set-export" ${allSolves === 0 ? "disabled" : ""}>Export</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Import sessions</div>
+          <div class="settings-desc">Load a previously-exported JSON file (non-destructive).</div>
+        </div>
+        <button class="btn" id="set-import">Import</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Storage summary</div>
+          <div class="settings-desc">${allSolves} timer solve${allSolves === 1 ? "" : "s"} · ${allDrills} drilled case${allDrills === 1 ? "" : "s"}</div>
+        </div>
+        <span class="chip">local</span>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Reset drill + SRS stats</div>
+          <div class="settings-desc">Clears per-case best times, rep counts, and spaced-repetition state.</div>
+        </div>
+        <button class="btn" id="set-reset-stats">Reset</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Clear timer session</div>
+          <div class="settings-desc">Wipe solves in the active session (keeps the session itself).</div>
+        </div>
+        <button class="btn" id="set-clear-session">Clear</button>
+      </div>
+    </div>`;
+
+  dataCol.querySelector("#set-export").addEventListener("click", () => {
+    const json = sessions.exportAll();
+    downloadText(json, "rubiks-storage-sessions-" + dateStamp() + ".json");
+  });
+  dataCol.querySelector("#set-import").addEventListener("click", () => {
+    const inp = document.createElement("input");
+    inp.type = "file";
+    inp.accept = "application/json,.json";
+    inp.addEventListener("change", () => {
+      const file = inp.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = sessions.importJson(String(reader.result));
+        if (result.ok) {
+          showToast(`Imported ${result.count} session${result.count === 1 ? "" : "s"}`);
+        } else {
+          showToast("Import failed: " + result.error, "error");
+        }
+      };
+      reader.readAsText(file);
+    });
+    inp.click();
+  });
+  dataCol.querySelector("#set-reset-stats").addEventListener("click", () => {
+    if (confirm("Reset ALL drill + SRS stats? This cannot be undone.")) {
+      stats.resetAll();
+      showToast("Drill stats reset");
     }
   });
-  wrap.appendChild(toggle);
-
-  // Reveal the toggle only if the CSS clamp actually truncated something.
-  // Use setTimeout(0) rather than requestAnimationFrame — RAF doesn't fire
-  // in headless rendering contexts (preview/screenshot tools), and a 0ms
-  // timeout still runs after the current synchronous render so the
-  // browser has applied layout. Double-schedule via setTimeout-in-setTimeout
-  // for the same "fonts have settled" buffer we'd get from double RAF.
-  setTimeout(() => setTimeout(() => {
-    if (text.scrollHeight > text.clientHeight + 1) {
-      toggle.classList.remove("hidden");
-    }
-  }, 0), 0);
-
-  return wrap;
-}
-
-function algRow(algStr) {
-  const row = document.createElement("div");
-  row.className = "alg-row";
-
-  const code = document.createElement("code");
-  code.className = "alg-block";
-  code.innerHTML = colorizeAlg(algStr);
-  row.appendChild(code);
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "copy-btn";
-  btn.textContent = "Copy";
-  btn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(algStr);
-      btn.textContent = "Copied!";
-      btn.classList.add("copied");
-      setTimeout(() => {
-        btn.textContent = "Copy";
-        btn.classList.remove("copied");
-      }, 1200);
-    } catch {
-      btn.textContent = "Press Ctrl+C";
+  dataCol.querySelector("#set-clear-session").addEventListener("click", () => {
+    if (confirm("Clear all solves in the active session? This cannot be undone.")) {
+      sessions.clearActiveSession();
+      showToast("Active session cleared");
     }
   });
-  row.appendChild(btn);
-  return row;
+
+  shell.append(accountCol, prefCol, dataCol);
+
+  /* About footer */
+  const about = document.createElement("div");
+  about.className = "settings-about";
+  about.innerHTML = `
+    <div class="settings-about-cell">
+      <span class="settings-about-label">App</span>
+      <span class="settings-about-value">Rubik's Storage</span>
+    </div>
+    <div class="settings-about-cell">
+      <span class="settings-about-label">Account</span>
+      <span class="settings-about-value">${user ? "Signed in · synced" : cloudConfigured ? "Local only" : "No cloud configured"}</span>
+    </div>
+    <div class="settings-about-cell">
+      <span class="settings-about-label">Links</span>
+      <div class="settings-about-links">
+        <a href="https://github.com/sawmint/rubiks-storage" target="_blank" rel="noopener">GitHub</a>
+        <a href="SETUP.md" target="_blank" rel="noopener">Setup guide</a>
+      </div>
+    </div>
+    <div class="settings-about-cell">
+      <span class="settings-about-label">Tip</span>
+      <span class="settings-about-value" style="font-size: 12px; font-weight: 400; color: var(--text-soft);">Press space in the Timer page for cstimer-style hold-to-start.</span>
+    </div>`;
+
+  body.append(shell, about);
+  root.replaceChildren(head, body);
 }
 
-function badge(text, className) {
-  const el = document.createElement("span");
-  el.className = `badge ${className || ""}`.trim();
-  el.textContent = text;
-  return el;
+/* ============================================================ */
+/* Helpers                                                        */
+/* ============================================================ */
+
+function showToast(label, kind = "info") {
+  const existing = document.querySelector(".soon-toast");
+  if (existing) existing.remove();
+  const t = document.createElement("div");
+  t.className = "soon-toast" + (kind === "error" ? " error" : "");
+  t.textContent = kind === "info" && !label.includes("—") ? `${label} — coming soon` : label;
+  if (kind !== "info") t.textContent = label;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("show"));
+  setTimeout(() => {
+    t.classList.remove("show");
+    setTimeout(() => t.remove(), 240);
+  }, kind === "error" ? 2800 : 1800);
 }
 
-/* ---------- utils ---------- */
+function downloadText(text, filename) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function dateStamp() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 function uniqueSorted(arr) {
   return Array.from(new Set(arr)).sort((a, b) => String(a).localeCompare(String(b)));

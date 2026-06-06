@@ -25,6 +25,8 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `sw.js` · `manifest.webmanifest` · `logo.png` · `logo-cube.png` · `favicon.png` · `apple-touch-icon.png` — PWA: offline support, installable. `logo.png` is the full brand asset (cube + "rubik's storage" text below). `logo-cube.png` is the cropped cube-only variant used in the header alongside HTML/CSS-rendered themed text (so dark mode can flip text color via `var(--text)`). `favicon.png` is the cube padded to square (265×265, transparent margins) — browsers stretching the non-square `logo-cube.png` to fit a favicon slot was making the tab-bar icon look squished. `apple-touch-icon.png` is a 180×180 downscale of the square padded version (Apple's recommended size). The conic-gradient brand square + `icon.svg` are gone.
 - `.claude/skills/deploy/SKILL.md` — deploy workflow skill (auto-loaded each session)
 - `rubiks-cube-storage-prompt.md` — original generation prompt
+- `app-map.html` — standalone planning artifact: visual sitemap of current + planned pages, with hover-highlighting + per-node detail panel. Data-driven (`NODES` + `EDGES` arrays in the `<script>` block). Not linked from the live app; open directly to see how pages connect.
+- `ui-lab.html` — visual-redesign sandbox (see "## UI redesign sandbox" section below). Self-contained file with landing/signin/signup screens + a workspace-top-bar app shell containing 6 mode pages. The cube-face sticker grid (`.face-sticker`) is the recurring visual signature. Independent of the live app's styling; used to iterate the new visual language before merging back. Mirrors the full scope of `app-map.html` — live features as active elements, planned features as `.chip.planned` / `.submode.planned` with "soon" tags.
 
 ## Run
 `npm start` → `http://localhost:8000`. Needs HTTP (file:// blocks fetch). No deps, no build.
@@ -245,6 +247,108 @@ Without this, Supabase ignores the `redirectTo` we pass from `signInWith*` and f
 For events to fire, the four tables must be in the `supabase_realtime` publication — handled by the `alter publication` statement at the bottom of `SETUP.md`'s SQL block. Default `REPLICA IDENTITY` (= primary key) is sufficient because delete handlers only need PK columns from `payload.old` (`category`+`case_id` for case_stats; `id` for sessions/solves).
 
 `applyRemoteSession` deliberately never deactivates locally from a remote `is_active=false` write — the local user might be mid-something. Active flips only when the remote asserts `is_active=true`. `applyRemoteSolve` skips orphan rows (parent session not yet streamed in) rather than crashing.
+
+## UI redesign sandbox (`ui-lab.html`)
+
+A self-contained planning file for the next visual direction. **Independent of the live app** — the live app (`index.html` + `styles.css`) is untouched. Each screen gets iterated in `ui-lab.html`; once locked, those decisions get merged back into the real app.
+
+### Locked design tokens
+
+**Color (warm dark, not the cool blue-black every AI app defaults to):**
+- `--bg: #15130f`, surfaces `#1d1b16` / `#25221c` / `#2f2c25`
+- Borders `--border: #3d3a32`, `--border-strong: #5c574b`
+- Text `#ece7d8` / `#bdb6a3` / `#8a8475` / `#57534a` (text/soft/muted/faint)
+- **Accent: `#2e4cf2` saturated cobalt** (ink-blue — explicitly not "fintech teal" or "AI lavender"). Soft `rgba(46,76,242,0.14)`. Strong `#4866ff` (hover). Cobalt is restricted to ~3-4 roles (primary CTA, active state, hero `<em>`, milestone "current" stripe) — using it on every stat value / list-best / accent text dilutes its meaning, so don't widen its application.
+- **Cube palette** (NEW — used by `.face-sticker` and the workspace mode-dots; this is what makes the chrome read as cube content, not generic SaaS):
+  - `--cube-white: #ece7d8` (= same as `--text`, on purpose — the U-face center)
+  - `--cube-yellow: #e4b834` · `--cube-red: #c4453a` · `--cube-orange: #d4762a` · `--cube-blue: #2e4cf2` (= the accent — blue face IS the brand cobalt) · `--cube-green: #4f8a3a`
+  - These approximate the WCA-scheme colors used by VisualCube in the real app. Don't replace with neon / pastel variants — they need to look like real stickers.
+
+**Typography:**
+- Display headings: **IBM Plex Sans** at weights 600-700 (was 700-800 — the heavier weights stacked with the over-eyebrowed UI made things shouty; current default is 600/700, with 800 reserved for big landing display copy).
+- Body: Inter (400-600).
+- Mono / numbers / labels: IBM Plex Mono.
+- Loaded via Google Fonts `<link>` in `<head>`.
+- **Rejected fonts (do not re-suggest):** Instrument Serif italic (user: "looks like finance games"), Bricolage Grotesque (user: "horrible"), all-Inter (user: "boring default"). The IBM Plex pairing is the locked choice.
+
+**Geometry:**
+- Radii: `--r-sm: 3px`, `--r-md: 5px`, `--r-lg: 8px`. Subtle curves on every interactive element + outer containers. **Never the 12-14px "soft modern" radius** that reads as AI-app default. Internal grid cells stay at 0 radius because the parent has `overflow: hidden` — gives a framed-grid look without internal cell rounding.
+- **No shadows on static UI** (cards, sections, top bar, buttons in default state).
+- Single shadow token `--shadow-float` reserved for *floating* elements only (popovers, modals, toasts, fixed markers). Currently the only consumer is `.lab-meta`. Future modals/dropdowns should reuse it.
+- No gradients. No `backdrop-filter`. No animations. Flat structural design — distinction between layers comes from borders + surface-color contrast, never lift effects.
+
+### View structure
+
+Single HTML file. Four top-level views toggled by JS `showView(name)`:
+
+1. **`#landing`** (initial active) — marketing page with conventional SaaS structure: nav + hero + 3-col features + 4-step process + 2-col pricing + final CTA + footer. User considered more "original" alternatives (single-screen, manifesto, no-landing) and explicitly chose to keep the conventional structure — pragmatic call for a side project. Don't re-pitch alternatives unless asked. Hero is **single-column centered text + CTAs** — there used to be a product-mock card on the right (timer, then case-card with cube face). Both were rejected (the timer mock was wrong because the product isn't primarily a timer — cstimer already exists — and the case card was rejected as a "hook"). The empty-right-side feel is intentional; don't re-add a hero-right element without asking.
+2. **`#signin`** — split layout (left: product-feature checklist with → bullets; right: form). Email + password + "Continue with Google" + toggle to signup. **Do not put per-user stats (best, ao12, solves count) on the auth side** — user can't be logged in there, so fake personal numbers are dishonest. Product capabilities only.
+3. **`#signup`** — same split shape as signin, with an added Name field, same feature-list approach on the left.
+4. **`.app`** (no id) — workspace-top-bar shell. A sticky `.ws-bar` at the top contains brand + 6 `.ws-mode` buttons + account avatar. Each mode has a small colored square dot (`.ws-mode-dot`) keyed to a cube face color, so the navigation chrome itself reads as cube content. NO left sidebar — that was an earlier iteration the user rejected as "literally copy paste" with too much empty space.
+
+Every view except the active one gets `class="hidden"` (`display: none`). Buttons with `data-go="<view>"` are auto-wired by JS to switch. Form submits in signin/signup call `showView('app')` — auth is fake here; this is a visual sandbox.
+
+### Recurring visual: `.face-sticker`
+
+A real 3×3 cube-face grid rendered in pure CSS. This is the design's strongest visual signature — every "case" appears via this element, anchoring the product as cube content rather than generic dashboard tiles.
+
+- Class composition: `<div class="face-sticker"><span class="r"></span>... 9 sticker spans ...</div>`. Each span gets one of: `.y .w .r .o .b .g .x` (yellow / white / red / orange / blue / green / transparent-hidden).
+- Uses `grid-template-columns: repeat(3, 1fr)` + `aspect-ratio: 1` + `gap: 2px` + 3px padding. Outer `border: 1px solid var(--border)` + `border-radius: var(--r-sm)`.
+- **Reused in**: landing brand mark (2×2 mini variant via `.ws-brand-mark`), workspace mode dots (per-mode color hint), home focus strip (130px), home recommended-next list (56px thumbnails), browse card previews (~60% of `.alg-img` square).
+- The `.x` (transparent) class is for OLL-shape patterns where some sticker slots represent side colors visible from above (= not a U-face yellow). Use it to convey the unsolved shape.
+
+### Workspace top bar (`.ws-bar`)
+
+- Sticky `position: sticky; top: 0; z-index: 20`. Sits above all content.
+- Layout: `brand | modes (flex:1, wrap-able) | account avatar`. The modes are a flat horizontal list of 6 buttons (Home / Browse / Practice / Timer / Stats / Settings). Each has a `.ws-mode-dot` colored to a cube face — this is what makes adding more modes feel native to the product, not "another sidebar item."
+- Active state: muted surface background + border, NOT cobalt-tinted. (Earlier iteration used cobalt-soft background; user found triple-treatment too loud.)
+- Scaling: more modes wrap to a second line; sub-features should NOT become new top-level modes — they go inside their parent mode as `.submode-row` chips (see below).
+
+### Sub-mode pattern (`.submode-row` / `.submode`)
+
+When a mode has multiple sub-features (Practice has Drill / Recognition / Batch / Today's drill / Fingertricks; Stats has Overview / Solve analysis / Achievements / Sharing), they appear as a row of pill buttons under the page-head. This is how the app-map's planned features stay visible in the UI without bloating the top bar.
+
+- `.submode` — pill button. `.submode.active` for current. `.submode.planned` for planned features — appends a small "soon" tag after the label, dims the color, removes cursor pointer.
+- Same pattern works for any future mode that grows sub-features.
+
+### App shell pages (all placeholder content shaped like real cube data — algorithm names, notation, milestone names match what the real app would show)
+
+- **Home**: NOT the old hero+sections stack. **Focus strip** at the top (cube face + "Today's drill · Due now" + case name + algorithm + Skip/Start buttons) — the cube state of what you're working on is always shown. Below: 3-col **workshop grid** — `Your path` (compact milestone list: Two-look CFOP → Full PLL → Full OLL → Sub-20 → Sub-15) | `Recommended next` (4 cards each with their own `.face-sticker` thumbnail) | `This week` (3 stat tiles). This represents the **Guided Path** + **Milestones** planned features from app-map.
+- **Browse**: search + 8 chip filters covering **all content categories from app-map** — PLL / OLL / F2L / Notation live, COLL / ZBLL / OH / Roux as `.chip.planned`. 4-col card grid; each card has a `.face-sticker` thumbnail (not the bare "PREVIEW" text from earlier). Sample cards use real case names (T-perm, Aa-perm, OLL · Cross, Anti-Sune, Sune, H-perm, F2L · Slot 3, Ja-perm).
+- **Practice**: page-head + `.submode-row` for **Drill / Recognition / Batch (5) / Today's drill** (live) + **Fingertricks** (planned). The split-stage layout follows: bigger 320px case preview + smaller text-soft 48px timer (Practice = studying; case dominates).
+- **Timer**: 168px display dominates the left stage; right side has 2×2 WCA stats grid (best/mean/ao5/ao12) + Solves list. **Sessions** and **Solve Info** features from app-map are represented via the Session button in the page-head and the per-solve list rows.
+- **Stats**: page-head + `.submode-row` for **Overview** (= the live Progress Dashboard) + **Solve analysis / Achievements / Sharing** (all planned from app-map). Overview shows 4 stat cells + chart row.
+- **Settings**: 3 sections (Account / Preferences / Data), each a bordered group with `settings-row` dividers and slightly-rounded toggle switches. Account section covers Sign in / Cloud sync from app-map's account category.
+
+### Coverage vs. app-map.html
+
+The lab now represents every node in `app-map.html`. Quick audit:
+
+- **Live (16 nodes)**: Home, Algorithm Browser, PLL, OLL, F2L, Notation, Drill, Recognition, Batch (5), Today's Drill, Timer, Sessions, Solve Info, Settings, Sign In, Account — all present as modes, sub-modes, chips, or page elements.
+- **Planned (11 nodes)**: Guided Path + Milestones (Home `Your path`), Fingertricks (Practice planned submode), COLL / ZBLL / OH Variants / Roux Method (Browse planned chips), Solve Analysis / Achievements / Sharing (Stats planned submodes), Progress Dashboard (Stats Overview, live).
+
+When app-map grows new nodes, add them as `.submode.planned` chips inside the relevant mode page — don't bloat the workspace top bar.
+
+### Standing user feedback (re-check any new work against these)
+
+- **"Don't make it look AI"** — drove curve reduction, shadow removal, font choices, gradient deletion, no backdrop-blur, no soft pastels.
+- **"Way too squarish"** was the next correction after the 0-radius pass. The current 3/5/8px scale is the negotiated middle — don't go lower OR higher without asking.
+- **Shadows only on floating UI** — never on cards / sections / top bar / buttons in default state.
+- **Desktop only for now** — no media queries; responsive treatment deferred until visual language is locked.
+- **"Sidebar+main is generic / copy paste"** — the left sidebar was rejected outright. The workspace top bar with cube-color mode dots is the replacement. Don't re-introduce a sidebar pattern without explicit approval. The earlier "fill the empty sidebar space with a Today's Drill widget" band-aid is gone (the whole sidebar is gone).
+- **No fake personal stats before login** — auth-side panel must show product capabilities, not made-up Best/ao12/Solves counts. The user explicitly called this out as dishonest.
+- **No "sales hook" mock on the landing hero right** — both the timer mock and the case-card mock were rejected. Hero is single-column centered text + CTAs only.
+- **Cube-face sticker is the design's signature** — when in doubt, anchor a visual in `.face-sticker` rather than another text/stat card. The face uses real cube colors and immediately reads as cube content.
+- **Honest critique, not flattery** — user explicitly wants flagged issues, including problems with the lab itself.
+
+### Open work (in rough priority order)
+
+1. Per-page polish now that the shell is locked — Stats charts are still placeholders (skewed line + random heatmap); Settings could use the cube-face element somewhere.
+2. Make the planned `.submode.planned` and `.chip.planned` chips interactive — clicking could open a "Coming soon — what this will do" mini explainer instead of being inert.
+3. Practice sub-mode switching — `.submode` buttons currently don't actually swap content within Practice; making them work would be a useful next pass.
+4. Possibly more landing sections (user hasn't asked yet).
+5. Integration into the real app (`index.html` + `styles.css`) — not started.
+6. Mobile (deferred until visual language is locked).
 
 ## Deploy
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.

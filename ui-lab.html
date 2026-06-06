@@ -1,0 +1,2895 @@
+<!doctype html>
+<!--suppress CssUnusedSymbol, HtmlUnknownTarget -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>UI Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      /* Warm dark — not the cool blue-black every AI app defaults to */
+      --bg:        #15130f;
+      --surface-1: #1d1b16;
+      --surface-2: #25221c;
+      --surface-3: #2f2c25;
+      --border:    #3d3a32;
+      --border-strong: #5c574b;
+ 
+      --text:      #ece7d8;
+      --text-soft: #bdb6a3;
+      --muted:     #8a8475;
+      --faint:     #57534a;
+
+      /* Cobalt — saturated ink-blue, not "fintech teal" or "AI lavender" */
+      --accent:        #2e4cf2;
+      --accent-soft:   rgba(46, 76, 242, 0.14);
+      --accent-strong: #4866ff;
+
+      /* Semantic */
+      --good: #84a847;
+      --warn: #d49a2a;
+      --bad:  #c4453a;
+
+      /* Type */
+      --font-display: "IBM Plex Sans", "Inter", -apple-system, system-ui, sans-serif;
+      --font-sans:    "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      --font-mono:    "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      /* Tight spacing scale — denser than the SaaS default */
+      --s-1: 4px;
+      --s-2: 8px;
+      --s-3: 12px;
+      --s-4: 16px;
+      --s-5: 24px;
+      --s-6: 32px;
+      --s-7: 48px;
+
+      /* Subtle radii — present but restrained (not the 14px AI default) */
+      --r-sm: 3px;
+      --r-md: 5px;
+      --r-lg: 8px;
+
+      /* Shadow reserved for FLOATING elements only (popovers, modals,
+       * toasts, fixed markers). Static cards/sections never use this. */
+      --shadow-float: 0 10px 24px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      letter-spacing: 0;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* Visible focus for keyboard users — applied globally */
+    :focus { outline: none; }
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    input:focus-visible, .search:focus-visible, .auth-input:focus-visible {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    /* ============================================================ */
+    /* Shell — NOT sidebar+main. A workspace top bar with a recurring
+     * cube-face sticker grid as the visual signature. Cube colors come
+     * from real cube notation (WCA scheme) so the navigation chrome
+     * itself tells you what the product is. Each section then chooses
+     * its own internal layout (not forced into a single template).
+     * ============================================================ */
+
+    /* WCA cube colors — same scheme used in the real app's VisualCube
+     * previews. These are the palette used by .face-sticker below
+     * and by per-mode accents in the workspace bar. */
+    :root {
+      --cube-white:  #ece7d8;
+      --cube-yellow: #e4b834;
+      --cube-red:    #c4453a;
+      --cube-orange: #d4762a;
+      --cube-blue:   #2e4cf2;
+      --cube-green:  #4f8a3a;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Workspace bar — full-width top chrome. Brand on the left,
+     * mode switcher centered/inline, account avatar on the right.
+     * Adding more modes = adding more buttons; it scales horizontally
+     * (and wraps on smaller widths). */
+    .ws-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--s-5);
+      padding: var(--s-3) var(--s-6);
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .ws-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      padding-right: var(--s-4);
+      border-right: 1px solid var(--border);
+      margin-right: var(--s-2);
+    }
+    .ws-brand-mark {
+      /* Tiny 2×2 sticker cluster — same visual language as .face-sticker */
+      width: 18px;
+      height: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .ws-brand-mark span {
+      border-radius: 1.5px;
+      display: block;
+    }
+    .ws-brand-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .ws-modes {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .ws-mode {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-soft);
+      border-radius: var(--r-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+    }
+    .ws-mode:hover { color: var(--text); background: var(--surface-2); }
+    .ws-mode.active {
+      color: var(--text);
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+    /* Per-mode accent dot — small colored square next to the mode label.
+     * Maps to a cube color so each mode reads as a face of the cube. */
+    .ws-mode-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 1.5px;
+      flex-shrink: 0;
+    }
+    .ws-mode[data-page="home"]     .ws-mode-dot { background: var(--cube-white); }
+    .ws-mode[data-page="browse"]   .ws-mode-dot { background: var(--cube-blue); }
+    .ws-mode[data-page="practice"] .ws-mode-dot { background: var(--cube-red); }
+    .ws-mode[data-page="timer"]    .ws-mode-dot { background: var(--cube-orange); }
+    .ws-mode[data-page="stats"]    .ws-mode-dot { background: var(--cube-yellow); }
+    .ws-mode[data-page="settings"] .ws-mode-dot { background: var(--cube-green); }
+
+    .ws-spacer { flex: 1; }
+    .ws-user {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+    }
+    .ws-account {
+      width: 30px;
+      height: 30px;
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ws-account:hover { border-color: var(--muted); }
+
+    /* The page surface — fills the rest of the screen, no sidebar reservation */
+    .ws-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ============================================================ */
+    /* Reusable: cube-face sticker grid                              */
+    /* The visual signature that runs through the design — appears  */
+    /* in case cards, the home "now focus" card, and the brand mark.*/
+    /* Renders a real cube face from a class-encoded 9-sticker spec.*/
+    /* ============================================================ */
+    .face-sticker {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 2px;
+      padding: 3px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      flex-shrink: 0;
+      aspect-ratio: 1;
+    }
+    .face-sticker > span {
+      border-radius: 2px;
+      display: block;
+      min-width: 0;
+      min-height: 0;
+    }
+    /* Sticker colors — lowercase one-letter, easy to compose */
+    .face-sticker .y { background: var(--cube-yellow); }
+    .face-sticker .w { background: var(--cube-white); }
+    .face-sticker .r { background: var(--cube-red); }
+    .face-sticker .o { background: var(--cube-orange); }
+    .face-sticker .b { background: var(--cube-blue); }
+    .face-sticker .g { background: var(--cube-green); }
+    .face-sticker .x { background: transparent; }   /* unused / hidden slot */
+
+    /* ============================================================ */
+    /* Main                                                           */
+    /* ============================================================ */
+
+    .main {
+      padding: 0;
+      min-width: 0;
+    }
+
+    .page { display: none; }
+    /* Every active page fills at least the viewport below the workspace bar
+     * so no page ever ends with dead background space at the bottom. */
+    .page.active {
+      display: block;
+      min-height: calc(100vh - 55px);
+    }
+
+    /* Page heading row */
+    .page-head {
+      padding: var(--s-6) var(--s-7) var(--s-5);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: var(--s-5);
+    }
+    .page-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin: 0 0 var(--s-2);
+      text-transform: uppercase;
+    }
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      line-height: 1.05;
+      margin: 0;
+      letter-spacing: -0.025em;
+      color: var(--text);
+    }
+    .page-title em { color: var(--accent); font-style: normal; font-weight: 700; }
+    .page-subtitle {
+      color: var(--text-soft);
+      margin: var(--s-3) 0 0;
+      max-width: 60ch;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .page-body { padding: var(--s-6) var(--s-7); }
+
+    /* ============================================================ */
+    /* Generic                                                        */
+    /* ============================================================ */
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      padding: 8px 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      letter-spacing: 0;
+    }
+    .btn:hover { background: var(--surface-3); border-color: var(--muted); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .btn-ghost { background: transparent; border-color: transparent; }
+    .btn-ghost:hover { border-color: var(--border); }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-soft);
+      letter-spacing: 0;
+    }
+    .chip.accent { color: var(--accent); border-color: var(--accent); }
+    /* Planned-feature chip — dashed border + muted color + a "soon" tag.
+     * Used in Browse (planned content categories), Practice (planned modes),
+     * Stats (planned analytics views), etc. So the full app-map scope is
+     * legible from the UI itself, with status visible. */
+    .chip.planned {
+      color: var(--muted);
+      border-style: dashed;
+      border-color: var(--border-strong);
+      cursor: default;
+    }
+    .chip.planned::after {
+      content: "soon";
+      margin-left: 8px;
+      padding: 1px 5px;
+      background: var(--surface-3);
+      border-radius: 2px;
+      font-size: 10px;
+      letter-spacing: 0;
+      color: var(--text-soft);
+    }
+
+    /* Sub-mode chip row — used at the top of pages that have multiple
+     * modes (Practice, Stats). Visually heavier than .chip — these are
+     * navigation, not filters. */
+    .submode-row {
+      display: flex;
+      gap: var(--s-2);
+      flex-wrap: wrap;
+      align-items: center;
+      padding: var(--s-3) var(--s-7);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-1);
+    }
+    .submode {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--s-2);
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-soft);
+      border-radius: var(--r-md);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .submode:hover { color: var(--text); background: var(--surface-2); }
+    .submode.active {
+      color: var(--text);
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+    .submode.planned {
+      color: var(--muted);
+      cursor: default;
+    }
+    .submode.planned::after {
+      content: "soon";
+      margin-left: 6px;
+      padding: 1px 5px;
+      background: var(--surface-3);
+      border-radius: 2px;
+      font-size: 9px;
+      color: var(--text-soft);
+    }
+
+    .card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: var(--s-5);
+    }
+
+    .meta-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      letter-spacing: 0;
+      color: var(--muted);
+    }
+
+    .rule {
+      height: 1px;
+      background: var(--border);
+      margin: var(--s-4) 0;
+    }
+    .rule-strong { background: var(--border-strong); }
+
+    .stack { display: flex; flex-direction: column; gap: var(--s-4); }
+    .row   { display: flex; gap: var(--s-4); align-items: center; }
+    .grow  { flex: 1 1 0; min-width: 0; }
+
+    /* ============================================================ */
+    /* PAGE: Home — "workshop" layout, not generic dashboard.        */
+    /* Top: focus strip (current case dominates, cube face leads).   */
+    /* Below: 3-col grid (path / recommended / week).                */
+    /* ============================================================ */
+
+    /* Focus strip — the cube state of whatever you're currently
+     * working on is always shown at the top of Home. Horizontal layout
+     * with the face on the left and actions on the right. */
+    .focus-strip {
+      display: grid;
+      grid-template-columns: 130px 1fr auto;
+      gap: var(--s-5);
+      align-items: center;
+      padding: var(--s-5) var(--s-7);
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+    }
+    .focus-face {
+      width: 130px;
+      height: 130px;
+    }
+    .focus-meta {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+      min-width: 0;
+    }
+    .focus-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .focus-name {
+      font-family: var(--font-display);
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1;
+      color: var(--text);
+      margin: 0;
+    }
+    .focus-alg {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      letter-spacing: 0.02em;
+      color: var(--text-soft);
+      margin-top: var(--s-1);
+    }
+    .focus-actions {
+      display: flex;
+      gap: var(--s-2);
+      align-items: center;
+    }
+
+    /* Workshop grid — three uneven columns. Path on the left (compact
+     * vertical list), recommended in the middle (cards with mini cube
+     * faces), weekly stats on the right. */
+    .home-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 260px;
+      gap: var(--s-6);
+      padding: var(--s-6) var(--s-7);
+      align-items: start;
+    }
+    .home-col-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-soft);
+      letter-spacing: 0;
+      margin: 0 0 var(--s-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .home-col-title-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Compact milestone list — replaces the 5-cell horizontal track */
+    .milestone-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .milestone {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: var(--s-3);
+      align-items: center;
+      padding: var(--s-3) var(--s-4);
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+    }
+    .milestone:last-child { border-bottom: none; }
+    .milestone-num {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .milestone.done .milestone-num { color: var(--good); }
+    .milestone.current {
+      background: var(--surface-2);
+      box-shadow: inset 3px 0 0 var(--accent);
+    }
+    .milestone.current .milestone-num { color: var(--accent); }
+    .milestone-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      letter-spacing: -0.005em;
+      min-width: 0;
+    }
+    .milestone-meta {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Recommended-next list — cards with mini cube-face thumbnails */
+    .upnext-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
+    }
+    .upnext {
+      display: grid;
+      grid-template-columns: 56px 1fr auto;
+      gap: var(--s-4);
+      align-items: center;
+      padding: var(--s-3) var(--s-4);
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      cursor: pointer;
+    }
+    .upnext:hover { background: var(--surface-2); border-color: var(--muted); }
+    .upnext-face {
+      width: 56px;
+      height: 56px;
+    }
+    .upnext-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .upnext-cat {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .upnext-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+      line-height: 1.2;
+    }
+    .upnext-alg {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-soft);
+      letter-spacing: 0.02em;
+    }
+
+    /* Home bottom row — Recent sessions strip. Fills the rest of the
+     * viewport below the workshop grid and gives the page another
+     * horizontal rhythm beat. */
+    .recent-strip {
+      padding: var(--s-5) var(--s-7) var(--s-6);
+      border-top: 1px solid var(--border);
+    }
+    .recent-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--s-3);
+    }
+    .recent-head h2 {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-soft);
+      margin: 0;
+    }
+    .recent-head a {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .recent-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-3);
+    }
+    .recent-card {
+      padding: var(--s-4);
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+      cursor: pointer;
+    }
+    .recent-card:hover { background: var(--surface-2); border-color: var(--muted); }
+    .recent-card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .recent-card-best {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .recent-card-meta {
+      display: flex;
+      gap: var(--s-3);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .recent-card-meta b {
+      color: var(--text-soft);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Stats bottom — alg mastery grid using cube-face thumbnails so the
+     * design signature carries through to the analytics page. */
+    .mastery-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: var(--s-3);
+      margin-top: var(--s-6);
+    }
+    .mastery-cell {
+      padding: var(--s-3);
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+      align-items: center;
+      text-align: center;
+    }
+    .mastery-face {
+      width: 56px;
+      height: 56px;
+    }
+    .mastery-name {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+    }
+    .mastery-best {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Legacy classes that were on the old home page — kept defined for
+     * backwards compat with any sub-element still referencing them. */
+    .hero {
+      padding: var(--s-7) var(--s-7);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-1);
+    }
+    .hero-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 var(--s-3);
+    }
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 700;
+      line-height: 1.05;
+      margin: 0 0 var(--s-5);
+      max-width: 22ch;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    .hero-title em {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 700;
+    }
+    .hero-desc {
+      color: var(--text-soft);
+      margin: 0 0 var(--s-5);
+      max-width: 56ch;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .hero-actions { display: flex; gap: var(--s-3); }
+
+    /* Milestone strip */
+    .path-section {
+      padding: var(--s-6) var(--s-7);
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--s-5);
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      color: var(--text);
+      margin: 0;
+    }
+    .section-title em { color: var(--accent); font-style: normal; font-weight: 700; }
+
+    .path-track {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .path-step {
+      padding: var(--s-4);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-2);
+    }
+    .path-step:last-child { border-right: none; }
+    .path-step.done    { background: var(--surface-1); }
+    .path-step.current { background: var(--surface-2); border-top: 2px solid var(--accent); margin-top: -1px; }
+    .path-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .path-step.done .path-num { color: var(--good); }
+    .path-step.current .path-num { color: var(--accent); }
+    .path-label {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+    .path-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    /* Two-column row: recommended next + stats */
+    .home-cols {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: var(--s-7);
+      padding: var(--s-6) var(--s-7);
+    }
+
+    .up-next-item {
+      display: flex;
+      align-items: center;
+      gap: var(--s-4);
+      padding: var(--s-3) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .up-next-item:last-child { border-bottom: none; }
+    .up-next-marker {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--faint);
+      width: 24px;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .up-next-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.25;
+      letter-spacing: -0.005em;
+      color: var(--text);
+      margin: 0;
+    }
+    .up-next-meta {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin: 2px 0 0;
+    }
+
+    .stat-tile {
+      border: 1px solid var(--border);
+      padding: var(--s-4);
+      background: var(--surface-1);
+    }
+    .stat-tile + .stat-tile { border-top: none; }
+    .stat-tile:first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+    .stat-tile:last-child  { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); }
+    .stat-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1;
+      margin: var(--s-2) 0 var(--s-1);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    /* .stat-value.accent kept as a class hook but no longer cobalt-colored;
+       cobalt is reserved for genuinely-needs-attention elements. */
+    .stat-delta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--good);
+      letter-spacing: 0.02em;
+    }
+    .stat-delta.negative { color: var(--bad); }
+
+    /* ============================================================ */
+    /* PAGE: Browse                                                   */
+    /* ============================================================ */
+
+    .toolbar {
+      display: flex;
+      gap: var(--s-3);
+      align-items: center;
+      padding: var(--s-4) var(--s-7);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .search {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 7px 12px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      min-width: 220px;
+    }
+    .search::placeholder { color: var(--muted); }
+    .search:focus { outline: none; border-color: var(--accent); }
+
+    .browse-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-3);
+      padding: var(--s-5) var(--s-7);
+    }
+    .alg-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: var(--s-4);
+      cursor: pointer;
+    }
+    .alg-card:hover { background: var(--surface-2); border-color: var(--muted); }
+    .alg-img {
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--faint);
+      letter-spacing: 0.1em;
+    }
+    .alg-title {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+      margin: var(--s-3) 0 var(--s-2);
+      color: var(--text);
+    }
+    .alg-notation {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-soft);
+      letter-spacing: 0.02em;
+      margin: 0 0 var(--s-3);
+    }
+    .alg-stats {
+      display: flex;
+      justify-content: space-between;
+      padding-top: var(--s-3);
+      border-top: 1px solid var(--border);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .alg-stats strong {
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ============================================================ */
+    /* PAGE: Practice                                                 */
+    /* ============================================================ */
+
+    .practice-shell {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      border-top: 1px solid var(--border);
+      min-height: calc(100vh - 220px); /* below ws-bar + page-head + submode-row */
+    }
+    .practice-stage {
+      padding: var(--s-7);
+      background: var(--surface-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--s-4);
+      text-align: center;
+    }
+    .practice-progress {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .practice-img {
+      /* Practice page is about studying the case — preview leads */
+      width: 320px;
+      height: 320px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--faint);
+      letter-spacing: 0.1em;
+    }
+    .practice-name {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      margin: 0;
+      color: var(--text);
+    }
+    .practice-scramble {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-soft);
+      letter-spacing: 0.04em;
+      padding: var(--s-3) var(--s-4);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+    }
+    .practice-timer {
+      /* Practice: secondary readout — studying, not racing */
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-soft);
+    }
+
+    .practice-side {
+      padding: var(--s-5) var(--s-5);
+      background: var(--surface-1);
+    }
+    .side-block { margin-bottom: var(--s-6); }
+    .side-block-title {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      padding-bottom: var(--s-2);
+      border-bottom: 1px solid var(--border);
+      margin: 0 0 var(--s-3);
+    }
+    .side-stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--s-3);
+    }
+    .side-stat-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .side-stat-value {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    .session-list { font-variant-numeric: tabular-nums; }
+    .session-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: var(--s-2) 0;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text);
+    }
+    .session-item:last-child { border-bottom: none; }
+    .session-item.best { color: var(--text); font-weight: 600; }
+    .session-item.best .session-meta { color: var(--accent); }
+    .session-meta { color: var(--muted); font-size: 11px; letter-spacing: 0.02em; }
+
+    /* ============================================================ */
+    /* PAGE: Timer                                                    */
+    /* ============================================================ */
+
+    .timer-shell {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      border-top: 1px solid var(--border);
+      /* Fill the viewport below the workspace bar + page-head so Timer
+       * doesn't leave a dead strip at the bottom. */
+      min-height: calc(100vh - 175px);
+    }
+    .timer-stage {
+      padding: var(--s-7);
+      background: var(--surface-1);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--s-6);
+    }
+    .timer-scramble {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      letter-spacing: 0.04em;
+      color: var(--text-soft);
+      text-align: center;
+      max-width: 70%;
+      line-height: 1.5;
+    }
+    .timer-display {
+      font-family: var(--font-display);
+      font-size: 168px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.05em;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .timer-hint {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    .timer-side { padding: var(--s-5); background: var(--surface-1); }
+    .timer-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      margin-bottom: var(--s-5);
+    }
+    .timer-stat-cell {
+      padding: var(--s-4);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .timer-stat-cell:nth-child(2n) { border-right: none; }
+    .timer-stat-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .timer-stat-cell .stat-value { font-size: 24px; margin-top: var(--s-1); }
+
+    /* ============================================================ */
+    /* PAGE: Stats                                                    */
+    /* ============================================================ */
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      margin-bottom: var(--s-6);
+    }
+    .stats-cell {
+      padding: var(--s-5);
+      border-right: 1px solid var(--border);
+    }
+    .stats-cell:last-child { border-right: none; }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .chart-cell {
+      padding: var(--s-5);
+      border-right: 1px solid var(--border);
+    }
+    .chart-cell:last-child { border-right: none; }
+    .chart-area {
+      height: 200px;
+      margin-top: var(--s-4);
+      position: relative;
+      border-bottom: 1px solid var(--border);
+      border-left: 1px solid var(--border);
+    }
+    .chart-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 30%;
+      height: 1px;
+      background: var(--accent);
+      transform: skewY(-4deg);
+    }
+    .chart-line::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      top: -3px;
+      width: 7px;
+      height: 7px;
+      background: var(--accent);
+    }
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      gap: 2px;
+      margin-top: var(--s-4);
+    }
+    .heatmap-cell {
+      aspect-ratio: 1;
+      background: var(--surface-2);
+      border-radius: 2px;
+    }
+    .heatmap-cell.l1 { background: rgba(46,76,242,0.25); }
+    .heatmap-cell.l2 { background: rgba(46,76,242,0.50); }
+    .heatmap-cell.l3 { background: rgba(46,76,242,0.75); }
+    .heatmap-cell.l4 { background: var(--accent); }
+
+    /* ============================================================ */
+    /* PAGE: Settings                                                 */
+    /* ============================================================ */
+
+    /* Settings uses the full page width — 3-column grid, one column per
+     * section, instead of a single 760px-wide centered stack. Each section
+     * holds its bordered row group. Side-by-side is a non-sidebar way to
+     * fill the width without re-introducing a left rail. */
+    .settings-shell {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--s-6);
+      align-items: start;
+    }
+    .settings-col { min-width: 0; }
+
+    /* About footer — fills the bottom of the Settings page with app info
+     * (version, links, contact). Otherwise the page leaves a dead strip
+     * below the 3-col grid. */
+    .settings-about {
+      margin-top: var(--s-7);
+      padding-top: var(--s-5);
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-5);
+    }
+    .settings-about-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .settings-about-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .settings-about-value {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+    }
+    .settings-about-links {
+      display: flex;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+      margin-top: 2px;
+    }
+    .settings-about-links a {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .settings-about-links a:hover { color: var(--accent-strong); }
+    .settings-section {
+      margin-bottom: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .settings-section-title {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0;
+      color: var(--text-soft);
+      margin: 0 0 var(--s-3);
+    }
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--s-4) var(--s-5);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-1);
+      gap: var(--s-4);
+    }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-label {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0;
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .settings-desc {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin-top: 2px;
+    }
+
+    /* Slightly-rounded toggle — not a pill, not a hard square */
+    .toggle {
+      width: 40px;
+      height: 20px;
+      background: var(--surface-3);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-sm);
+      position: relative;
+      cursor: pointer;
+    }
+    .toggle::before {
+      content: "";
+      position: absolute;
+      top: 1px;
+      left: 1px;
+      width: 16px;
+      height: 16px;
+      background: var(--text-soft);
+      border-radius: 2px;
+    }
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+    .toggle.on::before { left: 21px; background: #fff; }
+
+    /* ============================================================ */
+    /* View switching                                                 */
+    /* ============================================================ */
+    .hidden { display: none !important; }
+
+    /* ============================================================ */
+    /* LANDING PAGE                                                   */
+    /* ============================================================ */
+    .landing {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .land-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--s-4) var(--s-7);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .land-nav-left {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+    }
+    .land-nav-mark {
+      width: 16px;
+      height: 16px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+    .land-nav-brand {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .land-nav-tag {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      padding-left: var(--s-3);
+      border-left: 1px solid var(--border);
+      margin-left: var(--s-3);
+    }
+    .land-nav-right {
+      display: flex;
+      gap: var(--s-3);
+      align-items: center;
+    }
+    .land-nav-link {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-soft);
+      letter-spacing: 0;
+      cursor: pointer;
+      padding: 6px 0;
+    }
+    .land-nav-link:hover { color: var(--text); }
+
+    .land-hero {
+      padding: 64px var(--s-7);
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-1);
+    }
+    .land-hero-inner {
+      max-width: 880px;
+      margin: 0 auto;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .land-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 var(--s-4);
+    }
+    .land-headline {
+      font-family: var(--font-display);
+      font-size: 64px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.035em;
+      margin: 0 0 var(--s-5);
+      max-width: 22ch;
+      color: var(--text);
+    }
+    .land-headline em {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 700;
+    }
+    .land-sub {
+      font-family: var(--font-sans);
+      font-size: 16px;
+      color: var(--text-soft);
+      line-height: 1.55;
+      max-width: 52ch;
+      margin: 0 0 var(--s-5);
+    }
+    .land-cta-row {
+      display: flex;
+      gap: var(--s-3);
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-lg {
+      padding: 12px 22px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* Three-up "what you get" */
+    .land-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--border);
+      max-width: 1240px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .land-feature {
+      padding: var(--s-7) var(--s-6);
+      border-right: 1px solid var(--border);
+    }
+    .land-feature:last-child { border-right: none; }
+    .land-feature-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      line-height: 1.1;
+      margin: 0 0 var(--s-3);
+      color: var(--text);
+    }
+    .land-feature-desc {
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Numbered steps — the numbers ARE the order, no decorative prefix */
+    .land-steps {
+      padding: var(--s-7) var(--s-7);
+      border-bottom: 1px solid var(--border);
+      max-width: 1240px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .land-steps-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--s-6);
+    }
+    .land-steps-title {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+      margin: 0;
+      max-width: 18ch;
+      color: var(--text);
+    }
+    .land-steps-title em { color: var(--accent); font-style: normal; font-weight: 700; }
+    .land-step-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-3);
+    }
+    .land-step {
+      padding: var(--s-5);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface-1);
+    }
+    .land-step-num {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      margin: 0 0 var(--s-3);
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .land-step-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+      margin: 0 0 var(--s-2);
+      color: var(--text);
+    }
+    .land-step-desc {
+      font-size: 13px;
+      color: var(--text-soft);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Pricing teaser */
+    .land-price {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+      max-width: 1240px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .land-price-left {
+      padding: var(--s-7);
+      background: var(--surface-1);
+      border-right: 1px solid var(--border);
+    }
+    .land-price-right {
+      padding: var(--s-7);
+      background: var(--bg);
+    }
+    .land-price-tag {
+      font-family: var(--font-display);
+      font-size: 80px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.045em;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      margin: 0 0 var(--s-3);
+    }
+    .land-price-unit {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin: 0 0 var(--s-5);
+    }
+    .land-price-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 var(--s-5);
+    }
+    .land-price-list li {
+      padding: var(--s-3) 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      color: var(--text-soft);
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+    }
+    .land-price-list li::before {
+      content: "→";
+      color: var(--accent);
+      font-family: var(--font-mono);
+    }
+
+    /* Final CTA */
+    .land-final {
+      padding: var(--s-7);
+      text-align: center;
+      background: var(--surface-1);
+      border-bottom: 1px solid var(--border);
+    }
+    .land-final-title {
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.05;
+      margin: 0 auto var(--s-5);
+      max-width: 22ch;
+      color: var(--text);
+    }
+    .land-final-title em { color: var(--accent); font-style: normal; font-weight: 700; }
+
+    /* Footer */
+    .land-footer {
+      padding: var(--s-5) var(--s-7);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0;
+      margin-top: auto;
+      max-width: 1240px;
+      margin-left: auto;
+      margin-right: auto;
+      width: 100%;
+    }
+    .land-footer-right { display: flex; gap: var(--s-5); }
+
+    /* ============================================================ */
+    /* AUTH SCREENS                                                   */
+    /* ============================================================ */
+    .auth {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+    }
+    .auth-side {
+      background: var(--surface-1);
+      border-right: 1px solid var(--border);
+      padding: var(--s-7);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: var(--s-6);
+    }
+    .auth-side-back {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .auth-side-back:hover { color: var(--text); }
+
+    /* Auth-side product callout — shows what the account enables, not
+       per-user stats (which obviously don't exist before login). */
+    .auth-side-glimpse {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+      max-width: 420px;
+    }
+    .auth-glimpse-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin: 0;
+      color: var(--text);
+      max-width: 18ch;
+    }
+    .auth-glimpse-sub {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text-soft);
+      line-height: 1.55;
+      margin: 0;
+      max-width: 38ch;
+    }
+    .auth-glimpse-list {
+      list-style: none;
+      padding: 0;
+      margin: var(--s-3) 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
+    }
+    .auth-glimpse-list li {
+      display: flex;
+      gap: var(--s-3);
+      align-items: baseline;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text-soft);
+      line-height: 1.45;
+    }
+    .auth-glimpse-list li::before {
+      content: "→";
+      font-family: var(--font-mono);
+      color: var(--accent);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .auth-side-foot {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+
+    .auth-panel {
+      padding: var(--s-7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .auth-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin: 0 0 var(--s-3);
+    }
+    .auth-title {
+      font-family: var(--font-display);
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+      margin: 0 0 var(--s-3);
+      color: var(--text);
+    }
+    .auth-sub {
+      color: var(--text-soft);
+      margin: 0 0 var(--s-6);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-4);
+    }
+    .auth-field { display: flex; flex-direction: column; gap: var(--s-2); }
+    .auth-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0;
+      color: var(--text-soft);
+    }
+    .auth-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+      width: 100%;
+    }
+    .auth-input:focus { outline: none; border-color: var(--accent); }
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+      padding: 13px 14px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      margin: var(--s-4) 0;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+    .auth-divider-text {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0;
+    }
+    .auth-toggle {
+      margin-top: var(--s-5);
+      padding-top: var(--s-4);
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-soft);
+    }
+    .auth-toggle a {
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid var(--accent);
+    }
+
+    /* "Coming soon" toast — fired by .planned chips/submodes and any
+     * [data-soon] interactive element. Bottom-center, auto-dismisses. */
+    .soon-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 10px);
+      padding: 10px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      box-shadow: var(--shadow-float);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 200;
+      pointer-events: none;
+    }
+    .soon-toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    /* Lab marker */
+    .lab-meta {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0;
+      box-shadow: var(--shadow-float);   /* floating element gets the only shadow */
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- LANDING                                                      -->
+<!-- ============================================================ -->
+<section class="landing" id="landing">
+
+  <nav class="land-nav">
+    <div class="land-nav-left">
+      <span class="land-nav-mark"></span>
+      <span class="land-nav-brand">Brand</span>
+    </div>
+    <div class="land-nav-right">
+      <span class="land-nav-link" data-go="signin">Sign in</span>
+      <button class="btn btn-primary" data-go="signup">Get started →</button>
+    </div>
+  </nav>
+
+  <div class="land-hero">
+    <div class="land-hero-inner">
+      <p class="land-eyebrow">Placeholder eyebrow</p>
+      <h1 class="land-headline">A confident headline goes <em>here</em>, in one short sentence.</h1>
+      <p class="land-sub">Supporting copy that explains the value in two sentences. Placeholder text that hints at the product without committing to final messaging yet.</p>
+      <div class="land-cta-row">
+        <button class="btn btn-primary btn-lg" data-go="signup">Get started →</button>
+        <button class="btn btn-lg" data-go="signin">Sign in</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="land-features">
+    <div class="land-feature">
+      <h3 class="land-feature-title">Feature one</h3>
+      <p class="land-feature-desc">Placeholder description of the first key thing this app does. Two short sentences explaining the value.</p>
+    </div>
+    <div class="land-feature">
+      <h3 class="land-feature-title">Feature two</h3>
+      <p class="land-feature-desc">Placeholder description of the second key thing. What it lets the user do that they couldn't do before.</p>
+    </div>
+    <div class="land-feature">
+      <h3 class="land-feature-title">Feature three</h3>
+      <p class="land-feature-desc">Placeholder description of the third feature. The one that makes people stay after the trial ends.</p>
+    </div>
+  </div>
+
+  <div class="land-steps">
+    <div class="land-steps-head">
+      <h2 class="land-steps-title">How it <em>works</em>, in four steps.</h2>
+    </div>
+    <div class="land-step-list">
+      <div class="land-step">
+        <p class="land-step-num">01</p>
+        <h4 class="land-step-name">First step</h4>
+        <p class="land-step-desc">Short description of what the user does first.</p>
+      </div>
+      <div class="land-step">
+        <p class="land-step-num">02</p>
+        <h4 class="land-step-name">Second step</h4>
+        <p class="land-step-desc">Short description of what happens next.</p>
+      </div>
+      <div class="land-step">
+        <p class="land-step-num">03</p>
+        <h4 class="land-step-name">Third step</h4>
+        <p class="land-step-desc">Short description of the third action.</p>
+      </div>
+      <div class="land-step">
+        <p class="land-step-num">04</p>
+        <h4 class="land-step-name">Fourth step</h4>
+        <p class="land-step-desc">Short description of the payoff.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="land-price">
+    <div class="land-price-left">
+      <p class="land-eyebrow">Pricing</p>
+      <h2 class="land-headline" style="font-size: 44px; max-width: none;">One price. Lifetime access.</h2>
+      <p class="land-sub">Placeholder description of the pricing model. Why a one-time purchase fits this product.</p>
+    </div>
+    <div class="land-price-right">
+      <p class="land-price-tag">$00</p>
+      <p class="land-price-unit">One-time / lifetime</p>
+      <ul class="land-price-list">
+        <li>Included feature placeholder one</li>
+        <li>Included feature placeholder two</li>
+        <li>Included feature placeholder three</li>
+        <li>Included feature placeholder four</li>
+        <li>Included feature placeholder five</li>
+      </ul>
+      <button class="btn btn-primary btn-lg btn-block" data-go="signup">Get started →</button>
+    </div>
+  </div>
+
+  <div class="land-final">
+    <h2 class="land-final-title">Closing line that drives the <em>action</em>.</h2>
+    <div class="land-cta-row" style="justify-content: center;">
+      <button class="btn btn-primary btn-lg" data-go="signup">Get started →</button>
+      <button class="btn btn-lg" data-go="signin">Sign in</button>
+    </div>
+  </div>
+
+  <footer class="land-footer">
+    <div>© placeholder, all rights reserved</div>
+    <div class="land-footer-right">
+      <span>Privacy</span>
+      <span>Terms</span>
+      <span>Contact</span>
+    </div>
+  </footer>
+
+</section>
+
+<!-- ============================================================ -->
+<!-- SIGN IN                                                       -->
+<!-- ============================================================ -->
+<section class="auth hidden" id="signin">
+  <aside class="auth-side">
+    <span class="auth-side-back" data-go="landing">← Back</span>
+    <div class="auth-side-glimpse">
+      <h2 class="auth-glimpse-title">Sign back in to pick up your progress.</h2>
+      <p class="auth-glimpse-sub">Your sessions and stats are saved to your account and sync across every device.</p>
+      <ul class="auth-glimpse-list">
+        <li>119 PLL, OLL, and F2L cases — all verified</li>
+        <li>Drill, recognition, and timer modes</li>
+        <li>Sync across phone and desktop</li>
+        <li>Free, no paywall</li>
+      </ul>
+    </div>
+    <span class="auth-side-foot">ui-lab · experiment</span>
+  </aside>
+
+  <div class="auth-panel">
+    <p class="auth-eyebrow">Welcome back</p>
+    <h1 class="auth-title">Sign in.</h1>
+    <p class="auth-sub">Placeholder copy that's friendly without overdoing it.</p>
+
+    <form class="auth-form" onsubmit="event.preventDefault(); showView('app');">
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input class="auth-input" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Sign in →</button>
+    </form>
+
+    <div class="auth-divider"><span class="auth-divider-text">or</span></div>
+    <button class="btn btn-block btn-lg" data-go="app">Continue with Google</button>
+
+    <p class="auth-toggle">
+      New here? <a data-go="signup">Create an account →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SIGN UP                                                       -->
+<!-- ============================================================ -->
+<section class="auth hidden" id="signup">
+  <aside class="auth-side">
+    <span class="auth-side-back" data-go="landing">← Back</span>
+    <div class="auth-side-glimpse">
+      <h2 class="auth-glimpse-title">Everything you need to learn the cube.</h2>
+      <p class="auth-glimpse-sub">Browse the algorithm library, drill weak cases, and track your averages over time.</p>
+      <ul class="auth-glimpse-list">
+        <li>119 PLL, OLL, and F2L cases — all verified</li>
+        <li>Drill, recognition, and timer modes</li>
+        <li>Sync across phone and desktop</li>
+        <li>Free, no paywall</li>
+      </ul>
+    </div>
+    <span class="auth-side-foot">ui-lab · experiment</span>
+  </aside>
+
+  <div class="auth-panel">
+    <p class="auth-eyebrow">Get started</p>
+    <h1 class="auth-title">Create an account.</h1>
+    <p class="auth-sub">Placeholder copy. Two sentences explaining what happens after signup.</p>
+
+    <form class="auth-form" onsubmit="event.preventDefault(); showView('app');">
+      <div class="auth-field">
+        <label class="auth-label">Name</label>
+        <input class="auth-input" type="text" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Email</label>
+        <input class="auth-input" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="auth-field">
+        <label class="auth-label">Password</label>
+        <input class="auth-input" type="password" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg">Create account →</button>
+    </form>
+
+    <div class="auth-divider"><span class="auth-divider-text">or</span></div>
+    <button class="btn btn-block btn-lg" data-go="app">Continue with Google</button>
+
+    <p class="auth-toggle">
+      Already have an account? <a data-go="signin">Sign in →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- APP (the existing interface)                                  -->
+<!-- ============================================================ -->
+<div class="app hidden">
+
+  <!-- ============================================================ -->
+  <!-- Workspace bar (top) — modes use cube-color dots so the chrome  -->
+  <!-- itself reads as part of the product, not a generic SaaS nav.   -->
+  <!-- Each mode dot corresponds to a real cube face color (WCA).     -->
+  <!-- ============================================================ -->
+  <header class="ws-bar">
+    <div class="ws-brand">
+      <span class="ws-brand-mark" aria-hidden="true">
+        <span style="background:var(--cube-yellow)"></span>
+        <span style="background:var(--cube-red)"></span>
+        <span style="background:var(--cube-blue)"></span>
+        <span style="background:var(--cube-green)"></span>
+      </span>
+      <span class="ws-brand-name">Brand</span>
+    </div>
+    <nav class="ws-modes">
+      <button class="ws-mode active" data-page="home"><span class="ws-mode-dot"></span>Home</button>
+      <button class="ws-mode" data-page="browse"><span class="ws-mode-dot"></span>Browse</button>
+      <button class="ws-mode" data-page="practice"><span class="ws-mode-dot"></span>Practice</button>
+      <button class="ws-mode" data-page="timer"><span class="ws-mode-dot"></span>Timer</button>
+      <button class="ws-mode" data-page="stats"><span class="ws-mode-dot"></span>Stats</button>
+      <button class="ws-mode" data-page="settings"><span class="ws-mode-dot"></span>Settings</button>
+    </nav>
+    <div class="ws-user">
+      <button class="ws-account" aria-label="Account">N</button>
+    </div>
+  </header>
+
+  <!-- ============================================================ -->
+  <!-- Main                                                          -->
+  <!-- ============================================================ -->
+  <main class="ws-main">
+
+    <!-- =========== PAGE: HOME =========== -->
+    <section class="page active" data-page="home">
+      <!-- Focus strip: the case you're currently working on, always
+           shown at the top of Home. The cube face is the visual anchor. -->
+      <div class="focus-strip">
+        <div class="focus-face">
+          <div class="face-sticker" style="width:100%; height:100%;">
+            <span class="b"></span><span class="r"></span><span class="b"></span>
+            <span class="y"></span><span class="y"></span><span class="y"></span>
+            <span class="o"></span><span class="g"></span><span class="o"></span>
+          </div>
+        </div>
+        <div class="focus-meta">
+          <span class="focus-eyebrow">Today's drill · Due now</span>
+          <h1 class="focus-name">PLL · J-perm (a)</h1>
+          <span class="focus-alg">R' U L' U2 R U' R' U2 R L</span>
+        </div>
+        <div class="focus-actions">
+          <button class="btn" data-soon="Skip">Skip</button>
+          <button class="btn btn-primary" data-soon="Start drill">Start drill →</button>
+        </div>
+      </div>
+
+      <!-- Workshop grid: 3 uneven columns. No "hero section" with another
+           giant title — the focus strip above already establishes context. -->
+      <div class="home-grid">
+        <div>
+          <h2 class="home-col-title">
+            Your path
+            <span class="home-col-title-meta">3 of 5</span>
+          </h2>
+          <ul class="milestone-list">
+            <li class="milestone done">
+              <span class="milestone-num">01</span>
+              <span class="milestone-name">Two-look CFOP</span>
+              <span class="milestone-meta">Complete</span>
+            </li>
+            <li class="milestone done">
+              <span class="milestone-num">02</span>
+              <span class="milestone-name">Full PLL</span>
+              <span class="milestone-meta">Complete</span>
+            </li>
+            <li class="milestone current">
+              <span class="milestone-num">03</span>
+              <span class="milestone-name">Full OLL</span>
+              <span class="milestone-meta">60%</span>
+            </li>
+            <li class="milestone">
+              <span class="milestone-num">04</span>
+              <span class="milestone-name">Sub-20</span>
+              <span class="milestone-meta">Locked</span>
+            </li>
+            <li class="milestone">
+              <span class="milestone-num">05</span>
+              <span class="milestone-name">Sub-15</span>
+              <span class="milestone-meta">Locked</span>
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="home-col-title">
+            Recommended next
+            <span class="home-col-title-meta">4 cases</span>
+          </h2>
+          <div class="upnext-list">
+            <div class="upnext">
+              <div class="upnext-face">
+                <div class="face-sticker" style="width:100%; height:100%;">
+                  <span class="o"></span><span class="g"></span><span class="r"></span>
+                  <span class="y"></span><span class="y"></span><span class="y"></span>
+                  <span class="b"></span><span class="r"></span><span class="r"></span>
+                </div>
+              </div>
+              <div class="upnext-meta">
+                <span class="upnext-cat">PLL · Headlights</span>
+                <span class="upnext-name">U-perm (a)</span>
+                <span class="upnext-alg">R2 U' R' U' R U R U R U' R</span>
+              </div>
+              <button class="btn" data-soon="Drill">Drill →</button>
+            </div>
+            <div class="upnext">
+              <div class="upnext-face">
+                <div class="face-sticker" style="width:100%; height:100%;">
+                  <span class="x"></span><span class="y"></span><span class="x"></span>
+                  <span class="y"></span><span class="y"></span><span class="y"></span>
+                  <span class="x"></span><span class="y"></span><span class="x"></span>
+                </div>
+              </div>
+              <div class="upnext-meta">
+                <span class="upnext-cat">OLL · Cross</span>
+                <span class="upnext-name">Sune</span>
+                <span class="upnext-alg">R U R' U R U2 R'</span>
+              </div>
+              <button class="btn" data-soon="Drill">Drill →</button>
+            </div>
+            <div class="upnext">
+              <div class="upnext-face">
+                <div class="face-sticker" style="width:100%; height:100%;">
+                  <span class="b"></span><span class="b"></span><span class="r"></span>
+                  <span class="y"></span><span class="y"></span><span class="y"></span>
+                  <span class="r"></span><span class="g"></span><span class="g"></span>
+                </div>
+              </div>
+              <div class="upnext-meta">
+                <span class="upnext-cat">PLL · Diagonal</span>
+                <span class="upnext-name">Y-perm</span>
+                <span class="upnext-alg">F R U' R' U' R U R' F' R U R' U' R' F R F'</span>
+              </div>
+              <button class="btn" data-soon="Drill">Drill →</button>
+            </div>
+            <div class="upnext">
+              <div class="upnext-face">
+                <div class="face-sticker" style="width:100%; height:100%;">
+                  <span class="y"></span><span class="x"></span><span class="y"></span>
+                  <span class="x"></span><span class="y"></span><span class="x"></span>
+                  <span class="y"></span><span class="x"></span><span class="y"></span>
+                </div>
+              </div>
+              <div class="upnext-meta">
+                <span class="upnext-cat">OLL · Dot</span>
+                <span class="upnext-name">Anti-Sune</span>
+                <span class="upnext-alg">R U2 R' U' R U' R'</span>
+              </div>
+              <button class="btn" data-soon="Drill">Drill →</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="home-col-title">
+            This week
+            <span class="home-col-title-meta">Last 7 days</span>
+          </h2>
+          <div class="stat-tile">
+            <p class="stat-label">Solves</p>
+            <p class="stat-value">128</p>
+            <p class="stat-delta">↑ 24 vs last week</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-label">ao12</p>
+            <p class="stat-value">14.82</p>
+            <p class="stat-delta">↑ 0.43 faster</p>
+          </div>
+          <div class="stat-tile">
+            <p class="stat-label">Drill reps</p>
+            <p class="stat-value">42</p>
+            <p class="stat-delta negative">↓ 8 vs last week</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent sessions strip — fills the bottom of the viewport
+           with another horizontal rhythm beat. -->
+      <div class="recent-strip">
+        <div class="recent-head">
+          <h2>Recent sessions</h2>
+          <a data-soon="Full session history">See all →</a>
+        </div>
+        <div class="recent-grid">
+          <div class="recent-card" data-soon="Open session">
+            <div class="recent-card-head"><span>Today</span><span>52 solves</span></div>
+            <div class="recent-card-best">14.82</div>
+            <div class="recent-card-meta"><span>ao5 <b>13.94</b></span><span>best <b>11.27</b></span></div>
+          </div>
+          <div class="recent-card" data-soon="Open session">
+            <div class="recent-card-head"><span>Yesterday</span><span>38 solves</span></div>
+            <div class="recent-card-best">15.41</div>
+            <div class="recent-card-meta"><span>ao5 <b>14.62</b></span><span>best <b>12.08</b></span></div>
+          </div>
+          <div class="recent-card" data-soon="Open session">
+            <div class="recent-card-head"><span>Sun</span><span>24 solves</span></div>
+            <div class="recent-card-best">16.03</div>
+            <div class="recent-card-meta"><span>ao5 <b>15.12</b></span><span>best <b>12.94</b></span></div>
+          </div>
+          <div class="recent-card" data-soon="Open session">
+            <div class="recent-card-head"><span>Sat</span><span>41 solves</span></div>
+            <div class="recent-card-best">15.87</div>
+            <div class="recent-card-meta"><span>ao5 <b>14.88</b></span><span>best <b>11.92</b></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========== PAGE: BROWSE =========== -->
+    <section class="page" data-page="browse">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Browse</h1>
+          <p class="page-subtitle">Section description placeholder — what the user is looking at on this page.</p>
+        </div>
+        <button class="btn btn-primary" data-soon="Add a new case">+ Case</button>
+      </div>
+
+      <div class="toolbar">
+        <input type="text" class="search" placeholder="Search…">
+        <div class="chip accent">PLL</div>
+        <div class="chip">OLL</div>
+        <div class="chip">F2L</div>
+        <div class="chip">Notation</div>
+        <div class="chip planned">COLL</div>
+        <div class="chip planned">ZBLL</div>
+        <div class="chip planned">OH</div>
+        <div class="chip planned">Roux</div>
+        <div style="margin-left:auto;" class="meta-label">120 items</div>
+      </div>
+
+      <div class="browse-grid">
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="r"></span><span class="b"></span><span class="o"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="g"></span><span class="r"></span><span class="r"></span></div></div><h3 class="alg-title">T-perm</h3><p class="alg-notation">R U R' U' R' F R2 U' R' U' R U R' F'</p><div class="alg-stats"><span>best <strong>1.94</strong></span><span>reps <strong>42</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="b"></span><span class="r"></span><span class="o"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="r"></span><span class="g"></span><span class="b"></span></div></div><h3 class="alg-title">Aa-perm</h3><p class="alg-notation">x R' U R' D2 R U' R'</p><div class="alg-stats"><span>best <strong>2.12</strong></span><span>reps <strong>28</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span></div></div><h3 class="alg-title">OLL · Cross</h3><p class="alg-notation">F R U' R' U' R U R' F'</p><div class="alg-stats"><span>best <strong>1.76</strong></span><span>reps <strong>54</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span></div></div><h3 class="alg-title">Anti-Sune</h3><p class="alg-notation">R U2 R' U' R U' R'</p><div class="alg-stats"><span>best <strong>1.42</strong></span><span>reps <strong>31</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="x"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="x"></span></div></div><h3 class="alg-title">Sune</h3><p class="alg-notation">R U R' U R U2 R'</p><div class="alg-stats"><span>best <strong>1.34</strong></span><span>reps <strong>67</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="b"></span><span class="g"></span><span class="b"></span><span class="r"></span><span class="y"></span><span class="r"></span><span class="b"></span><span class="g"></span><span class="b"></span></div></div><h3 class="alg-title">H-perm</h3><p class="alg-notation">M2 U M2 U2 M2 U M2</p><div class="alg-stats"><span>best <strong>1.18</strong></span><span>reps <strong>89</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="x"></span><span class="x"></span><span class="x"></span><span class="x"></span><span class="y"></span><span class="y"></span><span class="x"></span><span class="x"></span><span class="y"></span></div></div><h3 class="alg-title">F2L · Slot 3</h3><p class="alg-notation">R' F R F' U R U' R'</p><div class="alg-stats"><span>best <strong>2.43</strong></span><span>reps <strong>22</strong></span></div></div>
+        <div class="alg-card"><div class="alg-img"><div class="face-sticker" style="width:60%;height:60%;"><span class="b"></span><span class="b"></span><span class="r"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="r"></span><span class="g"></span><span class="g"></span></div></div><h3 class="alg-title">Ja-perm</h3><p class="alg-notation">R U R' U' R' F R2 U' R'</p><div class="alg-stats"><span>best <strong>1.88</strong></span><span>reps <strong>37</strong></span></div></div>
+      </div>
+    </section>
+
+    <!-- =========== PAGE: PRACTICE =========== -->
+    <section class="page" data-page="practice">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Practice</h1>
+          <p class="page-subtitle">Focused study mode — one case at a time, spacebar to time, escape to skip.</p>
+        </div>
+        <div class="row" style="gap:var(--s-2);">
+          <button class="btn btn-ghost" data-soon="Practice settings">Settings</button>
+          <button class="btn" data-soon="End session">End session</button>
+        </div>
+      </div>
+
+      <!-- Practice sub-modes — each maps to a real feature in app-map.
+           Drill / Recognition / Batch / Today's Drill are live. Fingertricks
+           is planned (animated playback w/ finger annotations). -->
+      <div class="submode-row">
+        <button class="submode active">Drill</button>
+        <button class="submode">Recognition</button>
+        <button class="submode">Batch (5)</button>
+        <button class="submode">Today's drill</button>
+        <button class="submode planned">Fingertricks</button>
+      </div>
+
+      <div class="practice-shell">
+        <div class="practice-stage">
+          <div class="practice-progress">Case 03 of 20</div>
+          <div class="practice-img">PREVIEW</div>
+          <h2 class="practice-name">Case name here</h2>
+          <div class="practice-scramble">R U R' U R U2 R' U' R U' R'</div>
+          <div class="practice-timer">0.00</div>
+          <p class="practice-progress">Press <span style="color:var(--text);">space</span> to start</p>
+        </div>
+
+        <div class="practice-side">
+          <div class="side-block">
+            <h3 class="side-block-title">This session</h3>
+            <div class="side-stats-row">
+              <span class="side-stat-label">Best</span>
+              <span class="side-stat-value">0.00</span>
+            </div>
+            <div class="side-stats-row">
+              <span class="side-stat-label">Avg 5</span>
+              <span class="side-stat-value">0.00</span>
+            </div>
+            <div class="side-stats-row">
+              <span class="side-stat-label">Reps</span>
+              <span class="side-stat-value">00</span>
+            </div>
+          </div>
+
+          <div class="side-block">
+            <h3 class="side-block-title">Recent</h3>
+            <div class="session-list">
+              <div class="session-item best"><span>0.00</span><span class="session-meta">Case · best</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">Case</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========== PAGE: TIMER =========== -->
+    <section class="page" data-page="timer">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Timer</h1>
+          <p class="page-subtitle">Full session timer with WCA inspection and scrambles.</p>
+        </div>
+        <div class="row" style="gap:var(--s-2);">
+          <button class="btn btn-ghost" data-soon="Session manager">Session</button>
+          <button class="btn btn-ghost" data-soon="Inspection settings">Inspection</button>
+          <button class="btn" data-soon="Timer settings">Settings</button>
+        </div>
+      </div>
+
+      <div class="timer-shell">
+        <div class="timer-stage">
+          <div class="timer-scramble">R U R' U' R' F R2 U' R' U' R U R' F'</div>
+          <div class="timer-display">0.00</div>
+          <div class="timer-hint">hold space to start</div>
+        </div>
+
+        <div class="timer-side">
+          <div class="timer-stats">
+            <div class="timer-stat-cell"><p class="stat-label">Best</p><p class="stat-value">0.00</p></div>
+            <div class="timer-stat-cell"><p class="stat-label">Mean</p><p class="stat-value">0.00</p></div>
+            <div class="timer-stat-cell"><p class="stat-label">ao5</p><p class="stat-value">0.00</p></div>
+            <div class="timer-stat-cell"><p class="stat-label">ao12</p><p class="stat-value">0.00</p></div>
+          </div>
+
+          <div class="side-block">
+            <h3 class="side-block-title">Solves</h3>
+            <div class="session-list">
+              <div class="session-item best"><span>0.00</span><span class="session-meta">#01 · best</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#02</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#03</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#04</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#05</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#06</span></div>
+              <div class="session-item"><span>0.00</span><span class="session-meta">#07</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========== PAGE: STATS =========== -->
+    <section class="page" data-page="stats">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Stats &amp; trends</h1>
+          <p class="page-subtitle">Where you've improved and what still needs work.</p>
+        </div>
+        <div class="row" style="gap:var(--s-2);">
+          <div class="chip">7 days</div>
+          <div class="chip">30 days</div>
+          <div class="chip accent">All time</div>
+        </div>
+      </div>
+
+      <!-- Stats sub-modes — Overview is live (Progress Dashboard).
+           Solve Analysis / Achievements / Sharing are planned (app-map). -->
+      <div class="submode-row">
+        <button class="submode active">Overview</button>
+        <button class="submode planned">Solve analysis</button>
+        <button class="submode planned">Achievements</button>
+        <button class="submode planned">Sharing</button>
+      </div>
+
+      <div class="page-body">
+        <div class="stats-grid">
+          <div class="stats-cell">
+            <p class="stat-label">Stat one</p>
+            <p class="stat-value">0.00</p>
+            <p class="stat-delta">↑ delta</p>
+          </div>
+          <div class="stats-cell">
+            <p class="stat-label">Stat two</p>
+            <p class="stat-value">000</p>
+            <p class="stat-delta">↑ delta</p>
+          </div>
+          <div class="stats-cell">
+            <p class="stat-label">Stat three</p>
+            <p class="stat-value">00%</p>
+            <p class="stat-delta negative">↓ delta</p>
+          </div>
+          <div class="stats-cell">
+            <p class="stat-label">Stat four</p>
+            <p class="stat-value">00d</p>
+            <p class="stat-delta">streak</p>
+          </div>
+        </div>
+
+        <div class="chart-row">
+          <div class="chart-cell">
+            <p class="meta-label">Trend</p>
+            <h3 class="section-title" style="margin: var(--s-2) 0 0;">Average over time</h3>
+            <div class="chart-area">
+              <div class="chart-line"></div>
+            </div>
+          </div>
+          <div class="chart-cell">
+            <p class="meta-label">Activity</p>
+            <h3 class="section-title" style="margin: var(--s-2) 0 0;">14-week heatmap</h3>
+            <div class="heatmap"><!-- generated --></div>
+          </div>
+        </div>
+
+        <!-- Algorithm mastery — cube-face thumbnails + best times, so the
+             stats page also carries the cube-face visual signature. -->
+        <div class="recent-head" style="margin-top: var(--s-6); margin-bottom: 0;">
+          <h2>Algorithm mastery</h2>
+          <a data-soon="Full mastery breakdown">All cases →</a>
+        </div>
+        <div class="mastery-grid">
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="r"></span><span class="b"></span><span class="o"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="g"></span><span class="r"></span><span class="r"></span></div></div>
+            <div class="mastery-name">T-perm</div>
+            <div class="mastery-best">1.94</div>
+          </div>
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="x"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="x"></span></div></div>
+            <div class="mastery-name">Sune</div>
+            <div class="mastery-best">1.34</div>
+          </div>
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span><span class="x"></span><span class="y"></span></div></div>
+            <div class="mastery-name">Anti-Sune</div>
+            <div class="mastery-best">1.42</div>
+          </div>
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="b"></span><span class="g"></span><span class="b"></span><span class="r"></span><span class="y"></span><span class="r"></span><span class="b"></span><span class="g"></span><span class="b"></span></div></div>
+            <div class="mastery-name">H-perm</div>
+            <div class="mastery-best">1.18</div>
+          </div>
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="b"></span><span class="r"></span><span class="o"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="r"></span><span class="g"></span><span class="b"></span></div></div>
+            <div class="mastery-name">Aa-perm</div>
+            <div class="mastery-best">2.12</div>
+          </div>
+          <div class="mastery-cell">
+            <div class="mastery-face"><div class="face-sticker" style="width:100%;height:100%;"><span class="b"></span><span class="b"></span><span class="r"></span><span class="y"></span><span class="y"></span><span class="y"></span><span class="r"></span><span class="g"></span><span class="g"></span></div></div>
+            <div class="mastery-name">Ja-perm</div>
+            <div class="mastery-best">1.88</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========== PAGE: SETTINGS =========== -->
+    <section class="page" data-page="settings">
+      <div class="page-head">
+        <div>
+          <h1 class="page-title">Settings</h1>
+          <p class="page-subtitle">Account, preferences, and data.</p>
+        </div>
+      </div>
+
+      <div class="page-body">
+        <div class="settings-shell">
+          <div class="settings-col">
+            <p class="settings-section-title">Account</p>
+            <div class="settings-section">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Email</div>
+                  <div class="settings-desc">placeholder@example.com</div>
+                </div>
+                <button class="btn">Sign out</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Cloud sync</div>
+                  <div class="settings-desc">Last synced a few seconds ago</div>
+                </div>
+                <span class="chip accent">Connected</span>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Display name</div>
+                  <div class="settings-desc">How you appear on leaderboards.</div>
+                </div>
+                <button class="btn" data-soon="Display name">Edit</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Linked devices</div>
+                  <div class="settings-desc">2 phones, 1 desktop</div>
+                </div>
+                <button class="btn" data-soon="Linked devices">Manage</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Email notifications</div>
+                  <div class="settings-desc">Weekly progress summary.</div>
+                </div>
+                <div class="toggle" data-toggle></div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Profile visibility</div>
+                  <div class="settings-desc">Public — anyone with the link can view.</div>
+                </div>
+                <button class="btn" data-soon="Profile visibility">Change</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-col">
+            <p class="settings-section-title">Preferences</p>
+            <div class="settings-section">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Dark mode</div>
+                  <div class="settings-desc">Use the dark theme everywhere.</div>
+                </div>
+                <div class="toggle on" data-toggle></div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">WCA inspection</div>
+                  <div class="settings-desc">15-second countdown before each solve.</div>
+                </div>
+                <div class="toggle on" data-toggle></div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Auto-advance drill</div>
+                  <div class="settings-desc">Move to the next case after each rep.</div>
+                </div>
+                <div class="toggle" data-toggle></div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Sound effects</div>
+                  <div class="settings-desc">Click on solve / penalty cues.</div>
+                </div>
+                <div class="toggle" data-toggle></div>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Color scheme</div>
+                  <div class="settings-desc">WCA standard (white top, green front).</div>
+                </div>
+                <button class="btn" data-soon="Color scheme">Change</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Keyboard shortcuts</div>
+                  <div class="settings-desc">Customize hotkeys for every mode.</div>
+                </div>
+                <button class="btn" data-soon="Keyboard shortcuts">Edit</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-col">
+            <p class="settings-section-title">Data</p>
+            <div class="settings-section">
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Export</div>
+                  <div class="settings-desc">Download your sessions and stats.</div>
+                </div>
+                <button class="btn" data-soon="Export">Export JSON</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Import</div>
+                  <div class="settings-desc">Load sessions from a JSON file.</div>
+                </div>
+                <button class="btn" data-soon="Import">Import</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Storage used</div>
+                  <div class="settings-desc">2.4 MB of 5 MB local limit.</div>
+                </div>
+                <span class="chip">48%</span>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Backup frequency</div>
+                  <div class="settings-desc">Auto-sync every change.</div>
+                </div>
+                <button class="btn" data-soon="Backup frequency">Change</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Reset drill stats</div>
+                  <div class="settings-desc">Clear per-case drill + SRS data.</div>
+                </div>
+                <button class="btn" data-soon="Reset drill stats">Reset</button>
+              </div>
+              <div class="settings-row">
+                <div>
+                  <div class="settings-label">Reset everything</div>
+                  <div class="settings-desc">Clear all local data on this device.</div>
+                </div>
+                <button class="btn" data-soon="Reset everything">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- About footer — fills the rest of the page with app info -->
+        <div class="settings-about">
+          <div class="settings-about-cell">
+            <span class="settings-about-label">Version</span>
+            <span class="settings-about-value">1.0 · build 0042</span>
+          </div>
+          <div class="settings-about-cell">
+            <span class="settings-about-label">Account</span>
+            <span class="settings-about-value">Signed in · synced</span>
+          </div>
+          <div class="settings-about-cell">
+            <span class="settings-about-label">Links</span>
+            <div class="settings-about-links">
+              <a data-soon="Privacy">Privacy</a>
+              <a data-soon="Terms">Terms</a>
+              <a data-soon="GitHub">GitHub</a>
+            </div>
+          </div>
+          <div class="settings-about-cell">
+            <span class="settings-about-label">Feedback</span>
+            <div class="settings-about-links">
+              <a data-soon="Report an issue">Report an issue</a>
+              <a data-soon="Request a feature">Request a feature</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="lab-meta">ui-lab · experiment</div>
+
+<script>
+  /* View switching — landing / signin / signup / app */
+  const VIEWS = {
+    landing: document.getElementById('landing'),
+    signin:  document.getElementById('signin'),
+    signup:  document.getElementById('signup'),
+    app:     document.querySelector('.app'),
+  };
+  function showView(name) {
+    for (const k in VIEWS) {
+      VIEWS[k].classList.toggle('hidden', k !== name);
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }
+  // Make available to inline onsubmit handlers
+  window.showView = showView;
+
+  for (const el of document.querySelectorAll('[data-go]')) {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      showView(el.dataset.go);
+    });
+  }
+
+  /* In-app navigation — binds to .ws-mode (workspace top bar) */
+  const navItems = document.querySelectorAll('.ws-mode');
+  const pages = document.querySelectorAll('.page');
+  for (const item of navItems) {
+    item.addEventListener('click', () => {
+      const target = item.dataset.page;
+      for (const n of navItems) n.classList.toggle('active', n === item);
+      for (const p of pages)    p.classList.toggle('active', p.dataset.page === target);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  }
+
+  for (const t of document.querySelectorAll('[data-toggle]')) {
+    t.addEventListener('click', () => t.classList.toggle('on'));
+  }
+
+  /* "Coming soon" toast — bottom-center pill, auto-dismisses. Used by
+   * .planned chips/submodes and any other planned-feature interaction. */
+  function showSoonToast(label) {
+    const existing = document.querySelector('.soon-toast');
+    if (existing) existing.remove();
+    const t = document.createElement('div');
+    t.className = 'soon-toast';
+    t.textContent = `${label} — coming soon`;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => {
+      t.classList.remove('show');
+      setTimeout(() => t.remove(), 240);
+    }, 1800);
+  }
+
+  /* Submode chip toggling within a row (Practice / Stats). Planned items
+   * fire the soon toast instead. */
+  for (const row of document.querySelectorAll('.submode-row')) {
+    for (const btn of row.querySelectorAll('.submode')) {
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('planned')) {
+          showSoonToast(btn.textContent.trim());
+          return;
+        }
+        for (const sib of row.querySelectorAll('.submode')) {
+          sib.classList.toggle('active', sib === btn);
+        }
+      });
+    }
+  }
+
+  /* Browse filter chips — toggle .accent between live chips, planned
+   * chips fire the toast. */
+  for (const tb of document.querySelectorAll('.toolbar')) {
+    for (const chip of tb.querySelectorAll('.chip')) {
+      chip.addEventListener('click', () => {
+        if (chip.classList.contains('planned')) {
+          showSoonToast(chip.textContent.trim());
+          return;
+        }
+        for (const sib of tb.querySelectorAll('.chip:not(.planned)')) {
+          sib.classList.toggle('accent', sib === chip);
+        }
+      });
+    }
+  }
+
+  /* Stats time-range chips (in .page-head .row) — same toggle behavior */
+  for (const row of document.querySelectorAll('.page-head .row')) {
+    const chips = row.querySelectorAll('.chip');
+    if (chips.length < 2) continue;
+    for (const chip of chips) {
+      chip.addEventListener('click', () => {
+        for (const sib of chips) sib.classList.toggle('accent', sib === chip);
+      });
+    }
+  }
+
+  /* Any button or interactive element with data-soon shows the toast.
+   * Used for "Drill →" links / "Start drill" / focus-strip actions —
+   * functional behavior is later; for now we acknowledge the click. */
+  for (const el of document.querySelectorAll('[data-soon]')) {
+    el.addEventListener('click', () => showSoonToast(el.dataset.soon || el.textContent.trim()));
+  }
+
+  const hm = document.querySelector('.heatmap');
+  if (hm) {
+    const intensities = ['', 'l1', 'l2', 'l3', 'l4'];
+    for (let i = 0; i < 14 * 7; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell ' + intensities[Math.floor(Math.random() * intensities.length)];
+      hm.appendChild(cell);
+    }
+  }
+</script>
+</body>
+</html>
