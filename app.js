@@ -67,14 +67,53 @@ const NOTATION_DATA = [
   { id: "double", name: "Double ( 2 )",     algorithm: "R2", setup: "R2", category: "Modifier", description: "Half turn (180°). Same end result regardless of direction. Example: R2 = R + R." },
 ];
 
+/* ---------- 2-look subset ----------
+ * The cases taught in beginner / two-look CFOP. PLL is split into the 6
+ * "corner-or-edge perm" essentials; OLL into 7 OCLL cases (corners with
+ * cross already done) + 3 representative edge-orient cases. Anyone who
+ * knows these 16 can solve a 3x3 with the full CFOP method (slower than
+ * 1-look, but no missing knowledge).
+ *
+ * Selection-routing note: items in the 2-look categories still resolve
+ * as "pll/Aa" / "oll/27" for selection/drill/recognition. The category
+ * key is browse-display only; the underlying data category is set via
+ * `selectionCategory`.
+ */
+const TWO_LOOK_PLL_IDS = new Set(["Aa", "Ab", "Ua", "Ub", "H", "Z"]);
+const TWO_LOOK_OLL_IDS = new Set(["1", "21", "22", "23", "24", "25", "26", "27", "47", "51"]);
+const isTwoLookPll = (it) => TWO_LOOK_PLL_IDS.has(String(it.id));
+const isTwoLookOll = (it) => TWO_LOOK_OLL_IDS.has(String(it.id));
+
 /* ---------- categories ---------- */
 
 const CATEGORIES = [
   {
+    key: "pll_2look",
+    label: "2-look PLL",
+    shortLabel: "2L PLL",
+    accent: "var(--cube-yellow)",
+    selectionCategory: "pll",
+    getItems: (d) => d.pll.filter(isTwoLookPll),
+    titleOf: (it) => it.name,
+    idOf: (it) => it.id,
+    searchFields: ["id", "name", "group", "algorithm", "recognition"],
+    filterFacets: [{ key: "group", label: "Group", from: (it) => it.group }],
+    extraBadges: (it) => [
+      it.group && { label: it.group, className: "badge" },
+      { label: "2-look", className: "badge" },
+    ].filter(Boolean),
+    metaRows: (it) => [
+      it.recognition && { label: "Recognition", value: it.recognition },
+    ].filter(Boolean),
+    imageUrl: (it) => vcImage({ setup: it.setup, stage: "pll", view: "plan", size: 140 }),
+    drillable: true,
+    recognitionMode: "text",
+  },
+  {
     key: "pll",
     label: "PLL",
     accent: "var(--cube-blue)",
-    getItems: (d) => d.pll,
+    getItems: (d) => d.pll.filter((it) => !isTwoLookPll(it)),
     titleOf: (it) => it.name,
     idOf: (it) => it.id,
     searchFields: ["id", "name", "group", "algorithm", "recognition"],
@@ -91,10 +130,32 @@ const CATEGORIES = [
     recognitionMode: "text",
   },
   {
+    key: "oll_2look",
+    label: "2-look OLL",
+    shortLabel: "2L OLL",
+    accent: "var(--cube-yellow)",
+    selectionCategory: "oll",
+    getItems: (d) => d.oll.filter(isTwoLookOll),
+    titleOf: (it) => it.name,
+    idOf: (it) => "#" + it.id,
+    searchFields: ["id", "name", "shape", "algorithm", "recognition"],
+    filterFacets: [{ key: "shape", label: "Shape", from: (it) => it.shape }],
+    extraBadges: (it) => [
+      it.shape && { label: it.shape, className: "badge" },
+      { label: "2-look", className: "badge" },
+    ].filter(Boolean),
+    metaRows: (it) => [
+      it.recognition && { label: "Recognition", value: it.recognition },
+    ].filter(Boolean),
+    imageUrl: (it) => vcImage({ setup: it.setup, stage: "oll", view: "plan", size: 140 }),
+    drillable: true,
+    recognitionMode: "thumbnails",
+  },
+  {
     key: "oll",
     label: "OLL",
     accent: "var(--cube-orange)",
-    getItems: (d) => d.oll,
+    getItems: (d) => d.oll.filter((it) => !isTwoLookOll(it)),
     titleOf: (it) => it.name,
     idOf: (it) => "#" + it.id,
     searchFields: ["id", "name", "shape", "algorithm", "recognition"],
@@ -178,7 +239,7 @@ const appState = {
 };
 
 const browseState = {
-  category: "pll",
+  category: "pll_2look",     // start beginners on the 2-look set
   search: "",
   filters: {},        // { facetKey: Set<string> }
 };
@@ -352,7 +413,10 @@ function renderHome() {
   const root = document.getElementById("page-home");
   if (!appState.data) return;
 
-  const weakAll = rankWeakCases(["pll", "oll"], 24);
+  // Milestone-aware so the recommendation aligns with the sidebar:
+  // a user on the Two-look CFOP milestone gets a 2-look case, not a
+  // random 1-look advanced case from the full pool.
+  const weakAll = rankWeakCases(["pll", "oll"], 24, { milestoneAware: true });
   const weak = weakAll.filter((c) => !skippedFocusKeys.has(c.key));
   const focus = weak[0] || null;
   const upNext = weak.slice(1, 5);
@@ -532,11 +596,22 @@ function renderHome() {
 
 function computeMilestones() {
   const all = stats.getAll();
-  const pllCount = appState.data.pll.length;       // 21
-  const ollCount = appState.data.oll.length;       // 57
+  const pllAll = appState.data.pll;       // 21 total
+  const ollAll = appState.data.oll;       // 57 total
+  const pll2look = pllAll.filter(isTwoLookPll);   // 6
+  const oll2look = ollAll.filter(isTwoLookOll);   // 10
+  const twoLookTotal = pll2look.length + oll2look.length;   // 16
 
-  const pllPracticed = appState.data.pll.filter((it) => all[`pll/${it.id}`]?.drill?.n > 0).length;
-  const ollPracticed = appState.data.oll.filter((it) => all[`oll/${it.id}`]?.drill?.n > 0).length;
+  const drilled = (cat, id) => (all[`${cat}/${id}`]?.drill?.n || 0) > 0;
+  const pll2lookDone = pll2look.filter((it) => drilled("pll", it.id)).length;
+  const oll2lookDone = oll2look.filter((it) => drilled("oll", it.id)).length;
+  const pllDone = pllAll.filter((it) => drilled("pll", it.id)).length;
+  const ollDone = ollAll.filter((it) => drilled("oll", it.id)).length;
+  const twoLookDone = pll2lookDone + oll2lookDone;
+
+  const twoLookComplete = pll2lookDone === pll2look.length && oll2lookDone === oll2look.length;
+  const pllComplete = pllDone === pllAll.length;
+  const ollComplete = ollDone === ollAll.length;
 
   // Best ao12 across all sessions for sub-X gates
   const allSolves = sessions.listSessions().flatMap((s) => s.solves);
@@ -544,9 +619,9 @@ function computeMilestones() {
   const bestSecs = bestAo12 != null && isFinite(bestAo12) ? bestAo12 / 1000 : null;
 
   const milestones = [
-    { name: "Two-look CFOP", meta: pllPracticed >= 7 && ollPracticed >= 10 ? "Complete" : `${pllPracticed + ollPracticed}/17`, done: pllPracticed >= 7 && ollPracticed >= 10 },
-    { name: "Full PLL", meta: pllPracticed === pllCount ? "Complete" : `${pllPracticed}/${pllCount}`, done: pllPracticed === pllCount },
-    { name: "Full OLL", meta: ollPracticed === ollCount ? "Complete" : `${ollPracticed}/${ollCount}`, done: ollPracticed === ollCount },
+    { name: "Two-look CFOP", meta: twoLookComplete ? "Complete" : `${twoLookDone}/${twoLookTotal}`, done: twoLookComplete },
+    { name: "Full PLL", meta: pllComplete ? "Complete" : `${pllDone}/${pllAll.length}`, done: pllComplete },
+    { name: "Full OLL", meta: ollComplete ? "Complete" : `${ollDone}/${ollAll.length}`, done: ollComplete },
     { name: "Sub-20",   meta: bestSecs != null ? (bestSecs <= 20 ? "Complete" : `ao12 ${bestSecs.toFixed(2)}s`) : "Locked", done: bestSecs != null && bestSecs <= 20 },
     { name: "Sub-15",   meta: bestSecs != null ? (bestSecs <= 15 ? "Complete" : `ao12 ${bestSecs.toFixed(2)}s`) : "Locked", done: bestSecs != null && bestSecs <= 15 },
   ];
@@ -554,6 +629,18 @@ function computeMilestones() {
   const nextIdx = milestones.findIndex((m) => !m.done);
   if (nextIdx >= 0) milestones[nextIdx].current = true;
   return milestones;
+}
+
+/* Which stage of the CFOP progression the user is on. The home focus
+ * strip uses this to scope its recommendation to the right pool —
+ * otherwise a beginner on Two-look gets pushed full-OLL cases they
+ * haven't been taught yet. */
+function currentMilestoneStage() {
+  const ms = computeMilestones();
+  if (!ms[0].done) return "twoLook";   // 2-look CFOP not done yet
+  if (!ms[1].done) return "fullPLL";   // 2-look done, working on full PLL
+  if (!ms[2].done) return "fullOLL";   // working on full OLL
+  return "speed";                       // chasing sub-20 / sub-15
 }
 
 function computeWeekStats() {
@@ -641,16 +728,40 @@ function vcImageFor(c, size = 140) {
   return vcImage({ caseAlg: it.algorithm, size });
 }
 
-function rankWeakCases(categories = ["pll", "oll"], limit = 10) {
+function rankWeakCases(categories = ["pll", "oll"], limit = 10, opts = {}) {
   if (!appState.data) return [];
   const all = stats.getAll();
   const nowSec = Math.floor(Date.now() / 1000);
+
+  // When milestone-aware, scope the candidate pool to whatever stage the
+  // user is currently on so beginners don't get pushed full-OLL cases
+  // and intermediates don't get spammed with 2-look they already finished.
+  let pllPass = () => true;
+  let ollPass = () => true;
+  if (opts.milestoneAware) {
+    const stage = currentMilestoneStage();
+    if (stage === "twoLook") {
+      pllPass = isTwoLookPll;
+      ollPass = isTwoLookOll;
+    } else if (stage === "fullPLL") {
+      // 2-look done. Focus on the 15 advanced PLLs; OLL 2-look already
+      // drilled so OLL recommendations come from the full set.
+      pllPass = (it) => !isTwoLookPll(it);
+    } else if (stage === "fullOLL") {
+      pllPass = (it) => !isTwoLookPll(it);
+      ollPass = (it) => !isTwoLookOll(it);
+    }
+    // "speed" stage: no filter — everything is fair game for SR review.
+  }
+
   const out = [];
   for (const cat of categories) {
     const items = cat === "pll" ? appState.data.pll : appState.data.oll;
     if (!items) continue;
+    const passFn = cat === "pll" ? pllPass : ollPass;
     for (const item of items) {
       if (typeof item.setup !== "string") continue;
+      if (!passFn(item)) continue;
       const slot = all[`${cat}/${item.id}`];
       const drill = slot?.drill;
       const srs = slot?.srs;
@@ -740,7 +851,9 @@ function renderBrowse() {
       <button class="btn btn-small" id="browse-batch" ${selection.allKeys().filter(k=>k.startsWith("pll/")).length === 0 ? "disabled" : ""} title="Solve 5 PLLs under one continuous timer">Batch (5)</button>
       <button class="btn btn-small" id="browse-recog" ${selection.size() === 0 ? "disabled" : ""}>Train recognition</button>`;
     actions.querySelector("#browse-select-all").addEventListener("click", () => {
-      selection.selectMany(cat.key, items);
+      // Route selection through the underlying data category so 2-look
+      // cards register as "pll/Aa" / "oll/27" (drill/recognition expect that).
+      selection.selectMany(cat.selectionCategory || cat.key, items);
     });
     actions.querySelector("#browse-clear").addEventListener("click", () => selection.clear());
     actions.querySelector("#browse-drill").addEventListener("click", () => {
@@ -825,8 +938,10 @@ function renderFacetRow(cat, items) {
 }
 
 function catSubtitle(cat) {
-  if (cat.key === "pll") return "21 last-layer permutations. Click cards to select; drill the selection from the bar below.";
-  if (cat.key === "oll") return "57 last-layer orientations. Click cards to select; drill the selection from the bar below.";
+  if (cat.key === "pll_2look") return "6 beginner permutations: 4 edge cycles and 2 corner cycles. Master these to solve any state via the two-look method.";
+  if (cat.key === "pll") return "15 advanced last-layer permutations beyond the 2-look set. Combined with 2-look PLL = full PLL (21 cases).";
+  if (cat.key === "oll_2look") return "10 beginner orientations: 7 OCLL cases plus 3 edge-orient representatives. Pair with 2-look PLL for full two-look CFOP.";
+  if (cat.key === "oll") return "47 advanced last-layer orientations beyond the 2-look set. Combined with 2-look OLL = full OLL (57 cases).";
   if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
@@ -838,8 +953,14 @@ function renderBrowseCard(it, cat) {
   card.className = "alg-card";
   card.style.setProperty("--card-accent", cat.accent);
 
-  const key = selection.key(cat.key, it.id);
-  if (cat.drillable && selection.isSelected(cat.key, it.id)) {
+  // selCat = the UNDERLYING data category for selection routing. The
+  // 2-look browse categories display a filtered subset but selection,
+  // drill, recognition, and stats all key off "pll"/"oll" — otherwise
+  // drill.js + recognition.js + batch.js wouldn't know how to resolve
+  // "pll_2look/Aa" back to a data item.
+  const selCat = cat.selectionCategory || cat.key;
+  const key = selection.key(selCat, it.id);
+  if (cat.drillable && selection.isSelected(selCat, it.id)) {
     card.classList.add("selected");
   }
 
@@ -848,7 +969,7 @@ function renderBrowseCard(it, cat) {
     const check = document.createElement("div");
     check.className = "alg-card-check";
     check.setAttribute("role", "checkbox");
-    check.setAttribute("aria-checked", String(selection.isSelected(cat.key, it.id)));
+    check.setAttribute("aria-checked", String(selection.isSelected(selCat, it.id)));
     check.title = "Toggle selection";
     card.appendChild(check);
   }
@@ -900,14 +1021,16 @@ function renderBrowseCard(it, cat) {
   // Footer stats
   const footer = document.createElement("div");
   if (cat.drillable) {
-    const drill = stats.getDrill(cat.key, it.id);
-    const recog = stats.getRecog(cat.key, it.id);
     footer.className = "alg-stats";
-    if (drill || recog) {
+    // Use the data category (selCat) for stats lookup so 2-look browse
+    // shares drill/recog records with the full PLL/OLL view.
+    const drillStats = stats.getDrill(selCat, it.id);
+    const recogStats = stats.getRecog(selCat, it.id);
+    if (drillStats || recogStats) {
       const parts = [];
-      if (drill) parts.push(`<span>best <strong>${escapeHtml(stats.fmtTime(drill.best))}</strong></span>`);
-      if (drill) parts.push(`<span>reps <strong>${drill.n}</strong></span>`);
-      if (recog) parts.push(`<span>recog <strong>${escapeHtml(stats.fmtAccuracy(recog))}</strong></span>`);
+      if (drillStats) parts.push(`<span>best <strong>${escapeHtml(stats.fmtTime(drillStats.best))}</strong></span>`);
+      if (drillStats) parts.push(`<span>reps <strong>${drillStats.n}</strong></span>`);
+      if (recogStats) parts.push(`<span>recog <strong>${escapeHtml(stats.fmtAccuracy(recogStats))}</strong></span>`);
       footer.innerHTML = parts.join("");
     } else {
       footer.classList.add("empty");
@@ -926,7 +1049,7 @@ function renderBrowseCard(it, cat) {
     card.addEventListener("click", (e) => {
       // Allow selecting text in algorithm block without toggling
       if (e.target.closest(".alg-notation")) return;
-      selection.toggle(cat.key, it.id);
+      selection.toggle(selCat, it.id);
     });
     const note = card.querySelector(".alg-notation");
     if (note) note.style.userSelect = "text";
@@ -1093,7 +1216,8 @@ function practiceStageContent(submode, ctx) {
  * a one-click "add and drill" button. Surfaces inside the Drill stage
  * when the selection is empty so the page isn't dead. */
 function renderQuickStartGrid() {
-  const weak = rankWeakCases(["pll", "oll"], 6);
+  // Milestone-aware so Quick Start matches the user's current CFOP stage.
+  const weak = rankWeakCases(["pll", "oll"], 6, { milestoneAware: true });
   if (!weak.length) return null;
   const wrap = document.createElement("div");
   wrap.className = "quick-start";
