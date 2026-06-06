@@ -68,21 +68,65 @@ const NOTATION_DATA = [
 ];
 
 /* ---------- 2-look subset ----------
- * The cases taught in beginner / two-look CFOP. PLL is split into the 6
- * "corner-or-edge perm" essentials; OLL into 7 OCLL cases (corners with
- * cross already done) + 3 representative edge-orient cases. Anyone who
- * knows these 16 can solve a 3x3 with the full CFOP method (slower than
- * 1-look, but no missing knowledge).
+ * 2-look PLL = 6 cases (Ua / Ub / Z / H / T / Y).
+ * 2-look OLL = 7 OCLL cases (#21-27) + 3 GENERIC edge-orient cases
+ *              (Line, L, Dot) that represent the universal 2-look algs
+ *              applicable regardless of corner orientation.
  *
- * Selection-routing note: items in the 2-look categories still resolve
- * as "pll/Aa" / "oll/27" for selection/drill/recognition. The category
- * key is browse-display only; the underlying data category is set via
- * `selectionCategory`.
+ * The 3 generic OLL cases are SYNTHETIC items — they don't come from
+ * the JSON dataset. They get injected into data.oll at init time so
+ * selection / drill / recognition handle them as regular OLLs.
+ *
+ * Selection-routing note: 2-look browse tabs route selection through
+ * the underlying "pll"/"oll" key via `selectionCategory`, so drill,
+ * recognition, batch, and stats remain unaware of the 2-look split.
  */
-const TWO_LOOK_PLL_IDS = new Set(["Aa", "Ab", "Ua", "Ub", "H", "Z"]);
-const TWO_LOOK_OLL_IDS = new Set(["1", "21", "22", "23", "24", "25", "26", "27", "47", "51"]);
+const TWO_LOOK_PLL_IDS = new Set(["Ua", "Ub", "Z", "H", "T", "Y"]);
+const TWO_LOOK_OLL_IDS = new Set([
+  "21", "22", "23", "24", "25", "26", "27",   // 7 OCLL (corners-only, cross already)
+  "2L-line", "2L-L", "2L-dot",                // 3 generic edge-orient algs
+]);
 const isTwoLookPll = (it) => TWO_LOOK_PLL_IDS.has(String(it.id));
 const isTwoLookOll = (it) => TWO_LOOK_OLL_IDS.has(String(it.id));
+
+/* Generic 2-look OLL items. Each has:
+ *   - algorithm: the universal alg used regardless of corner state
+ *   - setup: inverse of algorithm so applying alg from setup state returns to solved
+ *   - recognition: makes clear that side stickers (corner orientation) don't matter
+ * The shape field drives the existing OLL filter facet.
+ */
+const SYNTHETIC_2L_OLL = [
+  {
+    id: "2L-line",
+    name: "Line",
+    shape: "line",
+    algorithm: "F R U R' U' F'",
+    setup: "F U R U' R' F'",
+    recognition: "Two yellow edges form a straight line across the top face. Side yellow stickers don't matter in 2-look OLL — only the U-face edge pattern defines the case. Hold the line vertically (front to back) and apply the alg.",
+    twoLookSynthetic: true,
+    twoLookKind: "edge",
+  },
+  {
+    id: "2L-L",
+    name: "L-shape",
+    shape: "L",
+    algorithm: "f R U R' U' f'",
+    setup: "f U R U' R' f'",
+    recognition: "Two yellow edges form an L (one front, one right) on the top face. Side yellow stickers don't matter. Position the L in the front-left position and apply the wide-F alg.",
+    twoLookSynthetic: true,
+    twoLookKind: "edge",
+  },
+  {
+    id: "2L-dot",
+    name: "Dot",
+    shape: "dot",
+    algorithm: "F R U R' U' F' f R U R' U' f'",
+    setup: "f U R U' R' f' F U R U' R' F'",
+    recognition: "Zero yellow edges on top — center yellow only. Side yellow stickers don't matter. Apply F R U R' U' F' to get a Line or L, then apply the matching alg (this combined sequence covers the common case).",
+    twoLookSynthetic: true,
+    twoLookKind: "edge",
+  },
+];
 
 /* ---------- categories ---------- */
 
@@ -135,14 +179,23 @@ const CATEGORIES = [
     shortLabel: "2L OLL",
     accent: "var(--cube-yellow)",
     selectionCategory: "oll",
-    getItems: (d) => d.oll.filter(isTwoLookOll),
+    // Sort so the 3 generic edge-orient cases (Line, L, Dot) come first,
+    // then the 7 OCLL corner-orient cases. Mirrors the order they're
+    // taught: orient edges first, then orient corners.
+    getItems: (d) => d.oll.filter(isTwoLookOll).sort((a, b) => {
+      const aSyn = a.twoLookSynthetic ? 0 : 1;
+      const bSyn = b.twoLookSynthetic ? 0 : 1;
+      return aSyn - bSyn;
+    }),
     titleOf: (it) => it.name,
-    idOf: (it) => "#" + it.id,
+    idOf: (it) => it.twoLookSynthetic ? "generic" : "#" + it.id,
     searchFields: ["id", "name", "shape", "algorithm", "recognition"],
     filterFacets: [{ key: "shape", label: "Shape", from: (it) => it.shape }],
     extraBadges: (it) => [
       it.shape && { label: it.shape, className: "badge" },
-      { label: "2-look", className: "badge" },
+      it.twoLookSynthetic
+        ? { label: "generic 2-look", className: "badge" }
+        : { label: "OCLL", className: "badge" },
     ].filter(Boolean),
     metaRows: (it) => [
       it.recognition && { label: "Recognition", value: it.recognition },
@@ -267,6 +320,11 @@ async function init() {
     if (!resp.ok) throw new Error("HTTP " + resp.status);
     appState.data = await resp.json();
     state.data = appState.data;
+    // Inject the synthetic 2-look OLL items (Line/L/Dot) into the OLL
+    // pool so selection.resolve, drill.js, recognition.js, batch.js
+    // and stats.js handle them as regular OLL cases without needing
+    // to know about the 2-look split.
+    appState.data.oll = [...appState.data.oll, ...SYNTHETIC_2L_OLL];
   } catch (err) {
     document.getElementById("page-home").innerHTML = `
       <div class="page-body">
@@ -938,10 +996,10 @@ function renderFacetRow(cat, items) {
 }
 
 function catSubtitle(cat) {
-  if (cat.key === "pll_2look") return "6 beginner permutations: 4 edge cycles and 2 corner cycles. Master these to solve any state via the two-look method.";
-  if (cat.key === "pll") return "15 advanced last-layer permutations beyond the 2-look set. Combined with 2-look PLL = full PLL (21 cases).";
-  if (cat.key === "oll_2look") return "10 beginner orientations: 7 OCLL cases plus 3 edge-orient representatives. Pair with 2-look PLL for full two-look CFOP.";
-  if (cat.key === "oll") return "47 advanced last-layer orientations beyond the 2-look set. Combined with 2-look OLL = full OLL (57 cases).";
+  if (cat.key === "pll_2look") return "6 beginner permutations: Ua, Ub, Z, H for edges, plus T-perm and Y-perm for combined corner-and-edge cases. Master these to solve any state via the two-look method.";
+  if (cat.key === "pll") return "15 advanced last-layer permutations beyond the 2-look set. A-perms live here too since they're standard 1-look choices for corner cycles.";
+  if (cat.key === "oll_2look") return "10 beginner orientations: 3 generic edge-orient algs (Line, L, Dot) where side stickers don't matter, plus 7 OCLL corner cases. Pair with 2-look PLL for full two-look CFOP.";
+  if (cat.key === "oll") return "50 last-layer orientations beyond the 2-look set (the 7 OCLL cases live in 2-look OLL).";
   if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
