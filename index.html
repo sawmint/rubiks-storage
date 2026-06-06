@@ -9,6 +9,10 @@
   <meta name="theme-color" content="#2e4cf2" />
   <title>Rubik's Storage - CFOP Algorithm Browser</title>
   <link rel="manifest" href="manifest.webmanifest" />
+  <!-- SVG favicon is the new brand mark (the 4-color cube sticker grid in
+       the workspace bar). Scales crisply at every size. PNG fallback for
+       browsers without SVG icon support. -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="icon" type="image/png" href="favicon.png" sizes="any" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -783,36 +787,56 @@
     }
     .alg-card:hover { background: var(--surface-2); border-color: var(--muted); }
     .alg-card.selected { border-color: var(--accent); background: rgba(46,76,242,0.06); }
+    /* Checkbox: square with soft 4px corners, sits in the top-right card
+       corner. Empty state shows a subtle dashed accent ring on hover so
+       the click target is obvious. Selected state fills with cobalt and
+       shows a crisp SVG checkmark (NOT a CSS-rotated border, which never
+       looks right at sub-pixel sizes). */
     .alg-card-check {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      width: 18px;
-      height: 18px;
-      border: 1px solid var(--border-strong);
-      border-radius: 3px;
-      background: var(--bg);
+      top: 12px;
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid var(--border-strong);
+      border-radius: 4px;
+      background: var(--surface-2);
+      cursor: pointer;
+      z-index: 2;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      z-index: 2;
+      transition: background 120ms ease, border-color 120ms ease, transform 100ms ease;
     }
-    .alg-card-check::after {
+    .alg-card-check::before {
+      /* Inline SVG checkmark - stays crisp at any size + theme. White on
+         cobalt when selected. Always present in the DOM so opacity can
+         crossfade rather than display-toggling. */
       content: "";
-      width: 10px;
-      height: 6px;
-      border-left: 2px solid transparent;
-      border-bottom: 2px solid transparent;
-      transform: rotate(-45deg) translate(1px, -1px);
+      width: 14px;
+      height: 14px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><path d='M2.5 7.5 L5.5 10.5 L11.5 4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      opacity: 0;
+      transition: opacity 100ms ease;
+    }
+    .alg-card:hover .alg-card-check {
+      border-color: var(--accent);
     }
     .alg-card.selected .alg-card-check {
       background: var(--accent);
       border-color: var(--accent);
     }
-    .alg-card.selected .alg-card-check::after {
-      border-left-color: #fff;
-      border-bottom-color: #fff;
+    .alg-card.selected .alg-card-check::before { opacity: 1; }
+    .alg-card.selected .alg-card-check:hover {
+      background: var(--accent-strong);
+      border-color: var(--accent-strong);
+    }
+    .alg-card-check:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
     }
     .alg-img {
       width: 100%;

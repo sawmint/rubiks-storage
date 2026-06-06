@@ -9,7 +9,7 @@
  * caches get cleared on activate.
  * ========================================================= */
 
-const CACHE_VERSION = "rs-v54";
+const CACHE_VERSION = "rs-v55";
 
 // Same-origin shell files. Pre-fetched at install time.
 const CORE_ASSETS = [
@@ -40,6 +40,7 @@ const CORE_ASSETS = [
   "./logo.png",
   "./logo-cube.png",
   "./favicon.png",
+  "./favicon.svg",
   "./apple-touch-icon.png",
 ];
 

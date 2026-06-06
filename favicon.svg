@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Rubik's Storage brand mark: 2x2 cube-color sticker cluster.
+       Mirrors .ws-brand-mark in the app workspace bar. Same WCA-derived
+       palette used in .face-sticker. -->
+  <rect x="2"  y="2"  width="28" height="28" rx="4" fill="#e4b834"/>
+  <rect x="34" y="2"  width="28" height="28" rx="4" fill="#c4453a"/>
+  <rect x="2"  y="34" width="28" height="28" rx="4" fill="#2e4cf2"/>
+  <rect x="34" y="34" width="28" height="28" rx="4" fill="#4f8a3a"/>
+</svg>
