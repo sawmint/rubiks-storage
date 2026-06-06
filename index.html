@@ -1014,6 +1014,134 @@
     .session-item.best .session-meta { color: var(--accent); }
     .session-meta { color: var(--muted); font-size: 11px; letter-spacing: 0.02em; }
 
+    /* Quick start grid on the empty Drill stage */
+    .quick-start {
+      margin-top: var(--s-6);
+      width: 100%;
+      max-width: 720px;
+    }
+    .quick-start-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: var(--s-3);
+    }
+    .quick-start-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .quick-start-sub {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+    .quick-start-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--s-3);
+    }
+    .quick-card {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: var(--s-3);
+      align-items: center;
+      padding: var(--s-3);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      text-align: left;
+    }
+    .quick-card:hover { border-color: var(--accent); background: rgba(46, 76, 242, 0.06); }
+    .quick-face { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+    .quick-face img { width: 100%; height: 100%; object-fit: contain; }
+    .quick-cat {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+    .quick-name {
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+      line-height: 1.2;
+    }
+    .quick-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* Stats page empty-state cards */
+    .stats-empty {
+      grid-column: 1 / -1;
+      padding: var(--s-5);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--r-md);
+      color: var(--text-soft);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      background: var(--surface-1);
+    }
+    .stats-empty strong {
+      color: var(--text);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.01em;
+      display: block;
+      margin-bottom: var(--s-2);
+    }
+    .stats-empty a {
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Page footer ribbon - sits at the bottom of pages with leftover
+       space (Stats, Settings). Decorative cube-color stripe + tagline. */
+    .page-ribbon {
+      margin-top: var(--s-7);
+      padding: var(--s-5) 0 0;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: var(--s-4);
+      align-items: center;
+    }
+    .page-ribbon-left {
+      display: flex;
+      gap: var(--s-3);
+      align-items: center;
+    }
+    .page-ribbon-stripes {
+      display: inline-flex;
+      gap: 2px;
+    }
+    .page-ribbon-stripes span {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+    .page-ribbon-text {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .page-ribbon-text b {
+      color: var(--text-soft);
+      font-weight: 600;
+    }
+
     /* ============================================================ */
     /* TIMER (the page - the actual fullscreen timer lives in a modal)*/
     /* ============================================================ */
@@ -1365,12 +1493,495 @@
     .timer-inline-host .timer-body {
       min-height: calc(100vh - 105px);
       gap: var(--s-4);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     /* Bigger numbers when embedded - the timer is the page focus */
     .timer-inline-host .timer-display,
     .timer-inline-host .timer-time {
       font-size: 152px;
     }
+    /* Solves table fills the remaining height so the Timer page has no
+       blank space at the bottom. The internal list scrolls inside it. */
+    .timer-inline-host .timer-solves {
+      flex: 1;
+      max-height: none;
+      min-height: 220px;
+    }
+
+    /* ============================================================ */
+    /* LEGACY MODULE RESTYLE                                           */
+    /* These selectors override styles.css rules so the modal, drill, */
+    /* recognition, timer, weak-cases and auth UI match the new       */
+    /* warm-dark + cobalt + IBM Plex aesthetic. Keeps styles.css      */
+    /* untouched but presents a single cohesive visual language       */
+    /* across the whole app. */
+    /* ============================================================ */
+
+    /* Modal frame */
+    .modal-root {
+      background: rgba(0, 0, 0, 0.72);
+      padding: var(--s-4);
+    }
+    .modal-panel {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-float);
+      padding: var(--s-5);
+      max-width: 720px;
+    }
+    .modal-head { margin-bottom: var(--s-4); }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .modal-close {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      color: var(--text-soft);
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: var(--text); background: var(--surface-3); border-color: var(--muted); }
+
+    /* Drill */
+    .drill-body { gap: var(--s-4); }
+    .drill-case-info {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .drill-label {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      text-transform: none;
+      letter-spacing: -0.01em;
+    }
+    .drill-image {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      min-height: 180px;
+    }
+    .drill-scramble {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      padding: var(--s-3) var(--s-4);
+    }
+    .drill-timer {
+      font-family: var(--font-display);
+      font-size: 88px;
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      line-height: 1;
+      padding: var(--s-4) 0;
+      color: var(--text);
+    }
+    .drill-timer.armed   { color: var(--good); }
+    .drill-timer.running { color: var(--accent); }
+    .drill-timer.stopped { color: var(--accent-strong); }
+    .drill-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .drill-auto {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-soft);
+    }
+    .drill-last {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--faint);
+    }
+
+    /* Recognition */
+    .recog-body { gap: var(--s-4); }
+    .recog-score {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .recog-image {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      min-height: 200px;
+    }
+    .recog-timer-bar {
+      height: 14px;
+      border-radius: 2px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .recog-timer-fill { background: var(--accent); }
+    .recog-timer-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      line-height: 14px;
+      color: #fff;
+    }
+    .recog-pll-input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--font-mono);
+      font-size: 15px;
+      padding: 10px 14px;
+      color: var(--text);
+    }
+    .recog-pll-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .recog-name-btn {
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      transition: border-color 100ms, background 100ms;
+      padding: 10px 12px;
+    }
+    .recog-name-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: none;
+    }
+    .recog-name-btn.correct {
+      border-color: var(--good);
+      background: rgba(132, 168, 71, 0.12);
+    }
+    .recog-name-btn.wrong {
+      border-color: var(--bad);
+      background: rgba(196, 69, 58, 0.12);
+    }
+    .recog-name-btn.answer { border-color: var(--good); }
+    .recog-name-num {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .recog-name-text {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+    }
+    .recog-feedback {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-soft);
+    }
+    .recog-feedback.ok  { color: var(--good); }
+    .recog-feedback.bad { color: var(--bad); }
+
+    /* Timer (embedded + modal both pick this up) */
+    .timer-modal,
+    .modal-panel.timer-modal { background: var(--surface-1); border-color: var(--border); }
+    .timer-topbar { gap: var(--s-2); padding-bottom: var(--s-1); }
+    .timer-session-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      padding: 6px 12px;
+    }
+    .timer-session-btn:hover { background: var(--surface-3); border-color: var(--muted); }
+    .timer-icon-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      width: 30px;
+      height: 30px;
+      color: var(--text-soft);
+    }
+    .timer-icon-btn:hover { background: var(--surface-3); color: var(--text); border-color: var(--muted); }
+    .timer-scramble-row {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: var(--s-3) var(--s-4);
+    }
+    .timer-scramble {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+    .timer-preview {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .timer-tapzone {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .timer-tapzone:hover { border-color: var(--muted); }
+    .timer-time {
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.05em;
+      color: var(--text);
+    }
+    .timer-time.timer-stopped { color: var(--accent-strong); }
+    .timer-time.timer-armed { color: var(--good); }
+    .timer-time.timer-warn { color: var(--warn); }
+    .timer-time.timer-bad { color: var(--bad); }
+    .timer-hint {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .timer-stats-footer {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: var(--s-3);
+    }
+    .timer-stat-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .timer-stat-val {
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-size: 17px;
+      color: var(--text);
+    }
+    .timer-solves {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+
+    /* Weak-cases modal */
+    .weak-body { gap: var(--s-3); }
+    .weak-blurb {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-soft);
+      letter-spacing: 0.02em;
+      padding: var(--s-3);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+    }
+    .weak-row {
+      display: flex;
+      align-items: center;
+      gap: var(--s-3);
+      padding: var(--s-2) 0;
+    }
+    .weak-row-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      min-width: 80px;
+    }
+    .weak-toggle {
+      padding: 5px 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-soft);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .weak-toggle:hover { color: var(--text); border-color: var(--muted); }
+    .weak-toggle.active { color: var(--accent); border-color: var(--accent); }
+    .weak-btn-group { display: inline-flex; gap: 2px; }
+    .weak-list-wrap {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .weak-list-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      gap: var(--s-3);
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-sans);
+      font-size: 13px;
+    }
+    .weak-list-row:last-child { border-bottom: none; }
+    .weak-list-row.due { background: rgba(212, 154, 42, 0.08); }
+    .weak-list-row.unpracticed { background: rgba(46, 76, 242, 0.06); }
+    .weak-rank {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .weak-name {
+      display: flex;
+      gap: var(--s-2);
+      align-items: baseline;
+      min-width: 0;
+    }
+    .weak-name strong {
+      font-family: var(--font-display);
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.005em;
+    }
+    .weak-cat-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      padding: 1px 5px;
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+    }
+    .weak-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .weak-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.04em;
+    }
+    .weak-tag-due { color: var(--warn); background: rgba(212, 154, 42, 0.12); }
+    .weak-tag-new { color: var(--accent); background: var(--accent-soft); }
+    .weak-empty {
+      padding: var(--s-5);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .weak-actions {
+      display: flex;
+      gap: var(--s-2);
+      justify-content: flex-end;
+    }
+
+    /* Auth UI (sign-in modal) */
+    .auth-body { gap: var(--s-4); }
+    .auth-intro {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--text-soft);
+      line-height: 1.5;
+    }
+    .auth-section { margin-top: var(--s-4); }
+    .auth-label {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-soft);
+    }
+    .auth-input {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+    }
+    .auth-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .auth-btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent);
+      border-radius: var(--r-md);
+      padding: 10px 16px;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .auth-btn-primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
+    .auth-btn-google {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text);
+      padding: 10px 16px;
+      font-family: var(--font-sans);
+      font-weight: 500;
+    }
+    .auth-btn-google:hover { background: var(--surface-3); border-color: var(--muted); }
+    .auth-btn-choice {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      color: var(--text);
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .auth-btn-choice:hover { border-color: var(--accent); color: var(--accent); }
+    .auth-btn-cancel { color: var(--muted); }
+    .auth-divider {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .auth-status {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 8px 12px;
+      border-radius: var(--r-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+    }
+    .auth-status-ok    { color: var(--good); border-color: var(--good); }
+    .auth-status-error { color: var(--bad); border-color: var(--bad); }
+
+    /* Card image / cube wraps shared across drill + recognition */
+    .drill-cube, .recog-cube, .timer-preview-img { filter: none; }
+
+    /* Old card-* / load-img-btn styles still target hidden DOM, no-op for new shell */
 
     /* ============================================================ */
     /* Hidden trigger panel - the existing modules listen on these   */

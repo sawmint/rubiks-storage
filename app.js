@@ -1041,6 +1041,15 @@ function practiceStageContent(submode, ctx) {
     const browse = btn("btn", "Pick cases in Browse");
     browse.addEventListener("click", () => setActivePage("browse"));
     ctaRow.append(start, browse);
+    out.push(headline, sub, countPill, ctaRow);
+    // When nothing's selected the stage is mostly empty. Drop in a Quick
+    // Start grid of weak cases the user can click to add and drill right
+    // away, so the empty state is productive instead of dead space.
+    if (ctx.totalSel === 0) {
+      const quick = renderQuickStartGrid();
+      if (quick) out.push(quick);
+    }
+    return out;
   } else if (submode === "weak") {
     headline.textContent = "Today's drill";
     sub.textContent = "Surface the cases you've practiced least, are slowest on, or are overdue for spaced-repetition review. Opens a picker so you can confirm the lineup before starting.";
@@ -1078,6 +1087,44 @@ function practiceStageContent(submode, ctx) {
 
   out.push(headline, sub, countPill, ctaRow);
   return out;
+}
+
+/* Quick Start grid: 6 weak-case thumbnails with VisualCube previews +
+ * a one-click "add and drill" button. Surfaces inside the Drill stage
+ * when the selection is empty so the page isn't dead. */
+function renderQuickStartGrid() {
+  const weak = rankWeakCases(["pll", "oll"], 6);
+  if (!weak.length) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "quick-start";
+  wrap.innerHTML = `
+    <div class="quick-start-head">
+      <span class="quick-start-label">Quick start</span>
+      <span class="quick-start-sub">Click any case to add and drill it now</span>
+    </div>
+    <div class="quick-start-grid">
+      ${weak.map((c) => `
+        <div class="quick-card" data-key="${escapeHtml(c.key)}">
+          <div class="quick-face">
+            <img src="${vcImageFor(c, 80)}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
+          </div>
+          <div class="quick-meta">
+            <div class="quick-cat">${c.category.toUpperCase()}</div>
+            <div class="quick-name">${escapeHtml(c.item.name)}</div>
+            <div class="quick-tag">${c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "")}</div>
+          </div>
+        </div>`).join("")}
+    </div>`;
+  for (const card of wrap.querySelectorAll("[data-key]")) {
+    card.addEventListener("click", () => {
+      const key = card.dataset.key;
+      const [cat, ...rest] = key.split("/");
+      selection.clear();
+      selection.toggle(cat, rest.join("/"));
+      document.getElementById("drill-selected").click();
+    });
+  }
+  return wrap;
 }
 
 function practiceSidePanel() {
@@ -1260,7 +1307,30 @@ function renderStats() {
       <h2>Algorithm mastery</h2>
       <a id="stats-go-browse">Browse all cases →</a>
     </div>
-    <div class="mastery-grid" id="stats-mastery"></div>`;
+    <div class="mastery-grid" id="stats-mastery"></div>
+
+    ${total === 0 ? `
+      <div class="stats-empty" style="margin-top: var(--s-6);">
+        <strong>Stats fill in as you practice</strong>
+        Open the <a id="stats-go-timer">Timer</a> to start logging solves, and click cases in
+        <a id="stats-go-browse2">Browse</a> to populate the mastery grid above.
+        Spaced-repetition kicks in after your first drill.
+      </div>` : ""}
+
+    <div class="page-ribbon">
+      <div class="page-ribbon-left">
+        <span class="page-ribbon-stripes">
+          <span style="background: var(--cube-white)"></span>
+          <span style="background: var(--cube-yellow)"></span>
+          <span style="background: var(--cube-red)"></span>
+          <span style="background: var(--cube-orange)"></span>
+          <span style="background: var(--cube-blue)"></span>
+          <span style="background: var(--cube-green)"></span>
+        </span>
+        <span class="page-ribbon-text">${allSolves.length} solve${allSolves.length === 1 ? "" : "s"} across ${allSessions.length} session${allSessions.length === 1 ? "" : "s"} since you started. Best ever <b>${sessions.fmtMs(sessions.bestSingle(allSolves)) || "-"}</b>.</span>
+      </div>
+      <div class="page-ribbon-text" style="text-align: right;">WCA orientation: white top, green front</div>
+    </div>`;
 
   // Draw the chart (best-of-rolling-ao5 over time)
   const chartHost = body.querySelector("#stats-chart");
@@ -1275,6 +1345,10 @@ function renderStats() {
   drawMastery(masteryHost);
 
   body.querySelector("#stats-go-browse").addEventListener("click", () => setActivePage("browse"));
+  const goTimer = body.querySelector("#stats-go-timer");
+  if (goTimer) goTimer.addEventListener("click", () => setActivePage("timer"));
+  const goBrowse2 = body.querySelector("#stats-go-browse2");
+  if (goBrowse2) goBrowse2.addEventListener("click", () => setActivePage("browse"));
 
   root.replaceChildren(head, submodeRow, body);
 }
