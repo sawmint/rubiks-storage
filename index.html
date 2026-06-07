@@ -1606,12 +1606,27 @@
        ×) fit inside the 360px side panel without overflowing or clipping. */
     .timer-inline-host .timer-solves-header,
     .timer-inline-host .timer-solve-row {
-      grid-template-columns: 28px 1fr 50px 50px auto;
+      grid-template-columns: 28px minmax(0, 1fr) 50px 50px auto;
       gap: 6px;
       padding: 6px 10px;
       font-size: 12px;
     }
-    .timer-inline-host .timer-solve-time { font-size: 13px; }
+    /* Time cell stacks the time number above the inspection-penalty chip
+       (insp DNF / +2 insp) so the chip never widens the column and shoves
+       the menu pills off-screen. `min-width: 0` lets the flex column
+       shrink past its content's natural width when the row gets tight. */
+    .timer-inline-host .timer-solve-time {
+      font-size: 13px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      min-width: 0;
+    }
+    .timer-inline-host .timer-insp-chip {
+      font-size: 9px;
+      padding: 0 5px;
+      line-height: 1.4;
+    }
     .timer-inline-host .timer-solve-menu { gap: 3px; }
     .timer-inline-host .timer-pill {
       padding: 2px 6px;
