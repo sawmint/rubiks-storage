@@ -620,6 +620,24 @@
       letter-spacing: 0.02em;
       overflow-wrap: anywhere;
     }
+    .upnext-best {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .upnext-best strong { color: var(--text); font-weight: 600; }
+
+    /* PB pulse — fires when drill.js detects a new personal best.
+       Class is removed on animationend by the consuming module. */
+    @keyframes rs-pb-pulse {
+      0%   { transform: scale(1);    text-shadow: none; }
+      40%  { transform: scale(1.08); text-shadow: 0 0 18px var(--accent); }
+      100% { transform: scale(1);    text-shadow: none; }
+    }
+    .drill-timer.pb-pulse { animation: rs-pb-pulse 700ms ease-out; }
 
     .recent-strip {
       padding: var(--s-5) var(--s-7) var(--s-6);
@@ -2007,14 +2025,6 @@
 
     /* Old card-* / load-img-btn styles still target hidden DOM, no-op for new shell */
 
-    /* ============================================================ */
-    /* Hidden trigger panel - the existing modules listen on these   */
-    /* IDs to open drill / recognition / batch / weak-cases. The new */
-    /* shell dispatches clicks to them so we don't have to rewrite   */
-    /* the modules' selection-toolbar contract.                       */
-    /* ============================================================ */
-    .legacy-triggers { display: none; }
-
     /* Make sure the modal overlay sits above the workspace bar */
     #modal-root:not(.hidden) { z-index: 100; }
   </style>
@@ -2065,30 +2075,6 @@
 
 <!-- Modal overlay used by drill, recognition, batch, weak-cases, timer, auth-ui -->
 <div id="modal-root" class="modal-root hidden" aria-hidden="true"></div>
-
-<!-- Legacy hidden trigger buttons - app.js calls .click() on these to
-     forward Practice / Timer actions through the existing module APIs.
-     This keeps drill.js / recognition.js / batch.js / timer.js / weak-cases.js
-     unchanged. -->
-<div class="legacy-triggers" aria-hidden="true">
-  <button id="open-timer"        type="button"></button>
-  <button id="open-weak-cases"   type="button"></button>
-  <button id="drill-selected"    type="button"></button>
-  <button id="batch-selected"    type="button"></button>
-  <button id="recog-selected"    type="button"></button>
-  <button id="select-all"        type="button"></button>
-  <button id="clear-selection"   type="button"></button>
-  <button id="open-account"      type="button"></button>
-  <button id="open-settings"     type="button"></button>
-  <input  id="search"            type="search" />
-  <div    id="tabs"></div>
-  <div    id="filters"></div>
-  <div    id="stats"></div>
-  <div    id="grid"></div>
-  <div    id="empty"></div>
-  <span   id="selection-count"></span>
-  <span   id="selection-divider"></span>
-</div>
 
 <script src="app.js" type="module"></script>
 

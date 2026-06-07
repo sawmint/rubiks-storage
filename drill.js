@@ -19,6 +19,8 @@ import { renderHtml as colorizeAlg } from "./alg-color.js";
 let session = null;
 
 const DRILLABLE_CATEGORIES = new Set(["pll", "oll"]);
+const AUTO_ADVANCE_MS = 500;
+const STUCK_WATCHDOG_MS = 2000;
 
 /* Start a drill session. `keys` is an array of "category/id" strings. */
 export function start(data, keys) {
@@ -188,6 +190,19 @@ function next() {
   // Scramble = random AUF + random y + setup
   const scr = buildScramble(item.setup);
   session.ui.scramble.innerHTML = colorizeAlg(scr);
+
+  // Preload the *next* draw's image so the cache is warm by the time the
+  // user finishes this rep. Cheap and reduces perceived swap time.
+  if (session.items.length > 1) {
+    const peekIdx = session.bag[0] ?? null;
+    if (peekIdx != null && session.items[peekIdx]) {
+      const nextItem = session.items[peekIdx].item;
+      const nextCat = session.items[peekIdx].category;
+      const nextStage = nextCat === "pll" ? "pll" : "oll";
+      const pre = new Image();
+      pre.src = vcImage({ setup: nextItem.setup, stage: nextStage, view: "plan", size: 180 });
+    }
+  }
 }
 
 /* Shuffled-bag draw: refills with a Fisher-Yates shuffle on exhaustion so
@@ -262,17 +277,55 @@ function stopTimer() {
   session.ui.timer.classList.remove("armed", "running");
   session.ui.timer.classList.add("stopped");
   session.ui.timer.textContent = seconds.toFixed(2);
-  session.ui.hint.textContent = "Saved. " +
-    (session.autoAdvance ? "Loading next case…" : "Click Next or hit space to drill again.");
 
-  // Record stat
+  // PB detection — read prior best BEFORE recording so the new time doesn't
+  // count as "beating" itself. A new PB triggers a brief CSS pulse on the
+  // timer (defined in styles.css; class is auto-removed on animationend).
   const { category, item } = session.current;
-  stats.recordDrill(category, item.id, seconds);
-  session.ui.lastTime.textContent = `Last: ${seconds.toFixed(2)}s`;
+  const prior = stats.getDrill(category, item.id);
+  const isPB = prior?.best != null && seconds < prior.best;
 
-  if (session.autoAdvance) {
-    setTimeout(() => { if (session) next(); }, 1200);
+  // Record stat — wrap in try/catch so a thrown stats write (cloud-sync
+  // hiccup, localStorage quota) doesn't block auto-advance.
+  try {
+    stats.recordDrill(category, item.id, seconds);
+  } catch (err) {
+    console.error("drill: stats.recordDrill failed", err);
   }
+  session.ui.lastTime.textContent = `Last: ${seconds.toFixed(2)}s` + (isPB ? "  (PB)" : "");
+
+  if (isPB) {
+    const t = session.ui.timer;
+    t.classList.remove("pb-pulse");
+    void t.offsetWidth;     // restart animation
+    t.classList.add("pb-pulse");
+    t.addEventListener("animationend", () => t.classList.remove("pb-pulse"), { once: true });
+  }
+
+  // Single-case sessions can't actually "advance" — drawing again returns
+  // the same case, which looks like a stuck state to the user. Surface
+  // that explicitly instead of pretending to load.
+  const singleCase = session.items.length === 1;
+  if (singleCase || !session.autoAdvance) {
+    session.ui.hint.textContent = "Saved. Hit space to drill again.";
+    return;
+  }
+
+  session.ui.hint.textContent = "Saved. Loading next case…";
+
+  // Primary auto-advance.
+  setTimeout(() => { if (session) next(); }, AUTO_ADVANCE_MS);
+
+  // Watchdog: if next() didn't run for any reason (a thrown render error,
+  // a focus-stolen timeout, etc.), the hint stays on "Loading next case…".
+  // Detect that and force-fire next() so the user is never left staring at
+  // a stuck loading message.
+  setTimeout(() => {
+    if (!session) return;
+    if (session.ui.hint.textContent.startsWith("Saved. Loading")) {
+      try { next(); } catch (err) { console.error("drill watchdog next() failed", err); }
+    }
+  }, STUCK_WATCHDOG_MS);
 }
 
 function cancelArmedOrRunning() {

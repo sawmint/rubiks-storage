@@ -24,6 +24,84 @@ import { renderHtml as colorizeAlg } from "./alg-color.js";
 const BATCH_SIZE = 5;
 const DRILLABLE = new Set(["pll"]); // OLLs not supported in chained batch (yet)
 
+/* ---------- rotation-conjugation stripper ----------
+ *
+ * pll-compose.json scrambles contain matched x/x' (and similar) rotation
+ * pairs from the underlying PLL setups, e.g. `x R2 D2 R U R' D2 R U' R x'`.
+ * Those rotations are mathematically required by the setup conjugation but
+ * visually they look like dead weight to a cuber applying the scramble.
+ * This rewrites a scramble that's wrapped in `R0 ... R0_inv` to the
+ * rotation-free equivalent by conjugating each inner face move through R0.
+ * Slice/wide moves and unknown tokens cancel the rewrite (we keep the
+ * original form rather than risk emitting bad notation).
+ */
+const ROTATIONS = new Set(["x", "x'", "x2", "y", "y'", "y2", "z", "z'", "z2"]);
+const ROT_INVERSE = {
+  "x": "x'", "x'": "x", "x2": "x2",
+  "y": "y'", "y'": "y", "y2": "y2",
+  "z": "z'", "z'": "z", "z2": "z2",
+};
+// Face-rotation conjugation table: rot * F * rot' = which face in the
+// original frame? Derived from "what face is at position F after applying
+// `rot` to a solved cube." Verified against pycuber for all 9 rotations.
+const FACE_MAP = {
+  "x":  { U: "F", F: "D", D: "B", B: "U", R: "R", L: "L" },
+  "x'": { U: "B", B: "D", D: "F", F: "U", R: "R", L: "L" },
+  "x2": { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" },
+  "y":  { F: "R", R: "B", B: "L", L: "F", U: "U", D: "D" },
+  "y'": { F: "L", L: "B", B: "R", R: "F", U: "U", D: "D" },
+  "y2": { F: "B", B: "F", R: "L", L: "R", U: "U", D: "D" },
+  "z":  { U: "L", L: "D", D: "R", R: "U", F: "F", B: "B" },
+  "z'": { U: "R", R: "D", D: "L", L: "U", F: "F", B: "B" },
+  "z2": { U: "D", D: "U", R: "L", L: "R", F: "F", B: "B" },
+};
+function conjugateFaceMove(move, rot) {
+  const m = move.match(/^([UDFBLR])(['2]?)$/);
+  if (!m) return null;     // slice/wide/unknown → bail, keep original wrapper
+  const newFace = FACE_MAP[rot]?.[m[1]];
+  return newFace ? newFace + m[2] : null;
+}
+export function stripRotationConjugation(scr) {
+  if (!scr || typeof scr !== "string") return scr;
+  let tokens = scr.trim().split(/\s+/).filter(Boolean);
+  // Scan left-to-right for any rotation token. When found, walk forward
+  // looking for its inverse; if every token between them is conjugatable,
+  // rewrite the slice and continue scanning from the same position (the
+  // rewrite never introduces new rotations). Repeat until no more pairs
+  // can be collapsed. This covers both fully-wrapped scrambles
+  // (`x A x'`) and inner pairs (`U x A x' U`).
+  let progress = true;
+  while (progress) {
+    progress = false;
+    for (let i = 0; i < tokens.length; i++) {
+      if (!ROTATIONS.has(tokens[i])) continue;
+      const inv = ROT_INVERSE[tokens[i]];
+      // Find the nearest matching inverse at index j > i with no other
+      // rotation tokens in between — rewriting through a nested rotation
+      // would require composing rotations and we keep this simple.
+      let j = -1;
+      for (let k = i + 1; k < tokens.length; k++) {
+        if (tokens[k] === inv) { j = k; break; }
+        if (ROTATIONS.has(tokens[k])) { j = -2; break; }
+      }
+      if (j < 0) continue;
+      const inner = tokens.slice(i + 1, j);
+      const conjugated = [];
+      let ok = true;
+      for (const t of inner) {
+        const c = conjugateFaceMove(t, tokens[i]);
+        if (c == null) { ok = false; break; }
+        conjugated.push(c);
+      }
+      if (!ok) continue;
+      tokens = [...tokens.slice(0, i), ...conjugated, ...tokens.slice(j + 1)];
+      progress = true;
+      break;     // restart scan since indices shifted
+    }
+  }
+  return tokens.join(" ");
+}
+
 let session = null;
 let rafId = null;
 let composeData = null; // lazy-loaded pll-compose.json
@@ -69,7 +147,7 @@ export async function start(data, keys) {
     }
     stateId = compose.table[stateId][idx];
   }
-  const initialScramble = compose.scrambles[stateId];
+  const initialScramble = stripRotationConjugation(compose.scrambles[stateId]);
 
   session = {
     queue,

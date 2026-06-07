@@ -1,13 +1,11 @@
 /* =========================================================
- * auth-ui.js — sign-in modal + first-login conflict prompt.
+ * auth-ui.js — sign-in modal.
  *
  * Uses the existing modal.js shell, so the look & behavior (ESC/backdrop
  * close, focus management) matches drill / recognition / timer.
  *
  * Exports:
  *   openSignIn()          → show the email + Google sign-in modal
- *   askConflict(resolve)  → show the "upload / use cloud / cancel" prompt;
- *                           resolve("upload" | "cloud" | "cancel")
  * ========================================================= */
 
 import * as modal from "./modal.js";
@@ -126,50 +124,6 @@ function notConfiguredBody() {
     </p>
   `;
   return body;
-}
-
-/* ---------- conflict prompt ---------- */
-
-export function askConflict(resolve) {
-  const body = document.createElement("div");
-  body.className = "auth-body";
-
-  const p = document.createElement("p");
-  p.className = "auth-intro";
-  p.textContent = "We found existing data on this device AND data already in your account. Which one should win?";
-  body.appendChild(p);
-
-  // modal.close() triggers onClose, which resolves with "cancel". So we
-  // resolve with the real choice BEFORE close() — once a Promise settles,
-  // further resolve() calls are no-ops, so the onClose-fired "cancel"
-  // becomes harmless.
-  const uploadBtn = document.createElement("button");
-  uploadBtn.type = "button";
-  uploadBtn.className = "btn auth-btn-choice";
-  uploadBtn.innerHTML = `<strong>Use this device's data</strong><span>Upload local stats and solves into the cloud, overwriting what's there.</span>`;
-  uploadBtn.addEventListener("click", () => { resolve("upload"); modal.close(); });
-  body.appendChild(uploadBtn);
-
-  const cloudBtn = document.createElement("button");
-  cloudBtn.type = "button";
-  cloudBtn.className = "btn auth-btn-choice";
-  cloudBtn.innerHTML = `<strong>Use the cloud data</strong><span>Replace this device's local data with what's already in your account.</span>`;
-  cloudBtn.addEventListener("click", () => { resolve("cloud"); modal.close(); });
-  body.appendChild(cloudBtn);
-
-  const cancelBtn = document.createElement("button");
-  cancelBtn.type = "button";
-  cancelBtn.className = "btn auth-btn-choice auth-btn-cancel";
-  cancelBtn.innerHTML = `<strong>Cancel</strong><span>Sign out and decide later.</span>`;
-  cancelBtn.addEventListener("click", () => { resolve("cancel"); modal.close(); });
-  body.appendChild(cancelBtn);
-
-  modal.open({
-    title: "Sync your data",
-    body,
-    allowBackdropClose: false,
-    onClose: () => resolve("cancel"),
-  });
 }
 
 /* Google "G" logo as inline SVG so it works offline. */

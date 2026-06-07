@@ -19,9 +19,31 @@
 import * as stats from "./stats.js";
 import * as sessions from "./sessions.js";
 import * as auth from "./auth.js";
+import { showToast } from "./app.js";
 
 const QUEUE_KEY = "rs-sync-queue-v1";
 const PUSH_DEBOUNCE_MS = 250;
+
+// Throttle for failure toasts so a burst of pushes doesn't spam one toast
+// per failed op. We only surface the first failure in a window; the next
+// "Sync caught up" toast (on a successful flush) clears the dirty flag.
+let failedSinceLastOk = false;
+let lastFailToastAt = 0;
+function notifyFailure(message) {
+  failedSinceLastOk = true;
+  const now = Date.now();
+  if (now - lastFailToastAt < 4000) return;
+  lastFailToastAt = now;
+  try { showToast(message, "error"); } catch { /* DOM not ready yet */ }
+}
+function notifyRecovery() {
+  if (!failedSinceLastOk) return;
+  failedSinceLastOk = false;
+  try { showToast("Sync caught up"); } catch { /* DOM not ready */ }
+}
+// Once-per-session flag for realtime drops so a flaky connection doesn't toast
+// repeatedly. Cleared by stop().
+let realtimeDropToasted = false;
 
 let started = false;
 let userId = null;
@@ -58,16 +80,22 @@ async function flushQueue() {
   const c = auth.getClient();
   if (!c || !userId || !navigator.onLine) return;
   let q = getQueue();
-  if (q.length === 0) return;
+  if (q.length === 0) {
+    notifyRecovery();
+    return;
+  }
   const remaining = [];
+  let anyFail = false;
   for (const op of q) {
     const res = await execOp(c, op);
     if (!res.ok) {
+      anyFail = true;
       if (res.retry) remaining.push(op);
       else console.warn("dropping queued op (non-retryable):", res.error, op);
     }
   }
   setQueue(remaining);
+  if (!anyFail && remaining.length === 0) notifyRecovery();
 }
 
 /* ---------- single op execution ---------- */
@@ -99,11 +127,20 @@ async function execOp(c, op) {
 
 async function pushOrQueue(op) {
   const c = auth.getClient();
-  if (!c || !userId || !navigator.onLine) { enqueue(op); return; }
+  if (!c || !userId || !navigator.onLine) {
+    enqueue(op);
+    if (!navigator.onLine) notifyFailure("Offline — sync paused");
+    return;
+  }
   const res = await execOp(c, op);
   if (!res.ok) {
-    if (res.retry) enqueue(op);
-    else console.warn("push failed (non-retryable):", res.error, op);
+    if (res.retry) {
+      enqueue(op);
+      notifyFailure("Sync failed — will retry");
+    } else {
+      console.warn("push failed (non-retryable):", res.error, op);
+      notifyFailure("Sync failed: " + (res.error || "server rejected"));
+    }
   }
 }
 
@@ -608,7 +645,13 @@ function subscribeRealtime() {
   );
 
   channel.subscribe((status, err) => {
-    if (err) console.warn("realtime channel error:", err);
+    if (err) {
+      console.warn("realtime channel error:", err);
+      if (!realtimeDropToasted) {
+        realtimeDropToasted = true;
+        notifyFailure("Live-sync dropped — changes from other devices may lag");
+      }
+    }
   });
 
   return channel;
@@ -627,33 +670,21 @@ async function startForUser(user) {
     cloud = await fetchAllFromCloud();
   } catch (e) {
     console.error("cloud sync: initial fetch failed", e);
+    notifyFailure("Couldn't load cloud data");
     return;
   }
 
   const cloudHas = cloud.stats.length || cloud.sessions.length || cloud.solves.length || cloud.prefs;
   const local = localHasData();
 
-  if (local && cloudHas) {
-    // Conflict — ask the user (delegated to auth-ui to avoid a circular dep)
-    const choice = await new Promise((resolve) => {
-      import("./auth-ui.js").then((m) => m.askConflict(resolve));
-    });
-    if (choice === "upload") {
-      await uploadAllLocal();
-      // After upload, cloud === local; seed from local.
-    } else if (choice === "cloud") {
-      applyCloudToLocal(cloud);
-    } else {
-      // cancelled — sign out and bail
-      await auth.signOut();
-      return;
-    }
-  } else if (local && !cloudHas) {
-    // First-ever sign-in on a device with data — silently upload.
-    await uploadAllLocal();
-  } else if (!local && cloudHas) {
-    // Fresh device — pull silently.
+  if (cloudHas) {
+    // Always pull from cloud silently — cloud wins. No conflict prompt.
+    // If the device has uncommitted local edits, they're overwritten; this
+    // matches the user's instruction to "always default to the cloud."
     applyCloudToLocal(cloud);
+  } else if (local) {
+    // First-ever sign-in on a device with data, cloud empty — silently upload.
+    await uploadAllLocal();
   }
   // else: nothing on either side, nothing to do.
 
@@ -697,6 +728,9 @@ function stop() {
   lastSessions.clear();
   lastSolves.clear();
   lastPrefs = null;
+  failedSinceLastOk = false;
+  lastFailToastAt = 0;
+  realtimeDropToasted = false;
   started = false;
 }
 

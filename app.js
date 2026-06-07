@@ -157,13 +157,33 @@ const CATEGORIES = [
     key: "pll",
     label: "PLL",
     accent: "var(--cube-blue)",
-    getItems: (d) => d.pll.filter((it) => !isTwoLookPll(it)),
+    getItems: (d) => d.pll,
     titleOf: (it) => it.name,
     idOf: (it) => it.id,
     searchFields: ["id", "name", "group", "algorithm", "recognition"],
-    filterFacets: [{ key: "group", label: "Group", from: (it) => it.group }],
+    filterFacets: [{
+      key: "tag",
+      label: "Category",
+      multi: true,
+      // Declarative tag list — drives the chip row even before any case is
+      // selected. The PLL tagging audit lives in CLAUDE.md (Plan Old-app
+      // removal + PLL recat); tags themselves are in rubiks-cube-algorithms.json.
+      values: [
+        { v: "edges-only",   label: "Edges only" },
+        { v: "corners-only", label: "Corners only" },
+        { v: "both",         label: "Both corners and edges" },
+        { v: "headlights",   label: "Headlights" },
+        { v: "diagonal",     label: "Diagonal" },
+        { v: "a-perms",      label: "A perms" },
+        { v: "u-perms",      label: "U perms" },
+        { v: "j-perms",      label: "J perms" },
+        { v: "r-perms",      label: "R perms" },
+        { v: "g-perms",      label: "G perms" },
+        { v: "n-perms",      label: "N perms" },
+      ],
+      from: (it) => it.tags || [],
+    }],
     extraBadges: (it) => [
-      it.group && { label: it.group, className: "badge" },
       it.auf && it.auf !== "none" && { label: "AUF " + it.auf, className: "badge" },
     ].filter(Boolean),
     metaRows: (it) => [
@@ -208,7 +228,7 @@ const CATEGORIES = [
     key: "oll",
     label: "OLL",
     accent: "var(--cube-orange)",
-    getItems: (d) => d.oll.filter((it) => !isTwoLookOll(it)),
+    getItems: (d) => d.oll,
     titleOf: (it) => it.name,
     idOf: (it) => "#" + it.id,
     searchFields: ["id", "name", "shape", "algorithm", "recognition"],
@@ -228,7 +248,7 @@ const CATEGORIES = [
     label: "F2L (advanced)",
     shortLabel: "F2L+",
     accent: "var(--cube-green)",
-    getItems: (d) => d.f2l.advanced,
+    getItems: (d) => [...d.f2l.advanced, ...d.f2l.beginner],
     titleOf: (it) => "Case " + it.id + ": " + (it.trigger || "f2l"),
     idOf: (it) => "#" + it.id,
     searchFields: ["id", "slot", "corner_state", "edge_state", "algorithm", "trigger"],
@@ -341,7 +361,6 @@ async function init() {
 
   bindWorkspaceBar();
   bindAccount();
-  bindHiddenTriggers();
 
   selection.subscribe(() => {
     if (appState.activePage === "browse")   renderBrowse();
@@ -436,31 +455,32 @@ function bindAccount() {
   });
 }
 
-function bindHiddenTriggers() {
-  document.getElementById("open-timer").addEventListener("click", async () => {
-    const mod = await import("./timer.js");
-    mod.openTimer();
-  });
-  document.getElementById("open-weak-cases").addEventListener("click", async () => {
-    const mod = await import("./weak-cases.js");
-    mod.start(appState.data);
-  });
-  document.getElementById("drill-selected").addEventListener("click", async () => {
-    if (selection.size() === 0) return showToast("Select cases in Browse first", "error");
-    const mod = await import("./drill.js");
-    mod.start(appState.data, selection.allKeys());
-  });
-  document.getElementById("batch-selected").addEventListener("click", async () => {
-    const pllKeys = selection.allKeys().filter((k) => k.startsWith("pll/"));
-    if (pllKeys.length === 0) return showToast("Batch needs PLL cases. Select some in Browse first.", "error");
-    const mod = await import("./batch.js");
-    mod.start(appState.data, pllKeys);
-  });
-  document.getElementById("recog-selected").addEventListener("click", async () => {
-    if (selection.size() === 0) return showToast("Select cases in Browse first", "error");
-    const mod = await import("./recognition.js");
-    mod.start(appState.data, selection.allKeys());
-  });
+export async function openTimer() {
+  const mod = await import("./timer.js");
+  mod.openTimer();
+}
+export async function openWeakCases() {
+  const mod = await import("./weak-cases.js");
+  mod.start(appState.data);
+}
+export async function openDrill(keys) {
+  const useKeys = keys ?? selection.allKeys();
+  if (useKeys.length === 0) return showToast("Select cases in Browse first", "error");
+  const mod = await import("./drill.js");
+  mod.start(appState.data, useKeys);
+}
+export async function openBatch(keys) {
+  const useKeys = keys ?? selection.allKeys();
+  const pllKeys = useKeys.filter((k) => k.startsWith("pll/"));
+  if (pllKeys.length === 0) return showToast("Batch needs PLL cases. Select some in Browse first.", "error");
+  const mod = await import("./batch.js");
+  mod.start(appState.data, pllKeys);
+}
+export async function openRecognition(keys) {
+  const useKeys = keys ?? selection.allKeys();
+  if (useKeys.length === 0) return showToast("Select cases in Browse first", "error");
+  const mod = await import("./recognition.js");
+  mod.start(appState.data, useKeys);
 }
 
 /* ============================================================ */
@@ -510,7 +530,7 @@ function renderHome() {
     focusEl.querySelector('[data-act="start"]').addEventListener("click", () => {
       selection.clear();
       selection.toggle(focus.category, focus.item.id);
-      document.getElementById("drill-selected").click();
+      openDrill();
     });
   } else {
     focusEl.style.gridTemplateColumns = "1fr auto";
@@ -562,6 +582,7 @@ function renderHome() {
             <span class="upnext-cat">${c.category.toUpperCase()}${c.item.group ? " · " + escapeHtml(c.item.group) : ""}${c.item.shape ? " · " + escapeHtml(c.item.shape) : ""}</span>
             <span class="upnext-name">${escapeHtml(c.item.name)}</span>
             <span class="upnext-alg">${colorizeAlg(c.item.algorithm)}</span>
+            <span class="upnext-best">best <strong>${escapeHtml(stats.fmtTime(c.best))}</strong></span>
           </div>
           <button class="btn btn-small" data-act="drill">Drill →</button>
         </div>`).join("")
@@ -578,7 +599,7 @@ function renderHome() {
       const parts = key.split("/");
       selection.clear();
       selection.toggle(parts[0], parts.slice(1).join("/"));
-      document.getElementById("drill-selected").click();
+      openDrill();
     };
     el.addEventListener("click", (e) => {
       if (e.target.closest("[data-act='drill']")) startDrill();
@@ -915,13 +936,13 @@ function renderBrowse() {
     });
     actions.querySelector("#browse-clear").addEventListener("click", () => selection.clear());
     actions.querySelector("#browse-drill").addEventListener("click", () => {
-      document.getElementById("drill-selected").click();
+      openDrill();
     });
     actions.querySelector("#browse-batch").addEventListener("click", () => {
-      document.getElementById("batch-selected").click();
+      openBatch();
     });
     actions.querySelector("#browse-recog").addEventListener("click", () => {
-      document.getElementById("recog-selected").click();
+      openRecognition();
     });
   }
 
@@ -971,17 +992,32 @@ function renderFacetRow(cat, items) {
   wrap.className = "facet-row";
   let any = false;
   for (const facet of cat.filterFacets) {
-    const values = uniqueSorted(items.map(facet.from).filter(Boolean));
-    if (values.length === 0) continue;
+    // Two ways to source the chip values:
+    //   1. Declarative `values: [{v,label}]` on the facet — used for
+    //      array-valued tag facets where the chip list should be stable
+    //      regardless of which items happen to be in view.
+    //   2. Derived from observed item values — original behavior.
+    let chipDefs;
+    if (Array.isArray(facet.values)) {
+      chipDefs = facet.values.map((x) => ({ value: x.v, label: x.label || x.v }));
+    } else {
+      const observed = uniqueSorted(items.flatMap((it) => {
+        const v = facet.from(it);
+        return Array.isArray(v) ? v : [v];
+      }).filter(Boolean));
+      chipDefs = observed.map((v) => ({ value: v, label: v }));
+    }
+    if (chipDefs.length === 0) continue;
     any = true;
     const label = document.createElement("span");
     label.className = "facet-label";
     label.textContent = facet.label;
     wrap.appendChild(label);
-    for (const v of values) {
+    for (const def of chipDefs) {
+      const v = def.value;
       const chip = document.createElement("button");
       chip.className = "chip facet" + ((browseState.filters[facet.key]?.has(v)) ? " active" : "");
-      chip.textContent = v;
+      chip.textContent = def.label;
       chip.addEventListener("click", () => {
         const set = browseState.filters[facet.key] || new Set();
         if (set.has(v)) set.delete(v); else set.add(v);
@@ -997,10 +1033,10 @@ function renderFacetRow(cat, items) {
 
 function catSubtitle(cat) {
   if (cat.key === "pll_2look") return "6 beginner permutations: Ua, Ub, Z, H for edges, plus T-perm and Y-perm for combined corner-and-edge cases. Master these to solve any state via the two-look method.";
-  if (cat.key === "pll") return "15 advanced last-layer permutations beyond the 2-look set. A-perms live here too since they're standard 1-look choices for corner cycles.";
+  if (cat.key === "pll") return "All 21 last-layer permutations. Filter by tag — a single case can match multiple (T-perm is Both corners and edges AND Headlights).";
   if (cat.key === "oll_2look") return "10 beginner orientations: 3 generic edge-orient algs (Line, L, Dot) where side stickers don't matter, plus 7 OCLL corner cases. Pair with 2-look PLL for full two-look CFOP.";
-  if (cat.key === "oll") return "50 last-layer orientations beyond the 2-look set (the 7 OCLL cases live in 2-look OLL).";
-  if (cat.key === "f2l_adv") return "25 advanced first-two-layers cases. Reference only, not drillable.";
+  if (cat.key === "oll") return "All 60 last-layer orientations (57 cases + 3 generic 2-look entries). The 7 OCLL cases also live in 2-look OLL.";
+  if (cat.key === "f2l_adv") return "41 first-two-layers cases (25 advanced + 16 beginner). Reference only, not drillable — F2L algs are short enough to learn through actual solving.";
   if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only, not drillable.";
   if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
   return "";
@@ -1120,7 +1156,14 @@ function matchesFilters(it, cat) {
     const facet = cat.filterFacets.find((f) => f.key === facetKey);
     if (!facet) continue;
     const v = facet.from(it);
-    if (!set.has(v)) return false;
+    if (Array.isArray(v)) {
+      // Multi-tag facet: case matches if ANY of its tags is in the selected set.
+      let any = false;
+      for (const t of v) { if (set.has(t)) { any = true; break; } }
+      if (!any) return false;
+    } else {
+      if (!set.has(v)) return false;
+    }
   }
   if (browseState.search) {
     const haystack = cat.searchFields
@@ -1218,7 +1261,7 @@ function practiceStageContent(submode, ctx) {
     countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}`;
     const start = btn("btn btn-primary btn-lg", "Start drill →");
     start.disabled = ctx.totalSel === 0;
-    start.addEventListener("click", () => document.getElementById("drill-selected").click());
+    start.addEventListener("click", () => openDrill());
     const browse = btn("btn", "Pick cases in Browse");
     browse.addEventListener("click", () => setActivePage("browse"));
     ctaRow.append(start, browse);
@@ -1239,7 +1282,7 @@ function practiceStageContent(submode, ctx) {
     const newCount = weak.filter((c) => c.isUnpracticed && !c.isDue).length;
     countPill.innerHTML = `<b>${dueCount}</b> due now · <b>${newCount}</b> never drilled`;
     const start = btn("btn btn-primary btn-lg", "Open today's drill →");
-    start.addEventListener("click", () => document.getElementById("open-weak-cases").click());
+    start.addEventListener("click", () => openWeakCases());
     ctaRow.append(start);
   } else if (submode === "recognition") {
     headline.textContent = "Train recognition";
@@ -1247,7 +1290,7 @@ function practiceStageContent(submode, ctx) {
     countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected`;
     const start = btn("btn btn-primary btn-lg", "Start recognition →");
     start.disabled = ctx.totalSel === 0;
-    start.addEventListener("click", () => document.getElementById("recog-selected").click());
+    start.addEventListener("click", () => openRecognition());
     const browse = btn("btn", "Pick cases in Browse");
     browse.addEventListener("click", () => setActivePage("browse"));
     ctaRow.append(start, browse);
@@ -1257,7 +1300,7 @@ function practiceStageContent(submode, ctx) {
     countPill.innerHTML = `<b>${ctx.pllCount}</b> PLL case${ctx.pllCount === 1 ? "" : "s"} selected${ctx.pllCount < 5 ? " · need 5+ for variety" : ""}`;
     const start = btn("btn btn-primary btn-lg", "Start batch →");
     start.disabled = ctx.pllCount === 0;
-    start.addEventListener("click", () => document.getElementById("batch-selected").click());
+    start.addEventListener("click", () => openBatch());
     const browse = btn("btn", "Pick PLLs in Browse");
     browse.addEventListener("click", () => {
       browseState.category = "pll";
@@ -1303,7 +1346,7 @@ function renderQuickStartGrid() {
       const [cat, ...rest] = key.split("/");
       selection.clear();
       selection.toggle(cat, rest.join("/"));
-      document.getElementById("drill-selected").click();
+      openDrill();
     });
   }
   return wrap;
@@ -1866,7 +1909,7 @@ function renderSettings() {
 /* Helpers                                                        */
 /* ============================================================ */
 
-function showToast(label, kind = "info") {
+export function showToast(label, kind = "info") {
   const existing = document.querySelector(".soon-toast");
   if (existing) existing.remove();
   const t = document.createElement("div");

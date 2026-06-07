@@ -7,7 +7,12 @@
       "algorithm": "x R' U R' D2 R U' R' D2 R2 x'",
       "recognition": "Three-corner cycle clockwise; headlights on the back",
       "auf": "none",
-      "setup": "x R2 D2 R U R' D2 R U' R x'"
+      "setup": "x R2 D2 R U R' D2 R U' R x'",
+      "tags": [
+        "corners-only",
+        "headlights",
+        "a-perms"
+      ]
     },
     {
       "id": "Ab",
@@ -16,7 +21,12 @@
       "algorithm": "x R2 D2 R U R' D2 R U' R x'",
       "recognition": "Three-corner cycle counter-clockwise; headlights on the back",
       "auf": "none",
-      "setup": "x R' U R' D2 R U' R' D2 R2 x'"
+      "setup": "x R' U R' D2 R U' R' D2 R2 x'",
+      "tags": [
+        "corners-only",
+        "headlights",
+        "a-perms"
+      ]
     },
     {
       "id": "E",
@@ -25,7 +35,11 @@
       "algorithm": "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
       "recognition": "Two diagonal corner swaps; no headlights, opposite colors on adjacent corners",
       "auf": "none",
-      "setup": "x' D R U R' D' R U' R' D R U' R' D' R U R' x"
+      "setup": "x' D R U R' D' R U' R' D R U' R' D' R U R' x",
+      "tags": [
+        "corners-only",
+        "diagonal"
+      ]
     },
     {
       "id": "F",
@@ -34,7 +48,11 @@
       "algorithm": "R' U' F' R U R' U' R' F R2 U' R' U' R U R' U R",
       "recognition": "Front edge and two corners swap; headlights on left, front edge swap",
       "auf": "none",
-      "setup": "R' U' R U' R' U R U R2 F' R U R U' R' F U R"
+      "setup": "R' U' R U' R' U R U R2 F' R U R U' R' F U R",
+      "tags": [
+        "both",
+        "headlights"
+      ]
     },
     {
       "id": "Ga",
@@ -43,7 +61,12 @@
       "algorithm": "R2 U R' U R' U' R U' R2 U' D R' U R D'",
       "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise",
       "auf": "none",
-      "setup": "D R' U' R D' U R2 U R' U R U' R U' R2"
+      "setup": "D R' U' R D' U R2 U R' U R U' R U' R2",
+      "tags": [
+        "both",
+        "headlights",
+        "g-perms"
+      ]
     },
     {
       "id": "Gb",
@@ -52,7 +75,12 @@
       "algorithm": "R' U' R U D' R2 U R' U R U' R U' R2 D",
       "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (mirror of Ga)",
       "auf": "none",
-      "setup": "D' R2 U R' U R' U' R U' R2 D U' R' U R"
+      "setup": "D' R2 U R' U R' U' R U' R2 D U' R' U R",
+      "tags": [
+        "both",
+        "headlights",
+        "g-perms"
+      ]
     },
     {
       "id": "Gc",
@@ -61,7 +89,12 @@
       "algorithm": "R2 U' R U' R U R' U R2 U D' R U' R' D",
       "recognition": "3-edge cycle counter-clockwise + 3-corner cycle clockwise (different angle)",
       "auf": "none",
-      "setup": "D' R U R' D U' R2 U' R U' R' U R' U R2"
+      "setup": "D' R U R' D U' R2 U' R U' R' U R' U R2",
+      "tags": [
+        "both",
+        "headlights",
+        "g-perms"
+      ]
     },
     {
       "id": "Gd",
@@ -70,7 +103,12 @@
       "algorithm": "R U R' U' D R2 U' R U' R' U R' U R2 D'",
       "recognition": "3-edge cycle clockwise + 3-corner cycle counter-clockwise (different angle)",
       "auf": "none",
-      "setup": "D R2 U' R U' R U R' U R2 D' U R U' R'"
+      "setup": "D R2 U' R U' R U R' U R2 D' U R U' R'",
+      "tags": [
+        "both",
+        "headlights",
+        "g-perms"
+      ]
     },
     {
       "id": "H",
@@ -79,7 +117,10 @@
       "algorithm": "M2 U M2 U2 M2 U M2",
       "recognition": "Two opposite edge pairs swap; all four corners solved, all edges show opposite colors",
       "auf": "none",
-      "setup": "M2 U' M2 U2 M2 U' M2"
+      "setup": "M2 U' M2 U2 M2 U' M2",
+      "tags": [
+        "edges-only"
+      ]
     },
     {
       "id": "Ja",
@@ -88,7 +129,12 @@
       "algorithm": "x R2 F R F' R U2 r' U r U2 x'",
       "recognition": "Adjacent corner+edge swap on left side; headlights on right",
       "auf": "none",
-      "setup": "x U2 r' U' r U2 R' F R' F' R2 x'"
+      "setup": "x U2 r' U' r U2 R' F R' F' R2 x'",
+      "tags": [
+        "both",
+        "headlights",
+        "j-perms"
+      ]
     },
     {
       "id": "Jb",
@@ -97,7 +143,12 @@
       "algorithm": "R U R' F' R U R' U' R' F R2 U' R'",
       "recognition": "Adjacent corner+edge swap on right side; headlights on left",
       "auf": "none",
-      "setup": "R U R2 F' R U R U' R' F R U' R'"
+      "setup": "R U R2 F' R U R U' R' F R U' R'",
+      "tags": [
+        "both",
+        "headlights",
+        "j-perms"
+      ]
     },
     {
       "id": "Na",
@@ -106,7 +157,12 @@
       "algorithm": "R U R' U R U R' F' R U R' U' R' F R2 U' R' U2 R U' R'",
       "recognition": "Diagonal corner+edge swap; pair of headlights on opposite sides",
       "auf": "none",
-      "setup": "R U R' U2 R U R2 F' R U R U' R' F R U' R' U' R U' R'"
+      "setup": "R U R' U2 R U R2 F' R U R U' R' F R U' R' U' R U' R'",
+      "tags": [
+        "both",
+        "diagonal",
+        "n-perms"
+      ]
     },
     {
       "id": "Nb",
@@ -115,7 +171,12 @@
       "algorithm": "R' U R U' R' F' U' F R U R' F R' F' R U' R",
       "recognition": "Diagonal corner+edge swap; mirror of Na",
       "auf": "none",
-      "setup": "R' U R' F R F' R U' R' F' U F R U R' U' R"
+      "setup": "R' U R' F R F' R U' R' F' U F R U R' U' R",
+      "tags": [
+        "both",
+        "diagonal",
+        "n-perms"
+      ]
     },
     {
       "id": "Ra",
@@ -124,7 +185,12 @@
       "algorithm": "R U' R' U' R U R D R' U' R D' R' U2 R'",
       "recognition": "Two adjacent edges + two adjacent corners; bookends on right",
       "auf": "none",
-      "setup": "R U2 R D R' U R D' R' U' R' U R U R'"
+      "setup": "R U2 R D R' U R D' R' U' R' U R U R'",
+      "tags": [
+        "both",
+        "headlights",
+        "r-perms"
+      ]
     },
     {
       "id": "Rb",
@@ -133,7 +199,12 @@
       "algorithm": "R' U2 R U2 R' F R U R' U' R' F' R2",
       "recognition": "Two adjacent edges + two adjacent corners; bookends on left",
       "auf": "none",
-      "setup": "R2 F R U R U' R' F' R U2 R' U2 R"
+      "setup": "R2 F R U R U' R' F' R U2 R' U2 R",
+      "tags": [
+        "both",
+        "headlights",
+        "r-perms"
+      ]
     },
     {
       "id": "T",
@@ -142,7 +213,11 @@
       "algorithm": "R U R' U' R' F R2 U' R' U' R U R' F'",
       "recognition": "Adjacent corner swap (right side) + adjacent edge swap (right side); headlights on left",
       "auf": "none",
-      "setup": "F R U' R' U R U R2 F' R U R U' R'"
+      "setup": "F R U' R' U R U R2 F' R U R U' R'",
+      "tags": [
+        "both",
+        "headlights"
+      ]
     },
     {
       "id": "Ua",
@@ -151,7 +226,11 @@
       "algorithm": "R U' R U R U R U' R' U' R2",
       "recognition": "Three-edge cycle counter-clockwise; headlights match on three sides",
       "auf": "none",
-      "setup": "R2 U R U R' U' R' U' R' U R'"
+      "setup": "R2 U R U R' U' R' U' R' U R'",
+      "tags": [
+        "edges-only",
+        "u-perms"
+      ]
     },
     {
       "id": "Ub",
@@ -160,7 +239,11 @@
       "algorithm": "R2 U R U R' U' R' U' R' U R'",
       "recognition": "Three-edge cycle clockwise; headlights match on three sides",
       "auf": "none",
-      "setup": "R U' R U R U R U' R' U' R2"
+      "setup": "R U' R U R U R U' R' U' R2",
+      "tags": [
+        "edges-only",
+        "u-perms"
+      ]
     },
     {
       "id": "V",
@@ -169,7 +252,11 @@
       "algorithm": "y' R' U R' U' y R' F' R2 U' R' U R' F R F",
       "recognition": "Diagonal corner swap + adjacent edge swap (front+left)",
       "auf": "none",
-      "setup": "F' R' F' R U' R U R2 F R y' U R U' R y"
+      "setup": "F' R' F' R U' R U R2 F R y' U R U' R y",
+      "tags": [
+        "both",
+        "diagonal"
+      ]
     },
     {
       "id": "Y",
@@ -178,7 +265,11 @@
       "algorithm": "F R U' R' U' R U R' F' R U R' U' R' F R F'",
       "recognition": "Diagonal corner swap + adjacent edge swap (front+right)",
       "auf": "none",
-      "setup": "F R' F' R U R U' R' F R U' R' U R U R' F'"
+      "setup": "F R' F' R U R U' R' F R U' R' U R U R' F'",
+      "tags": [
+        "both",
+        "diagonal"
+      ]
     },
     {
       "id": "Z",
@@ -187,7 +278,10 @@
       "algorithm": "M2 U M2 U M' U2 M2 U2 M'",
       "recognition": "Two adjacent edge pairs swap; checkered edge pattern, all corners solved",
       "auf": "none",
-      "setup": "M U2 M2 U2 M U' M2 U' M2"
+      "setup": "M U2 M2 U2 M U' M2 U' M2",
+      "tags": [
+        "edges-only"
+      ]
     }
   ],
   "oll": [
