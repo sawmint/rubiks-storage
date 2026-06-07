@@ -388,7 +388,8 @@ function renderSolvesList() {
     const noteBtn = document.createElement("button");
     noteBtn.type = "button";
     noteBtn.className = "timer-pill timer-pill-note" + (s.comment ? " active" : "");
-    noteBtn.textContent = "info";
+    noteBtn.setAttribute("aria-label", "Solve info");
+    noteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="11.5"/><circle cx="8" cy="5" r="0.7" fill="currentColor" stroke="none"/></svg>`;
     noteBtn.title = s.comment
       ? `Solve info — note: ${s.comment}`
       : "Solve info — view scramble, add note";
