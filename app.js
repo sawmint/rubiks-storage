@@ -141,11 +141,23 @@ const CATEGORIES = [
     titleOf: (it) => it.name,
     idOf: (it) => it.id,
     searchFields: ["id", "name", "group", "algorithm", "recognition"],
-    filterFacets: [{ key: "group", label: "Group", from: (it) => it.group }],
+    // 2L PLL is taught with two corner-recognition cues only — Headlights
+    // (T-perm) and Diagonal (Y-perm). The other 4 cases (Ua, Ub, H, Z)
+    // have all corners already solved so they don't need a chip — they
+    // just show whenever neither filter is active.
+    filterFacets: [{
+      key: "tag",
+      label: "Category",
+      multi: true,
+      values: [
+        { v: "headlights", label: "Headlights" },
+        { v: "diagonal",   label: "Diagonal" },
+      ],
+      from: (it) => it.tags || [],
+    }],
     extraBadges: (it) => [
-      it.group && { label: it.group, className: "badge" },
       { label: "2-look", className: "badge" },
-    ].filter(Boolean),
+    ],
     metaRows: (it) => [
       it.recognition && { label: "Recognition", value: it.recognition },
     ].filter(Boolean),
@@ -890,7 +902,7 @@ function renderBrowse() {
   const toolbar = document.createElement("div");
   toolbar.className = "toolbar";
   toolbar.innerHTML = `
-    <input type="text" class="search" id="browse-search" placeholder="Search by name, id, algorithm, recognition…" value="${escapeHtml(browseState.search)}" />
+    <input type="text" class="search" id="browse-search" placeholder="Search algorithms…" value="${escapeHtml(browseState.search)}" />
     ${CATEGORIES.map((c) => `<button class="chip ${c.key === browseState.category ? "accent" : ""}" data-cat="${c.key}">${escapeHtml(c.shortLabel || c.label)}</button>`).join("")}
     <button class="chip planned" tabindex="-1" disabled>COLL</button>
     <button class="chip planned" tabindex="-1" disabled>ZBLL</button>
@@ -1112,27 +1124,26 @@ function renderBrowseCard(it, cat) {
     card.appendChild(meta);
   }
 
-  // Footer stats
+  // Footer stats — drillable categories always render the same three
+  // columns (best / reps / recog) so card layouts line up vertically
+  // whether or not a case has been practiced. Missing values render as
+  // em-dashes via stats.fmtTime / a "—" literal for recog.
   const footer = document.createElement("div");
   if (cat.drillable) {
     footer.className = "alg-stats";
-    // Use the data category (selCat) for stats lookup so 2-look browse
-    // shares drill/recog records with the full PLL/OLL view.
     const drillStats = stats.getDrill(selCat, it.id);
     const recogStats = stats.getRecog(selCat, it.id);
-    if (drillStats || recogStats) {
-      const parts = [];
-      if (drillStats) parts.push(`<span>best <strong>${escapeHtml(stats.fmtTime(drillStats.best))}</strong></span>`);
-      if (drillStats) parts.push(`<span>reps <strong>${drillStats.n}</strong></span>`);
-      if (recogStats) parts.push(`<span>recog <strong>${escapeHtml(stats.fmtAccuracy(recogStats))}</strong></span>`);
-      footer.innerHTML = parts.join("");
-    } else {
-      footer.classList.add("empty");
-      footer.innerHTML = `<span>untried</span><span></span>`;
-    }
+    if (!drillStats && !recogStats) footer.classList.add("empty");
+    const bestText = drillStats?.best != null ? stats.fmtTime(drillStats.best) : "—";
+    const repsText = drillStats?.n ?? 0;
+    const recogText = recogStats ? stats.fmtAccuracy(recogStats) : "—";
+    footer.innerHTML =
+      `<span>best <strong>${escapeHtml(bestText)}</strong></span>` +
+      `<span>reps <strong>${escapeHtml(String(repsText))}</strong></span>` +
+      `<span>recog <strong>${escapeHtml(recogText)}</strong></span>`;
   } else {
     footer.className = "alg-stats empty";
-    footer.innerHTML = `<span>${escapeHtml(cat.label.toLowerCase())}</span><span></span>`;
+    footer.innerHTML = `<span>${escapeHtml(cat.label.toLowerCase())}</span>`;
   }
   card.appendChild(footer);
 
@@ -1194,7 +1205,6 @@ function renderPractice() {
   head.innerHTML = `
     <div>
       <h1 class="page-title">Practice</h1>
-      <p class="page-subtitle">Drill, recognition, batch, or today's spaced-repetition pick.</p>
     </div>
     <div class="row" style="gap:var(--s-2);">
       <button class="btn btn-ghost" id="practice-clear" ${totalSel === 0 ? "disabled" : ""}>Clear selection</button>
@@ -1226,99 +1236,172 @@ function renderPractice() {
     submodeRow.appendChild(btn);
   }
 
-  /* Stage - different content per submode */
-  const shell = document.createElement("div");
-  shell.className = "practice-shell";
-
+  /* Single full-width stage. Top row: compact summary + CTA. Body: the
+   * dominant content for this submode (Quick Start grid, weak preview,
+   * selected cases preview, etc.) filling the remaining height. */
   const stage = document.createElement("div");
-  stage.className = "practice-stage";
-  const stageContent = practiceStageContent(practiceState.submode, { selectedKeys, pllCount, ollCount, totalSel });
-  stage.append(...stageContent);
+  stage.className = "practice-stage-v2";
+  stage.append(...practiceStageContent(practiceState.submode, { selectedKeys, pllCount, ollCount, totalSel }));
 
-  /* Side panel */
-  const side = document.createElement("div");
-  side.className = "practice-side";
-  side.append(...practiceSidePanel());
-
-  shell.append(stage, side);
-  root.replaceChildren(head, submodeRow, shell);
+  root.replaceChildren(head, submodeRow, stage);
 }
 
 function practiceStageContent(submode, ctx) {
   const out = [];
-  const headline = document.createElement("h2");
-  headline.className = "practice-headline";
-  const sub = document.createElement("p");
-  sub.className = "practice-sub";
-  const countPill = document.createElement("div");
-  countPill.className = "practice-count-pill";
-  const ctaRow = document.createElement("div");
-  ctaRow.className = "practice-cta-row";
+
+  // Top bar: label + count + CTAs, single horizontal row.
+  const topBar = document.createElement("div");
+  topBar.className = "stage-top";
+
+  const meta = document.createElement("div");
+  meta.className = "stage-meta";
+
+  const ctas = document.createElement("div");
+  ctas.className = "stage-ctas";
 
   if (submode === "drill") {
-    headline.textContent = "Drill selected cases";
-    sub.textContent = "Hold space to arm, release to start, press any key to stop. Each case is scrambled and you solve it under the clock. Drill times update spaced-repetition automatically.";
-    countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}`;
+    meta.innerHTML = `
+      <span class="stage-label">Drill</span>
+      <span class="stage-count"><b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}</span>`;
     const start = btn("btn btn-primary btn-lg", "Start drill →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openDrill());
-    const browse = btn("btn", "Pick cases in Browse");
+    const browse = btn("btn", "Pick cases");
     browse.addEventListener("click", () => setActivePage("browse"));
-    ctaRow.append(start, browse);
-    out.push(headline, sub, countPill, ctaRow);
-    // When nothing's selected the stage is mostly empty. Drop in a Quick
-    // Start grid of weak cases the user can click to add and drill right
-    // away, so the empty state is productive instead of dead space.
-    if (ctx.totalSel === 0) {
-      const quick = renderQuickStartGrid();
-      if (quick) out.push(quick);
-    }
-    return out;
+    ctas.append(browse, start);
   } else if (submode === "weak") {
-    headline.textContent = "Today's drill";
-    sub.textContent = "Surface the cases you've practiced least, are slowest on, or are overdue for spaced-repetition review. Opens a picker so you can confirm the lineup before starting.";
     const weak = rankWeakCases(["pll", "oll"], 20);
     const dueCount = weak.filter((c) => c.isDue).length;
     const newCount = weak.filter((c) => c.isUnpracticed && !c.isDue).length;
-    countPill.innerHTML = `<b>${dueCount}</b> due now · <b>${newCount}</b> never drilled`;
+    meta.innerHTML = `
+      <span class="stage-label">Today's drill</span>
+      <span class="stage-count"><b>${dueCount}</b> due · <b>${newCount}</b> never drilled</span>`;
     const start = btn("btn btn-primary btn-lg", "Open today's drill →");
     start.addEventListener("click", () => openWeakCases());
-    ctaRow.append(start);
+    ctas.append(start);
   } else if (submode === "recognition") {
-    headline.textContent = "Train recognition";
-    sub.textContent = "Show the case, name it before time runs out. Opens a settings screen first so you can tune options like time limit and OLL choice count.";
-    countPill.innerHTML = `<b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected`;
+    meta.innerHTML = `
+      <span class="stage-label">Recognition</span>
+      <span class="stage-count"><b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected</span>`;
     const start = btn("btn btn-primary btn-lg", "Start recognition →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openRecognition());
-    const browse = btn("btn", "Pick cases in Browse");
+    const browse = btn("btn", "Pick cases");
     browse.addEventListener("click", () => setActivePage("browse"));
-    ctaRow.append(start, browse);
+    ctas.append(browse, start);
   } else if (submode === "batch") {
-    headline.textContent = "Batch: 5 PLLs, one continuous timer";
-    sub.textContent = "Pulls 5 random PLLs from your selection, then issues a single short scramble that's equivalent to the composed setup. You execute all 5 algorithms under one timer; the cube ends solved.";
-    countPill.innerHTML = `<b>${ctx.pllCount}</b> PLL case${ctx.pllCount === 1 ? "" : "s"} selected${ctx.pllCount < 5 ? " · need 5+ for variety" : ""}`;
+    meta.innerHTML = `
+      <span class="stage-label">Batch (5)</span>
+      <span class="stage-count"><b>${ctx.pllCount}</b> PLL selected${ctx.pllCount && ctx.pllCount < 5 ? " · pick 5+ for variety" : ""}</span>`;
     const start = btn("btn btn-primary btn-lg", "Start batch →");
     start.disabled = ctx.pllCount === 0;
     start.addEventListener("click", () => openBatch());
-    const browse = btn("btn", "Pick PLLs in Browse");
+    const browse = btn("btn", "Pick PLLs");
     browse.addEventListener("click", () => {
       browseState.category = "pll";
       setActivePage("browse");
     });
-    ctaRow.append(start, browse);
+    ctas.append(browse, start);
   }
+  topBar.append(meta, ctas);
+  out.push(topBar);
 
-  out.push(headline, sub, countPill, ctaRow);
+  // Body: a single panel that fills the remaining height.
+  const body = document.createElement("div");
+  body.className = "stage-body";
+
+  if (submode === "drill") {
+    if (ctx.totalSel === 0) {
+      const quick = renderQuickStartGrid();
+      if (quick) body.appendChild(quick);
+      else body.innerHTML = `<div class="stage-empty">Open Browse to pick cases, then come back here to drill.</div>`;
+    } else {
+      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys));
+    }
+  } else if (submode === "weak") {
+    body.appendChild(renderWeakPreviewGrid());
+  } else if (submode === "recognition") {
+    if (ctx.totalSel === 0) {
+      body.innerHTML = `<div class="stage-empty">Recognition trainer needs cases. Pick some in Browse, then come back.</div>`;
+    } else {
+      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys));
+    }
+  } else if (submode === "batch") {
+    if (ctx.pllCount === 0) {
+      body.innerHTML = `<div class="stage-empty">Batch chains 5 PLLs into one continuous timer with a short composed scramble. Pick some PLLs first.</div>`;
+    } else {
+      // Show only the PLL subset since batch silently filters non-PLLs out.
+      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys.filter((k) => k.startsWith("pll/"))));
+    }
+  }
+  out.push(body);
+
   return out;
 }
 
-/* Quick Start grid: 6 weak-case thumbnails with VisualCube previews +
+/* Selected-cases preview: shared between drill / recognition / batch
+ * submodes to make the "what you'll practice next" lineup tangible. */
+function renderSelectedCasesGrid(keys) {
+  const wrap = document.createElement("div");
+  wrap.className = "selected-grid";
+  for (const key of keys) {
+    const res = selection.resolve(key, appState.data);
+    if (!res) continue;
+    const { category, item } = res;
+    const card = document.createElement("div");
+    card.className = "selected-card";
+    const drill = stats.getDrill(category, item.id);
+    const best = drill?.best != null ? stats.fmtTime(drill.best) : "—";
+    card.innerHTML = `
+      <div class="selected-face">
+        <img src="${escapeHtml(vcImageFor({ category, item }, 64))}" alt="${escapeHtml(item.name)}" loading="lazy" />
+      </div>
+      <div class="selected-meta">
+        <div class="selected-cat">${category.toUpperCase()}</div>
+        <div class="selected-name">${escapeHtml(item.name)}</div>
+        <div class="selected-best">best <strong>${escapeHtml(best)}</strong></div>
+      </div>`;
+    wrap.appendChild(card);
+  }
+  return wrap;
+}
+
+/* Weak-cases preview for the Today's drill submode. */
+function renderWeakPreviewGrid() {
+  const weak = rankWeakCases(["pll", "oll"], 12, { milestoneAware: true });
+  if (!weak.length) {
+    const empty = document.createElement("div");
+    empty.className = "stage-empty";
+    empty.textContent = "No drill history yet — practice a few cases and we'll surface the weakest ones here.";
+    return empty;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "selected-grid";
+  for (const c of weak) {
+    const card = document.createElement("div");
+    card.className = "selected-card";
+    const tag = c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "—");
+    card.innerHTML = `
+      <div class="selected-face">
+        <img src="${escapeHtml(vcImageFor(c, 64))}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
+      </div>
+      <div class="selected-meta">
+        <div class="selected-cat">${c.category.toUpperCase()}</div>
+        <div class="selected-name">${escapeHtml(c.item.name)}</div>
+        <div class="selected-best">${escapeHtml(tag)}</div>
+      </div>`;
+    wrap.appendChild(card);
+  }
+  return wrap;
+}
+
+/* Quick Start grid: weak-case thumbnails with VisualCube previews +
  * a one-click "add and drill" button. Surfaces inside the Drill stage
- * when the selection is empty so the page isn't dead. */
+ * when the selection is empty so the page isn't dead. 12 cases keeps the
+ * grid filling a typical desktop viewport without becoming intimidating. */
 function renderQuickStartGrid() {
   // Milestone-aware so Quick Start matches the user's current CFOP stage.
-  const weak = rankWeakCases(["pll", "oll"], 6, { milestoneAware: true });
+  const weak = rankWeakCases(["pll", "oll"], 12, { milestoneAware: true });
   if (!weak.length) return null;
   const wrap = document.createElement("div");
   wrap.className = "quick-start";
@@ -1350,65 +1433,6 @@ function renderQuickStartGrid() {
     });
   }
   return wrap;
-}
-
-function practiceSidePanel() {
-  const out = [];
-
-  // Selection summary
-  const selBlock = document.createElement("div");
-  selBlock.className = "side-block";
-  const selKeys = selection.allKeys();
-  const pllKeys = selKeys.filter((k) => k.startsWith("pll/"));
-  const ollKeys = selKeys.filter((k) => k.startsWith("oll/"));
-  selBlock.innerHTML = `
-    <h3 class="side-block-title">Selection</h3>
-    <div class="side-stats-row"><span class="side-stat-label">Total</span><span class="side-stat-value">${selKeys.length}</span></div>
-    <div class="side-stats-row"><span class="side-stat-label">PLL</span><span class="side-stat-value">${pllKeys.length}</span></div>
-    <div class="side-stats-row"><span class="side-stat-label">OLL</span><span class="side-stat-value">${ollKeys.length}</span></div>`;
-  out.push(selBlock);
-
-  // Last 7 days drill stats
-  const allStats = stats.getAll();
-  const nowSec = Math.floor(Date.now() / 1000);
-  const weekStart = nowSec - 7 * 86400;
-  let weekReps = 0;
-  let bestThisWeek = null;
-  for (const slot of Object.values(allStats)) {
-    if (!slot?.drill) continue;
-    if (slot.drill.lastAt >= weekStart) {
-      weekReps += slot.drill.n || 0;
-      if (slot.drill.best != null && (bestThisWeek == null || slot.drill.best < bestThisWeek)) {
-        bestThisWeek = slot.drill.best;
-      }
-    }
-  }
-
-  const weekBlock = document.createElement("div");
-  weekBlock.className = "side-block";
-  weekBlock.innerHTML = `
-    <h3 class="side-block-title">Last 7 days</h3>
-    <div class="side-stats-row"><span class="side-stat-label">Drill reps</span><span class="side-stat-value">${weekReps}</span></div>
-    <div class="side-stats-row"><span class="side-stat-label">Best single</span><span class="side-stat-value">${bestThisWeek != null ? stats.fmtTime(bestThisWeek) : "-"}</span></div>`;
-  out.push(weekBlock);
-
-  // Weak cases preview
-  const weak = rankWeakCases(["pll", "oll"], 6);
-  const weakBlock = document.createElement("div");
-  weakBlock.className = "side-block";
-  const itemsHtml = weak.length
-    ? weak.map((c, i) => `
-        <div class="session-item ${i === 0 ? "best" : ""}">
-          <span>${escapeHtml(c.item.name)}</span>
-          <span class="session-meta">${c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "-")}</span>
-        </div>`).join("")
-    : `<div class="session-meta" style="padding: var(--s-2) 0;">No drill data yet</div>`;
-  weakBlock.innerHTML = `
-    <h3 class="side-block-title">Weakest cases</h3>
-    <div class="session-list">${itemsHtml}</div>`;
-  out.push(weakBlock);
-
-  return out;
 }
 
 function btn(className, text) {

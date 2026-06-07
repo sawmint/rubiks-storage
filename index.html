@@ -908,14 +908,21 @@
     .alg-notation .move-y { color: var(--move-y); }
     .alg-notation .move-z { color: var(--move-z); }
     .alg-stats {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--s-2);
       padding-top: var(--s-3);
       border-top: 1px solid var(--border);
       font-family: var(--font-sans);
       font-size: 12px;
       color: var(--muted);
       margin-top: auto;
+    }
+    .alg-stats > span {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      min-width: 0;
     }
     .alg-stats strong {
       color: var(--text);
@@ -926,6 +933,7 @@
       font-variant-numeric: tabular-nums;
     }
     .alg-stats.empty { color: var(--faint); }
+    .alg-stats.empty strong { color: var(--muted); font-weight: 500; }
     .alg-meta {
       font-family: var(--font-sans);
       font-size: 11px;
@@ -947,98 +955,129 @@
     /* PRACTICE                                                       */
     /* ============================================================ */
 
-    .practice-shell {
-      display: grid;
-      grid-template-columns: 1fr 320px;
-      border-top: 1px solid var(--border);
-      min-height: calc(100vh - 220px);
-    }
-    .practice-stage {
-      padding: var(--s-7);
-      background: var(--surface-1);
-      border-right: 1px solid var(--border);
+    /* Single-panel stage that spans from the submode row to the bottom-right
+       corner of the viewport — cstimer-style "the work area dominates" layout.
+       No side panel; the body grows to fill remaining height. */
+    .practice-stage-v2 {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      background: var(--surface-1);
+      border-top: 1px solid var(--border);
+      min-height: calc(100vh - 200px);
+      padding: var(--s-5) var(--s-7) var(--s-6);
       gap: var(--s-4);
-      text-align: center;
     }
-    .practice-headline {
+    .stage-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--s-4);
+      padding-bottom: var(--s-4);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stage-meta {
+      display: flex;
+      align-items: baseline;
+      gap: var(--s-3);
+      flex-wrap: wrap;
+    }
+    .stage-label {
       font-family: var(--font-display);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      line-height: 1.05;
-      margin: 0;
+      letter-spacing: -0.015em;
       color: var(--text);
     }
-    .practice-sub {
-      font-family: var(--font-sans);
-      font-size: 14px;
-      color: var(--text-soft);
-      max-width: 60ch;
-      line-height: 1.5;
-      margin: 0;
-    }
-    .practice-count-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--s-2);
-      padding: 6px 14px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 100px;
+    .stage-count {
       font-family: var(--font-mono);
       font-size: 12px;
-      color: var(--text);
+      color: var(--text-soft);
       letter-spacing: 0.02em;
     }
-    .practice-count-pill b {
+    .stage-count b {
       color: var(--accent);
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
-    .practice-cta-row {
+    .stage-ctas {
       display: flex;
-      gap: var(--s-3);
+      gap: var(--s-2);
       align-items: center;
       flex-wrap: wrap;
-      justify-content: center;
     }
-    .practice-side { padding: var(--s-5) var(--s-5); background: var(--surface-1); }
-    .side-block { margin-bottom: var(--s-6); }
-    .side-block-title {
-      font-family: var(--font-sans);
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+    .stage-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .stage-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--s-7);
+      border: 1px dashed var(--border);
+      border-radius: var(--r-md);
       color: var(--muted);
-      padding-bottom: var(--s-2);
-      border-bottom: 1px solid var(--border);
-      margin: 0 0 var(--s-3);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      text-align: center;
+      max-width: 56ch;
+      margin: 0 auto;
+    }
+
+    /* Grid of compact case-preview tiles that fills the stage body. Tile
+       rows grow to fill remaining height so the layout reads as a single
+       full panel (cstimer-style) rather than a sparse top-aligned grid. */
+    .selected-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-auto-rows: minmax(80px, 1fr);
+      gap: var(--s-3);
+      flex: 1;
+      min-height: 0;
+    }
+    .selected-card {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: var(--s-3);
+      align-items: center;
+      padding: var(--s-3);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .selected-face { width: 56px; height: 56px; }
+    .selected-face img { width: 100%; height: 100%; object-fit: contain; }
+    .selected-meta { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .selected-cat {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--accent);
+      letter-spacing: 0.06em;
       text-transform: uppercase;
     }
-    .side-stats-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: var(--s-3);
-    }
-    .side-stat-label {
-      font-family: var(--font-sans);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .side-stat-value {
+    .selected-name {
       font-family: var(--font-display);
-      font-size: 18px;
+      font-size: 13px;
       font-weight: 600;
-      letter-spacing: -0.015em;
-      line-height: 1;
-      font-variant-numeric: tabular-nums;
       color: var(--text);
+      letter-spacing: -0.005em;
+      line-height: 1.15;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
+    .selected-best {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .selected-best strong { color: var(--text); font-weight: 600; }
 
     .session-list { font-variant-numeric: tabular-nums; }
     .session-item {
@@ -1058,15 +1097,15 @@
 
     /* Quick start grid on the empty Drill stage */
     .quick-start {
-      margin-top: var(--s-6);
       width: 100%;
-      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--s-3);
     }
     .quick-start-head {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: var(--s-3);
     }
     .quick-start-label {
       font-family: var(--font-mono);
@@ -1082,9 +1121,14 @@
     }
     .quick-start-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-auto-rows: minmax(80px, 1fr);
       gap: var(--s-3);
+      flex: 1;
+      min-height: 0;
     }
+    /* When the stage body hosts quick-start, let it stretch */
+    .stage-body .quick-start { flex: 1; }
     .quick-card {
       display: grid;
       grid-template-columns: 56px 1fr;
