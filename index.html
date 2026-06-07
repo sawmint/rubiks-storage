@@ -810,52 +810,6 @@
        the click target is obvious. Selected state fills with cobalt and
        shows a crisp SVG checkmark (NOT a CSS-rotated border, which never
        looks right at sub-pixel sizes). */
-    .alg-card-check {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 22px;
-      height: 22px;
-      border: 1.5px solid var(--border-strong);
-      border-radius: 4px;
-      background: var(--surface-2);
-      cursor: pointer;
-      z-index: 2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 120ms ease, border-color 120ms ease, transform 100ms ease;
-    }
-    .alg-card-check::before {
-      /* Inline SVG checkmark - stays crisp at any size + theme. White on
-         cobalt when selected. Always present in the DOM so opacity can
-         crossfade rather than display-toggling. */
-      content: "";
-      width: 14px;
-      height: 14px;
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'><path d='M2.5 7.5 L5.5 10.5 L11.5 4' stroke='white' stroke-width='2.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: contain;
-      opacity: 0;
-      transition: opacity 100ms ease;
-    }
-    .alg-card:hover .alg-card-check {
-      border-color: var(--accent);
-    }
-    .alg-card.selected .alg-card-check {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .alg-card.selected .alg-card-check::before { opacity: 1; }
-    .alg-card.selected .alg-card-check:hover {
-      background: var(--accent-strong);
-      border-color: var(--accent-strong);
-    }
-    .alg-card-check:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px;
-    }
     .alg-img {
       width: 100%;
       aspect-ratio: 1;
@@ -1028,38 +982,85 @@
       margin: 0 auto;
     }
 
-    /* Grid of compact case-preview tiles that fills the stage body. Tile
-       rows grow to fill remaining height so the layout reads as a single
-       full panel (cstimer-style) rather than a sparse top-aligned grid. */
-    .selected-grid {
+    /* ----- Practice picker (inline case selection) -----
+       Replaces both the Browse selection toolbar and the old Quick Start
+       grid. Layout: category chips → facet chips → action row → card
+       grid. Selection toggles inline; the Start CTA lives in stage-top. */
+    .picker-cat-row,
+    .picker-facet-row,
+    .picker-actions-row {
+      display: flex;
+      gap: var(--s-2);
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .picker-cat-row { padding-bottom: var(--s-2); }
+    .picker-facet-row { padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
+    .picker-actions-row {
+      padding: var(--s-2) 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .picker-counter {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+
+    /* Card grid: auto-fill columns, natural row height (no stretching).
+       With 21 PLLs or 50+ OLLs visible the grid fills naturally without
+       inflating individual cards into mostly-empty rectangles. */
+    .picker-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      grid-auto-rows: minmax(80px, 1fr);
-      gap: var(--s-3);
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: var(--s-2);
+      align-content: start;
+      padding-top: var(--s-3);
       flex: 1;
       min-height: 0;
+      overflow-y: auto;
     }
-    .selected-card {
+    .picker-grid.empty { display: block; }
+
+    /* Card: face dominates. Tight vertical padding so the cube preview is
+       the visual anchor, not whitespace around it. Click toggles selection;
+       selected = cobalt accent + thick border. */
+    .picker-card {
       display: grid;
       grid-template-columns: 56px 1fr;
       gap: var(--s-3);
       align-items: center;
-      padding: var(--s-3);
+      padding: 4px var(--s-3);
       background: var(--surface-2);
       border: 1px solid var(--border);
       border-radius: var(--r-md);
+      cursor: pointer;
+      text-align: left;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color 100ms ease, background 100ms ease;
     }
-    .selected-face { width: 56px; height: 56px; }
-    .selected-face img { width: 100%; height: 100%; object-fit: contain; }
-    .selected-meta { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-    .selected-cat {
+    .picker-card:hover {
+      border-color: var(--border-strong);
+      background: var(--surface-3, var(--surface-2));
+    }
+    .picker-card.selected {
+      border-color: var(--accent);
+      background: rgba(46, 76, 242, 0.10);
+    }
+    .picker-card.selected:hover { background: rgba(46, 76, 242, 0.16); }
+    .picker-face { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+    .picker-face img { width: 100%; height: 100%; object-fit: contain; }
+    .picker-meta { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+    .picker-cat {
       font-family: var(--font-mono);
       font-size: 9px;
       color: var(--accent);
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
-    .selected-name {
+    .picker-name {
       font-family: var(--font-display);
       font-size: 13px;
       font-weight: 600;
@@ -1070,99 +1071,14 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .selected-best {
+    .picker-best {
       font-family: var(--font-mono);
       font-size: 10px;
       color: var(--muted);
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    .selected-best strong { color: var(--text); font-weight: 600; }
-
-    .session-list { font-variant-numeric: tabular-nums; }
-    .session-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding: var(--s-2) 0;
-      border-bottom: 1px solid var(--border);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text);
-    }
-    .session-item:last-child { border-bottom: none; }
-    .session-item.best { color: var(--text); font-weight: 600; }
-    .session-item.best .session-meta { color: var(--accent); }
-    .session-meta { color: var(--muted); font-size: 11px; letter-spacing: 0.02em; }
-
-    /* Quick start grid on the empty Drill stage */
-    .quick-start {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: var(--s-3);
-    }
-    .quick-start-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-    .quick-start-label {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .quick-start-sub {
-      font-family: var(--font-sans);
-      font-size: 12px;
-      color: var(--text-soft);
-    }
-    .quick-start-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      grid-auto-rows: minmax(80px, 1fr);
-      gap: var(--s-3);
-      flex: 1;
-      min-height: 0;
-    }
-    /* When the stage body hosts quick-start, let it stretch */
-    .stage-body .quick-start { flex: 1; }
-    .quick-card {
-      display: grid;
-      grid-template-columns: 56px 1fr;
-      gap: var(--s-3);
-      align-items: center;
-      padding: var(--s-3);
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      cursor: pointer;
-      text-align: left;
-    }
-    .quick-card:hover { border-color: var(--accent); background: rgba(46, 76, 242, 0.06); }
-    .quick-face { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
-    .quick-face img { width: 100%; height: 100%; object-fit: contain; }
-    .quick-cat {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      color: var(--accent);
-      letter-spacing: 0.05em;
-    }
-    .quick-name {
-      font-family: var(--font-display);
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.005em;
-      line-height: 1.2;
-    }
-    .quick-tag {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      color: var(--muted);
-    }
+    .picker-best strong { color: var(--text); font-weight: 600; }
 
     /* Stats page empty-state cards */
     .stats-empty {

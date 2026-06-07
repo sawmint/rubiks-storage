@@ -333,6 +333,17 @@ const practiceState = {
   submode: "drill",   // drill | recognition | batch | weak
 };
 
+/* Picker (inline on the Practice page) state. The Practice picker
+ * replaces the old Browse selection toolbar — Browse is now
+ * reference-only and case selection happens here. */
+const practicePickerState = {
+  category: "pll",     // pll_2look | pll | oll_2look | oll
+  filters: {},         // { facetKey: Set<string> }
+};
+/* Categories the picker can show. Mirrors a subset of CATEGORIES — only
+ * the drillable PLL / OLL views. F2L isn't drillable so it's excluded. */
+const PICKER_CATEGORY_KEYS = ["pll_2look", "pll", "oll_2look", "oll"];
+
 const statsPageState = {
   range: "all",       // 7 | 30 | "all"
 };
@@ -375,7 +386,8 @@ async function init() {
   bindAccount();
 
   selection.subscribe(() => {
-    if (appState.activePage === "browse")   renderBrowse();
+    // Browse is reference-only now (selection happens on Practice), so
+    // only Practice needs to react to selection changes.
     if (appState.activePage === "practice") renderPractice();
   });
   stats.subscribe(() => {
@@ -928,36 +940,6 @@ function renderBrowse() {
   /* Facet filter row */
   const facetEl = renderFacetRow(cat, allItems);
 
-  /* Selection action bar - only shown for drillable categories */
-  const actions = document.createElement("div");
-  if (cat.drillable) {
-    actions.className = "toolbar";
-    actions.style.borderTop = "none";
-    actions.innerHTML = `
-      <button class="btn btn-small" id="browse-select-all">Select all in view</button>
-      <button class="btn btn-small" id="browse-clear" ${selection.size() === 0 ? "disabled" : ""}>Clear selection</button>
-      <span class="meta-label" id="browse-selcount">${selection.size() === 0 ? "Nothing selected. Click a card or use the checkbox." : `${selection.size()} selected`}</span>
-      <span style="margin-left:auto"></span>
-      <button class="btn btn-primary btn-small" id="browse-drill" ${selection.size() === 0 ? "disabled" : ""}>Drill selected →</button>
-      <button class="btn btn-small" id="browse-batch" ${selection.allKeys().filter(k=>k.startsWith("pll/")).length === 0 ? "disabled" : ""} title="Solve 5 PLLs under one continuous timer">Batch (5)</button>
-      <button class="btn btn-small" id="browse-recog" ${selection.size() === 0 ? "disabled" : ""}>Train recognition</button>`;
-    actions.querySelector("#browse-select-all").addEventListener("click", () => {
-      // Route selection through the underlying data category so 2-look
-      // cards register as "pll/Aa" / "oll/27" (drill/recognition expect that).
-      selection.selectMany(cat.selectionCategory || cat.key, items);
-    });
-    actions.querySelector("#browse-clear").addEventListener("click", () => selection.clear());
-    actions.querySelector("#browse-drill").addEventListener("click", () => {
-      openDrill();
-    });
-    actions.querySelector("#browse-batch").addEventListener("click", () => {
-      openBatch();
-    });
-    actions.querySelector("#browse-recog").addEventListener("click", () => {
-      openRecognition();
-    });
-  }
-
   /* Grid */
   const grid = document.createElement("div");
   grid.className = "browse-grid";
@@ -970,7 +952,6 @@ function renderBrowse() {
 
   const parts = [head, toolbar];
   if (facetEl) parts.push(facetEl);
-  if (cat.drillable) parts.push(actions);
   parts.push(grid);
   root.replaceChildren(...parts);
 
@@ -1059,26 +1040,9 @@ function renderBrowseCard(it, cat) {
   card.className = "alg-card";
   card.style.setProperty("--card-accent", cat.accent);
 
-  // selCat = the UNDERLYING data category for selection routing. The
-  // 2-look browse categories display a filtered subset but selection,
-  // drill, recognition, and stats all key off "pll"/"oll" — otherwise
-  // drill.js + recognition.js + batch.js wouldn't know how to resolve
-  // "pll_2look/Aa" back to a data item.
+  // selCat = the underlying data category used for stats lookup so the
+  // 2-look browse views share drill/recog records with the full view.
   const selCat = cat.selectionCategory || cat.key;
-  const key = selection.key(selCat, it.id);
-  if (cat.drillable && selection.isSelected(selCat, it.id)) {
-    card.classList.add("selected");
-  }
-
-  // Selection checkbox (drillable categories only)
-  if (cat.drillable) {
-    const check = document.createElement("div");
-    check.className = "alg-card-check";
-    check.setAttribute("role", "checkbox");
-    check.setAttribute("aria-checked", String(selection.isSelected(selCat, it.id)));
-    check.title = "Toggle selection";
-    card.appendChild(check);
-  }
 
   // Image
   const img = document.createElement("div");
@@ -1147,18 +1111,10 @@ function renderBrowseCard(it, cat) {
   }
   card.appendChild(footer);
 
-  // Click anywhere on a drillable card toggles selection (except inside the
-  // alg-notation block, which users will sometimes want to triple-click +
-  // copy). Use a stopPropagation guard there.
-  if (cat.drillable) {
-    card.addEventListener("click", (e) => {
-      // Allow selecting text in algorithm block without toggling
-      if (e.target.closest(".alg-notation")) return;
-      selection.toggle(selCat, it.id);
-    });
-    const note = card.querySelector(".alg-notation");
-    if (note) note.style.userSelect = "text";
-  }
+  // Browse cards are reference-only — selection happens on the Practice
+  // page. Algorithm notation is freely text-selectable for copying.
+  const note = card.querySelector(".alg-notation");
+  if (note) note.style.userSelect = "text";
   return card;
 }
 
@@ -1266,9 +1222,7 @@ function practiceStageContent(submode, ctx) {
     const start = btn("btn btn-primary btn-lg", "Start drill →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openDrill());
-    const browse = btn("btn", "Pick cases");
-    browse.addEventListener("click", () => setActivePage("browse"));
-    ctas.append(browse, start);
+    ctas.append(start);
   } else if (submode === "weak") {
     const weak = rankWeakCases(["pll", "oll"], 20);
     const dueCount = weak.filter((c) => c.isDue).length;
@@ -1286,9 +1240,7 @@ function practiceStageContent(submode, ctx) {
     const start = btn("btn btn-primary btn-lg", "Start recognition →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openRecognition());
-    const browse = btn("btn", "Pick cases");
-    browse.addEventListener("click", () => setActivePage("browse"));
-    ctas.append(browse, start);
+    ctas.append(start);
   } else if (submode === "batch") {
     meta.innerHTML = `
       <span class="stage-label">Batch (5)</span>
@@ -1296,74 +1248,179 @@ function practiceStageContent(submode, ctx) {
     const start = btn("btn btn-primary btn-lg", "Start batch →");
     start.disabled = ctx.pllCount === 0;
     start.addEventListener("click", () => openBatch());
-    const browse = btn("btn", "Pick PLLs");
-    browse.addEventListener("click", () => {
-      browseState.category = "pll";
-      setActivePage("browse");
-    });
-    ctas.append(browse, start);
+    ctas.append(start);
   }
   topBar.append(meta, ctas);
   out.push(topBar);
 
-  // Body: a single panel that fills the remaining height.
-  const body = document.createElement("div");
-  body.className = "stage-body";
-
-  if (submode === "drill") {
-    if (ctx.totalSel === 0) {
-      const quick = renderQuickStartGrid();
-      if (quick) body.appendChild(quick);
-      else body.innerHTML = `<div class="stage-empty">Open Browse to pick cases, then come back here to drill.</div>`;
-    } else {
-      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys));
-    }
-  } else if (submode === "weak") {
+  // Body: either a picker (drill / recognition / batch) or the weak
+  // preview (today's drill). The picker REPLACES the old Browse
+  // selection toolbar — case selection happens inline here.
+  if (submode === "weak") {
+    const body = document.createElement("div");
+    body.className = "stage-body";
     body.appendChild(renderWeakPreviewGrid());
-  } else if (submode === "recognition") {
-    if (ctx.totalSel === 0) {
-      body.innerHTML = `<div class="stage-empty">Recognition trainer needs cases. Pick some in Browse, then come back.</div>`;
-    } else {
-      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys));
-    }
-  } else if (submode === "batch") {
-    if (ctx.pllCount === 0) {
-      body.innerHTML = `<div class="stage-empty">Batch chains 5 PLLs into one continuous timer with a short composed scramble. Pick some PLLs first.</div>`;
-    } else {
-      // Show only the PLL subset since batch silently filters non-PLLs out.
-      body.appendChild(renderSelectedCasesGrid(ctx.selectedKeys.filter((k) => k.startsWith("pll/"))));
-    }
+    out.push(body);
+  } else {
+    out.push(...renderPracticePicker(submode));
   }
-  out.push(body);
 
   return out;
 }
 
-/* Selected-cases preview: shared between drill / recognition / batch
- * submodes to make the "what you'll practice next" lineup tangible. */
-function renderSelectedCasesGrid(keys) {
-  const wrap = document.createElement("div");
-  wrap.className = "selected-grid";
-  for (const key of keys) {
-    const res = selection.resolve(key, appState.data);
-    if (!res) continue;
-    const { category, item } = res;
-    const card = document.createElement("div");
-    card.className = "selected-card";
-    const drill = stats.getDrill(category, item.id);
-    const best = drill?.best != null ? stats.fmtTime(drill.best) : "—";
-    card.innerHTML = `
-      <div class="selected-face">
-        <img src="${escapeHtml(vcImageFor({ category, item }, 64))}" alt="${escapeHtml(item.name)}" loading="lazy" />
-      </div>
-      <div class="selected-meta">
-        <div class="selected-cat">${category.toUpperCase()}</div>
-        <div class="selected-name">${escapeHtml(item.name)}</div>
-        <div class="selected-best">best <strong>${escapeHtml(best)}</strong></div>
-      </div>`;
-    wrap.appendChild(card);
+/* Inline case picker on the Practice page. Replaces the old Browse
+ * selection toolbar. Renders: category chips, facet chips, action row
+ * (Select all in view / Clear / count), and a clickable case grid. */
+function renderPracticePicker(submode) {
+  // Batch only supports PLL — restrict the category chips accordingly so
+  // the user doesn't waste effort selecting OLLs that batch would ignore.
+  const allowedKeys = submode === "batch"
+    ? PICKER_CATEGORY_KEYS.filter((k) => k.startsWith("pll"))
+    : PICKER_CATEGORY_KEYS;
+  if (!allowedKeys.includes(practicePickerState.category)) {
+    practicePickerState.category = allowedKeys[0];
+    practicePickerState.filters = {};
   }
-  return wrap;
+  const cat = categoryByKey(practicePickerState.category);
+  const allItems = cat.getItems(appState.data);
+  const visible = allItems.filter((it) => matchesPickerFilters(it, cat));
+  const selCat = cat.selectionCategory || cat.key;
+
+  // -- Category chip row --
+  const catRow = document.createElement("div");
+  catRow.className = "picker-cat-row";
+  for (const k of allowedKeys) {
+    const c = categoryByKey(k);
+    const chip = document.createElement("button");
+    chip.className = "chip" + (k === practicePickerState.category ? " accent" : "");
+    chip.textContent = c.shortLabel || c.label;
+    chip.addEventListener("click", () => {
+      practicePickerState.category = k;
+      practicePickerState.filters = {};
+      renderPractice();
+    });
+    catRow.appendChild(chip);
+  }
+
+  // -- Facet chip row --
+  const facetRow = renderPickerFacetRow(cat, allItems);
+
+  // -- Action row: select-all / clear / count --
+  const actionsRow = document.createElement("div");
+  actionsRow.className = "picker-actions-row";
+  const selectedHere = visible.filter((it) => selection.isSelected(selCat, it.id)).length;
+  const allHere = visible.length;
+  const allSelectedHere = allHere > 0 && selectedHere === allHere;
+
+  const selAll = btn("btn btn-small", allSelectedHere ? "Deselect all in view" : "Select all in view");
+  selAll.disabled = allHere === 0;
+  selAll.addEventListener("click", () => {
+    if (allSelectedHere) selection.deselectMany(selCat, visible);
+    else selection.selectMany(selCat, visible);
+  });
+
+  const clearBtn = btn("btn btn-small", "Clear selection");
+  clearBtn.disabled = selection.size() === 0;
+  clearBtn.addEventListener("click", () => selection.clear());
+
+  const counter = document.createElement("span");
+  counter.className = "picker-counter";
+  counter.textContent = `${selectedHere}/${allHere} in view · ${selection.size()} total`;
+
+  actionsRow.append(selAll, clearBtn, counter);
+
+  // -- Picker grid --
+  const grid = document.createElement("div");
+  grid.className = "picker-grid";
+  if (visible.length === 0) {
+    grid.classList.add("empty");
+    grid.innerHTML = `<div class="stage-empty">No cases match the current filter.</div>`;
+  } else {
+    for (const it of visible) {
+      grid.appendChild(renderPickerCard(it, cat, selCat));
+    }
+  }
+
+  return [catRow, facetRow, actionsRow, grid].filter(Boolean);
+}
+
+function renderPickerCard(it, cat, selCat) {
+  const card = document.createElement("button");
+  card.type = "button";
+  card.className = "picker-card";
+  if (selection.isSelected(selCat, it.id)) card.classList.add("selected");
+  const drill = stats.getDrill(selCat, it.id);
+  const best = drill?.best != null ? stats.fmtTime(drill.best) : "—";
+  card.innerHTML = `
+    <div class="picker-face">
+      <img src="${escapeHtml(cat.imageUrl(it))}" alt="${escapeHtml(cat.titleOf(it))}" loading="lazy" />
+    </div>
+    <div class="picker-meta">
+      <div class="picker-cat">${cat.label.replace("(advanced)","").replace("(beginner)","").trim().toUpperCase()}</div>
+      <div class="picker-name">${escapeHtml(cat.titleOf(it))}</div>
+      <div class="picker-best">best <strong>${escapeHtml(best)}</strong></div>
+    </div>`;
+  card.addEventListener("click", () => selection.toggle(selCat, it.id));
+  return card;
+}
+
+/* Picker uses its own filter map (practicePickerState.filters) so it
+ * doesn't fight with the Browse page state. Same OR-within-facet
+ * semantics as the Browse filter. */
+function matchesPickerFilters(it, cat) {
+  for (const [facetKey, set] of Object.entries(practicePickerState.filters)) {
+    const facet = cat.filterFacets.find((f) => f.key === facetKey);
+    if (!facet) continue;
+    const v = facet.from(it);
+    if (Array.isArray(v)) {
+      let any = false;
+      for (const t of v) { if (set.has(t)) { any = true; break; } }
+      if (!any) return false;
+    } else {
+      if (!set.has(v)) return false;
+    }
+  }
+  return true;
+}
+
+function renderPickerFacetRow(cat, items) {
+  if (!cat.filterFacets || cat.filterFacets.length === 0) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "picker-facet-row";
+  let any = false;
+  for (const facet of cat.filterFacets) {
+    let chipDefs;
+    if (Array.isArray(facet.values)) {
+      chipDefs = facet.values.map((x) => ({ value: x.v, label: x.label || x.v }));
+    } else {
+      const observed = uniqueSorted(items.flatMap((it) => {
+        const v = facet.from(it);
+        return Array.isArray(v) ? v : [v];
+      }).filter(Boolean));
+      chipDefs = observed.map((v) => ({ value: v, label: v }));
+    }
+    if (chipDefs.length === 0) continue;
+    any = true;
+    const label = document.createElement("span");
+    label.className = "facet-label";
+    label.textContent = facet.label;
+    wrap.appendChild(label);
+    for (const def of chipDefs) {
+      const v = def.value;
+      const chip = document.createElement("button");
+      chip.className = "chip facet" + ((practicePickerState.filters[facet.key]?.has(v)) ? " active" : "");
+      chip.textContent = def.label;
+      chip.addEventListener("click", () => {
+        const set = practicePickerState.filters[facet.key] || new Set();
+        if (set.has(v)) set.delete(v); else set.add(v);
+        if (set.size === 0) delete practicePickerState.filters[facet.key];
+        else practicePickerState.filters[facet.key] = set;
+        renderPractice();
+      });
+      wrap.appendChild(chip);
+    }
+  }
+  return any ? wrap : null;
 }
 
 /* Weak-cases preview for the Today's drill submode. */
@@ -1376,61 +1433,21 @@ function renderWeakPreviewGrid() {
     return empty;
   }
   const wrap = document.createElement("div");
-  wrap.className = "selected-grid";
+  wrap.className = "picker-grid";
   for (const c of weak) {
     const card = document.createElement("div");
-    card.className = "selected-card";
+    card.className = "picker-card";
     const tag = c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "—");
     card.innerHTML = `
-      <div class="selected-face">
+      <div class="picker-face">
         <img src="${escapeHtml(vcImageFor(c, 64))}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
       </div>
-      <div class="selected-meta">
-        <div class="selected-cat">${c.category.toUpperCase()}</div>
-        <div class="selected-name">${escapeHtml(c.item.name)}</div>
-        <div class="selected-best">${escapeHtml(tag)}</div>
+      <div class="picker-meta">
+        <div class="picker-cat">${c.category.toUpperCase()}</div>
+        <div class="picker-name">${escapeHtml(c.item.name)}</div>
+        <div class="picker-best">${escapeHtml(tag)}</div>
       </div>`;
     wrap.appendChild(card);
-  }
-  return wrap;
-}
-
-/* Quick Start grid: weak-case thumbnails with VisualCube previews +
- * a one-click "add and drill" button. Surfaces inside the Drill stage
- * when the selection is empty so the page isn't dead. 12 cases keeps the
- * grid filling a typical desktop viewport without becoming intimidating. */
-function renderQuickStartGrid() {
-  // Milestone-aware so Quick Start matches the user's current CFOP stage.
-  const weak = rankWeakCases(["pll", "oll"], 12, { milestoneAware: true });
-  if (!weak.length) return null;
-  const wrap = document.createElement("div");
-  wrap.className = "quick-start";
-  wrap.innerHTML = `
-    <div class="quick-start-head">
-      <span class="quick-start-label">Quick start</span>
-      <span class="quick-start-sub">Click any case to add and drill it now</span>
-    </div>
-    <div class="quick-start-grid">
-      ${weak.map((c) => `
-        <div class="quick-card" data-key="${escapeHtml(c.key)}">
-          <div class="quick-face">
-            <img src="${vcImageFor(c, 80)}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
-          </div>
-          <div class="quick-meta">
-            <div class="quick-cat">${c.category.toUpperCase()}</div>
-            <div class="quick-name">${escapeHtml(c.item.name)}</div>
-            <div class="quick-tag">${c.isDue ? "due" : c.isUnpracticed ? "new" : (c.best != null ? stats.fmtTime(c.best) : "")}</div>
-          </div>
-        </div>`).join("")}
-    </div>`;
-  for (const card of wrap.querySelectorAll("[data-key]")) {
-    card.addEventListener("click", () => {
-      const key = card.dataset.key;
-      const [cat, ...rest] = key.split("/");
-      selection.clear();
-      selection.toggle(cat, rest.join("/"));
-      openDrill();
-    });
   }
   return wrap;
 }
