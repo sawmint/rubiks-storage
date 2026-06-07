@@ -2,6 +2,8 @@
 
 Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.json` (21 PLL / 57 OLL / 25 F2L-adv / 16 F2L-beg).
 
+The visual redesign that lived in `ui-lab.html` has been **merged into the live app**: the workspace top bar with 6 mode pages (Home / Browse / Practice / Timer / Stats / Settings), the warm-dark palette + cobalt accent, and the IBM Plex Sans / Mono pairing all ship in `index.html` now. `ui-lab.html` remains as a historical artifact. There is no separate sidebar / modal-only / scroll-stack version of the app — everything is the new shell.
+
 ## Files
 - `index.html` · `styles.css` — shell, theming, mobile responsive
 - `app.js` — main render loop, CATEGORIES table, image loading, theme toggle, header buttons
@@ -26,7 +28,7 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 - `.claude/skills/deploy/SKILL.md` — deploy workflow skill (auto-loaded each session)
 - `rubiks-cube-storage-prompt.md` — original generation prompt
 - `app-map.html` — standalone planning artifact: visual sitemap of current + planned pages, with hover-highlighting + per-node detail panel. Data-driven (`NODES` + `EDGES` arrays in the `<script>` block). Not linked from the live app; open directly to see how pages connect.
-- `ui-lab.html` — visual-redesign sandbox (see "## UI redesign sandbox" section below). Self-contained file with landing/signin/signup screens + a workspace-top-bar app shell containing 6 mode pages. The cube-face sticker grid (`.face-sticker`) is the recurring visual signature. Independent of the live app's styling; used to iterate the new visual language before merging back. Mirrors the full scope of `app-map.html` — live features as active elements, planned features as `.chip.planned` / `.submode.planned` with "soon" tags.
+- `ui-lab.html` — visual-redesign sandbox (historical, **the redesign has shipped into the live app**). Kept as a decision log + token reference. The workspace top bar, warm-dark palette, IBM Plex font pairing, `.face-sticker`-style cube grids, and 6 mode pages are now all in `index.html`. Don't iterate new screens here — edit the live app directly.
 
 ## Run
 `npm start` → `http://localhost:8000`. Needs HTTP (file:// blocks fetch). No deps, no build.
@@ -34,32 +36,61 @@ Static web app browsing + drilling the CFOP corpus in `rubiks-cube-algorithms.js
 ## Architecture
 Single `CATEGORIES` table in `app.js` drives tabs, search, filters, cards, and **feature gating** via per-category flags (`drillable`, `recognitionMode`). Adding a category (ZBLL, COLL, scrambles, etc.) = one new row + matching data in the JSON.
 
-The **Notation** tab is a reference grid built off the same machinery — it has its own row in `CATEGORIES` (`key: "notation"`, `drillable: false`) and pulls items from a hardcoded `NOTATION_DATA` array in `app.js` instead of the JSON dataset. Each notation entry is shaped like a regular algorithm item (`id`, `name`, `algorithm`, `setup`), so the existing card renderer + colorizer work without changes — the move letter renders with the same face-coloring used everywhere, and the cube preview shows the state after applying the move from solved (WCA scheme). Entries are tagged with `category: "Face turn" | "Wide" | "Slice" | "Rotation" | "Modifier"`, which drives a single filter chip group at the top of the grid.
+The **Notation** tab is a reference grid built off the same machinery — it has its own row in `CATEGORIES` (`key: "notation"`, `drillable: false`) and pulls items from a hardcoded `NOTATION_DATA` array in `app.js` instead of the JSON dataset. Each notation entry is shaped like a regular algorithm item (`id`, `name`, `algorithm`, `setup`), so the existing card renderer + colorizer work without changes.
 
-Extension hooks:
-- `extraBadges` / `metaRows` / `filterFacets` per category
-- `drillable: bool` controls whether selection checkboxes + drill/batch/recognition buttons appear
-- `recognitionMode: "text" | "thumbnails"` controls recognition UI
-- `shortLabel: string` — optional abbreviated tab label shown on mobile (≤640px). Long `label` shown on desktop. Used for F2L tabs ("F2L+" / "F2L−").
-- CSS variables in `:root` + `[data-theme="dark"]` for new themes
-- `--card-accent` / `--tab-accent` for per-category color
+Extension hooks per category:
+- `getItems(data) → Item[]` — the rows to show in that tab
+- `filterFacets[{ key, label, multi?, values?, from }]` — chip filter groups. `multi: true` enables OR-within-facet (an item matches if ANY of its facet values is in the selected set). `values: [{v,label}]` makes the chip list declarative (shown even when no item carries that value yet); without `values`, chips are derived from observed item values
+- `extraBadges` / `metaRows` per category
+- `drillable: bool` controls whether the case is selectable in the Practice picker. `recognitionMode: "text" | "thumbnails"` controls recognition UI
+- `selectionCategory?: string` — for filtered-subset tabs (2L PLL, 2L OLL), routes selection through the underlying data category so stats/drill/recog share records with the full view
+- `shortLabel: string` — abbreviated tab label
+- CSS var `--card-accent` per category for the left stripe color
 
-## UI layout
-**Header (consolidated, single bar on desktop)**: brand + 4 tabs (inline) + optional **Sign in** chip + ⚙ settings gear. Tabs use a left/right fade mask so the user knows there's more to scroll if it overflows. Settings gear opens a small dropdown with a dark-mode checkbox, a "Reset drill + recognition stats" button, and (when cloud sync is configured) an Account section with the current email + Sign out. The Sign in chip is hidden when `supabase-config.js` is empty; once filled, it shows "Sign in" (logged out) or the email-prefix with a green dot (logged in).
+## UI shell layout
 
-**Toolbar**: search input + filter chips + match count. The "Load all images" button was removed; `loadAllImages()` now runs automatically after every `render()` (concurrency-capped at 4, SW caches each response so tab/filter switches don't re-fetch).
+`index.html` mounts a single `.app` wrapper with the workspace top bar (`.ws-bar`) + 6 `<section class="page">` content panes (one per mode). `app.js`'s `setActivePage(name)` toggles `.active` on both the bar buttons and the pane.
 
-**Selection toolbar** (always visible — Timer needs to always be reachable): Timer button | divider | drillable-only group (Select all, Clear, count, Drill, Batch (5), Train recognition). The drillable-only group hides when the current tab isn't drillable (F2L tabs).
+Each renderer (`renderHome`, `renderBrowse`, `renderPractice`, `renderTimer`, `renderStats`, `renderSettings`) builds its DOM with `document.createElement` + `root.replaceChildren(...)` (no virtual DOM — full re-render on every state change, simple and fast for this scale).
 
-**Mobile (≤640px)**: header wraps to two rows — brand+gear on row 1, the 5 tabs as a full-width row 2 with horizontal scroll + fade mask. Filter chips switch to a single horizontal-scroll row. Cards: image max-height 120px (image dominates the visual weight at smaller card sizes), `var(--space-3)` padding for breathing room, 14px title, alg-block 12px with 1.45 line-height for wrap readability. **Grid is two columns** on portrait phones (`repeat(2, minmax(0, 1fr))`) so a glance shows multiple cases at once — at 375px that's ~172px per card. **Landscape phones (orientation landscape AND max-height 500)** bump to **three columns** (~252px each at 844 wide); card padding/font stay at desktop sizing since each card is still wide enough.
+The four modal-based modules (`drill.js`, `recognition.js`, `batch.js`, `weak-cases.js`) still open via `modal.js` on top of the page. The `Timer` mode is NOT a modal — it mounts inline into `#page-timer` via `timer.js`'s `mountTimer(host)` and unmounts on page-switch via `unmountTimer()`.
 
-**Card-meta truncation + toggle (`metaRowWithToggle` in app.js)**: each meta row (Recognition / Description / state) is line-clamped to 2 lines at 10.5px on portrait mobile. Silent truncation is bad UX, so a `more`/`collapse` button appears below the clamped text ONLY when truncation is real (post-layout `scrollHeight > clientHeight + 1` check). Click `more` to drop the clamp and show the full text; `collapse` folds it back. The full text also goes into the meta's `title` attribute so tap-and-hold reveals it via the browser's native tooltip — backup for when the toggle is missed. Detection uses `setTimeout(0)` twice (not `requestAnimationFrame`) because RAF doesn't fire in headless rendering contexts (preview/screenshot tools), and a 0ms timeout still defers past the current sync render so layout is settled before the scrollHeight read.
+**No legacy DOM.** The old shell + its `legacy-triggers` hidden trigger buttons are gone. Module entry points are direct function calls — `app.js` exports `openTimer / openWeakCases / openDrill(keys?) / openBatch(keys?) / openRecognition(keys?)` and every Practice / Home button invokes those.
 
-**Card accent stripe clip**: each card has a 3px left-side colored stripe (`.card::before`, color = `--card-accent`). The stripe is `top:0; bottom:0` (straight from edge to edge) while the card has `border-radius: 14px`, so without clipping the stripe pokes past the rounded corners. `.card { overflow: hidden }` clips the stripe to the card's curve. The stripe's own `border-radius` was dropped since the parent now does the clipping.
+## Selection model
 
-**Selection-toolbar action buttons (Timer / Today's drill / Drill selected / Batch (5) / Train recognition)** all use plain `.btn` styling (white-ish elevated background + border), not `.btn-primary`. The blue primary look was loud for what's essentially a row of navigation actions, and consistency across the row reads better than one-or-two highlighted-blue buttons.
+`selection.js` is the in-memory multi-select store (cleared on reload — by design; cross-session state belongs in stats/sessions). API: `toggle / isSelected / selectMany / deselectMany / clear / size / allKeys / resolve(key, data)`. Each entry is a `"category/id"` string.
 
-## Drill + recognition data model
+**Selection happens on the Practice page, not Browse.** Browse cards are reference-only — no checkbox, no click-to-toggle, no action toolbar. The Practice picker (see "Practice picker" below) is the single entry point for choosing cases.
+
+## Browse page (reference only)
+
+`renderBrowse` shows a search bar + category chips + the matching facet chip row + an `.alg-card` grid. Cards are informational — title, colored algorithm notation, meta rows, and a 3-column footer (`best / reps / recog`).
+
+The footer always renders the same three columns whether or not data exists; missing values show as em-dashes (`—`). This is a grid (`grid-template-columns: repeat(3, 1fr)`) so card heights and column positions are consistent across the grid, not just within "drilled" or "untried" subsets. There used to be branches that rendered 2 spans for `untried` and 1–3 spans for partial data — those produced jittery alignment and confusing labels like `no best · no reps · 100% recog`. Gone now.
+
+Search placeholder is `"Search algorithms…"` — short enough to fit the 220px input without truncation across all viewports. (The earlier `"Search by name, id, algorithm, recognition…"` was getting cut to `"Search by name,id,algorithm,r"` on narrow widths.)
+
+## Practice picker (inline case selection)
+
+`renderPractice` builds: page-head + submode row + a single-panel stage. The stage layout:
+- **Top bar**: label ("Drill" / "Today's drill" / "Recognition" / "Batch (5)") + selection-count meta + Start CTA
+- **Category chips** (`.picker-cat-row`): `2L PLL` / `PLL` / `2L OLL` / `OLL`. Batch submode restricts to PLL-only chips (it ignores OLL anyway)
+- **Facet chips** (`.picker-facet-row`): whatever the picked category's `filterFacets` exposes. For PLL: the 11-tag system. For 2L PLL: only `Headlights` and `Diagonal`. For OLL / 2L OLL: shape chips
+- **Action row** (`.picker-actions-row`): `Select all in view` (auto-flips to `Deselect all in view` when everything visible is already selected) + `Clear selection` + `N/M in view · K total` counter
+- **Card grid** (`.picker-grid`): every case in the picked category, filtered by chips. Click a card to toggle. Card layout is face-on-left (100px) + meta-on-right (cat/name/best). Grid scrolls inside the stage when content overflows
+
+Today's drill submode is special — it doesn't show the picker (selection isn't user-driven there). Instead it renders a weak-cases preview grid using the same `.picker-card` styling so the visual language is consistent.
+
+`practicePickerState = { category, filters }` is separate from `browseState.filters` so the two pages don't fight. `matchesPickerFilters` mirrors Browse's `matchesFilters` with the same array-tag OR-within-facet semantics.
+
+## Card grid sizing
+
+Picker cards are deliberately large — `100px` face, `23px` name, `16px` cat label, `380px` minmax columns. This was scaled ~1.75x from an earlier compact version (56px face / 13px name) because the user found the compact layout cramped. The cube face dominates the card; the meta column is a single column with cat / name / best stacked.
+
+`grid-auto-rows` is NOT set to `1fr` on the picker grid — that earlier attempt stretched rows to fill height but inflated cards into mostly-empty rectangles. Natural row height + scrolling overflow inside the stage is the right answer.
+
+## Stats / SRS model
 Each PLL and OLL entry carries a precomputed `setup` field (forward-applied to a solved cube produces the case state in canonical orientation; rotation tokens at the end cancel any net rotation from the alg). Each OLL also has `recognitionGroup` — a canonicalized hash of the U-layer yellow pattern under all 4 y-rotations, so recognition-trainer distractors avoid rotationally-equivalent cases.
 
 Drill scrambles = `randomY + randomAUF + setup` (cube-notation.js). The setup field means the user gets a clean, executable scramble regardless of whether the original solution alg contains `x`, `y`, wide, or slice moves.
@@ -85,6 +116,17 @@ Per-case reset via the ↺ button on the card badge; reset-all via header button
 
 **Spaced repetition** (Leitner, 5 boxes — `stats.js`): every drill rep calls `updatedSrs(prevSrs, seconds, prevBest)` which (1) auto-rates the rep from time vs prior personal best (`<= 1.3x` best = "easy", `> 3x` best = "again", else "good"), (2) advances the box (`good` +1, `easy` +2, `again` resets to 1), (3) schedules `dueAt` from the new box's interval — 1/3/7/14/30 days for boxes 1-5. First-ever drill always lands in box 1 regardless of rating so a single fast first rep can't shortcut to box 3. Box advancement is capped at `SRS_MAX_BOX = 5`. Day math uses epoch-second arithmetic with a `DAY_SEC = 86400` multiplier (DST-safe; we never read wall-clock dates). `stats.getSrs(category, id)` is the read accessor.
 
+## Drill mode behavior
+
+`drill.js` opens the drill modal. Spacebar-style timer (hold to arm, release to start, any key to stop) with tap-anywhere fallback for touch.
+
+- **Auto-advance** between cases is **500ms** (`AUTO_ADVANCE_MS`). The earlier 1200ms felt sluggish; 500ms matches the recognition trainer's "Fast" preset.
+- **Single-case sessions** (`session.items.length === 1`) skip the auto-advance setTimeout entirely and show `"Saved. Hit space to drill again."` instead of `"Loading next case…"`. Without this guard, `drawFromBag()` re-draws the same index and the UI looks stuck because nothing visually changes.
+- **`stats.recordDrill` is wrapped in try/catch** so a failed stats write (cloud-sync hiccup, localStorage quota) doesn't block the auto-advance scheduler.
+- **Stuck-state watchdog**: a second `setTimeout` at `STUCK_WATCHDOG_MS = 2000` re-fires `next()` if the hint is still `"Loading next case…"`. If the primary auto-advance ran normally the watchdog is a no-op (the hint was overwritten by `resetTimerState`); if it stuck for any reason, the watchdog forces progress.
+- **Next-case image preload**: `next()` peeks `session.bag[0]` and fires `new Image().src = vcImage(...)` so the browser cache is warm before the user finishes the current rep.
+- **PB pulse**: when `seconds < prior.best`, the timer gets a 700ms `.pb-pulse` CSS animation (`@keyframes rs-pb-pulse` in `index.html`) — scale + accent glow, removed via `animationend`. Small dopamine hit for a personal best.
+
 ## Recognition trainer
 Clicking "Train recognition" opens a settings screen FIRST, not the trainer. Settings persist at `rs-recog-settings-v1`:
 - OLL choice count (2/4/6) — only shown if any OLL selected
@@ -94,6 +136,34 @@ Clicking "Train recognition" opens a settings screen FIRST, not the trainer. Set
 - Time limit per case (Off / 3s / 5s / 10s / 20s) — countdown bar at top, expiration counts as wrong
 
 OLL options are **text buttons with name + #id**, NOT thumbnails. (Thumbnails were too easy because user could pixel-match.) PLL uses a free-text input with normalization: lowercase, strip non-alphanumeric, accept trailing "perm".
+
+## PLL recategorization (11-tag system)
+
+Every PLL entry in `rubiks-cube-algorithms.json` carries a `tags: [...]` array. The 11 tags are: `edges-only`, `corners-only`, `both`, `headlights`, `diagonal`, `a-perms`, `u-perms`, `j-perms`, `r-perms`, `g-perms`, `n-perms`. A single case can carry multiple tags (e.g., T-perm is `["both", "headlights"]`, Na-perm is `["both", "diagonal", "n-perms"]`).
+
+Tagging rubric (audited against canonical PLL state):
+- **edges-only / corners-only / both**: based on which pieces actually move. E-perm only swaps corners (two diagonal corner-pairs), so it's `corners-only` despite naive intuition saying it also moves edges — verified against pycuber.
+- **headlights**: exactly one set of adjacent same-color corner pair on the side faces. Cases with ALL corners solved (H, Ua, Ub, Z) deliberately do NOT get this tag — they show four trivial headlights and that's a different recognition class. Diagonal-swap cases (E, Na, Nb, V, Y) also don't get `headlights`.
+- **diagonal**: case has a diagonal corner swap (E, Na, Nb, V, Y).
+- **perm-letter** (a/u/j/r/g/n perms): only assigned to cases with multiple variants. F, H, T, V, Y, Z are single-variant and intentionally have no perm-letter tag — they're identified by the other facets.
+
+The PLL category's `filterFacets` is declarative — `values: [...]` lists all 11 chips so they render even before any case is selected. Multi-select with OR-within-facet (selecting `Headlights + Diagonal` matches the union, 17 cases).
+
+The **2L PLL** category overrides this with just `Headlights` and `Diagonal` chips — the four edge-only cases (Ua, Ub, H, Z) appear when no filter is active. T-perm matches Headlights; Y-perm matches Diagonal. Simpler recognition vocabulary for the 2-look learner.
+
+## Tab merges
+
+The 2-look / advanced split used to live in tab-level filters:
+- PLL tab excluded the 6 two-look cases (Ua, Ub, Z, H, T, Y) → 15 cards
+- OLL tab excluded the 10 two-look cases (7 OCLL + 3 synthetic edge-orient) → 50 cards
+- F2L+ (advanced) was a separate browse view from F2L− (beginner)
+
+Now the main tabs show **everything** in their category:
+- PLL → all 21 cases (was 15)
+- OLL → all 60 cases (57 real + 3 synthetic 2-look, was 50)
+- F2L+ → all 41 cases (25 advanced + 16 beginner, was 25)
+
+The dedicated 2L PLL / 2L OLL / F2L− tabs are preserved as subset views — the user can still drill from just the 2-look pool. Stats are shared because both views use the same underlying data IDs.
 
 ## Data provenance + validation
 F2L algorithms sourced from **rubiksplace.com** (algdb.net was down at generation time). All 119 main algorithms (21 PLL + 57 OLL + 25 F2L-adv + 16 F2L-beg) **verified via pycuber** — apply each alg's inverse to a solved cube, then check the result satisfies category-specific state constraints. Validator script is reusable; see `scripts/compute-setups.py` for the pattern. OLL `name` field uses `(a)/(b)/(c)/(d)/(e)` suffixes to disambiguate the 46 entries whose shape categories repeat (e.g., "Awkward (a)" through "Awkward (e)").
@@ -108,7 +178,21 @@ Case visualizations come from VisualCube at `https://visualcube.api.cubing.net/v
 `vcImage` also accepts an optional `sch` param (6-letter VisualCube color scheme, order **U R F D L B**). Timer scramble preview passes `sch: "wrgyob"` to render with white-on-top WCA orientation (white up, red right, green front, yellow down, orange left, blue back) — matching how a cuber physically holds the cube while scrambling. PLL/OLL/F2L cards leave `sch` unset and use the VisualCube default (yellow-up) since the existing card visuals were designed against that.
 
 ## Timer
-Header **Timer** button (`#open-timer`) lazy-imports `timer.js` and opens a fullscreen modal — that's why `index.html`'s modal-panel grows a `.timer-modal` class when the timer is up (added inside `timer.js` via `queueMicrotask` after `modal.open`). The timer is independent of the algorithm browser and the per-case stats store.
+The Timer is **embedded inline** in `#page-timer` via `timer.js`'s `mountTimer(host)`, not a fullscreen modal. The same `.timer-modal` class is still set on the wrapper (`timer-inline-host .timer-modal`) so the existing timer CSS in `styles.css` keeps applying. `mountTimer` is idempotent — re-rendering the page doesn't blow up live timer state; `unmountTimer` is called from `setActivePage` when navigating away.
+
+**Layout (cstimer-style dominance)**: the inline timer body uses CSS grid to rearrange the DOM order (`topbar → scramble → main → stats-footer → solves`) into a 2-column layout without touching the JS. Grid template areas in `.timer-inline-host .timer-body`:
+```
+"topbar   topbar"
+"scramble scramble"
+"main     stats"
+"main     solves"
+```
+- `main` (containing the tap zone) fills the left column and spans the bottom two rows — the huge timer numerals dominate.
+- The cube preview (which is inside `.timer-main` in DOM order, before the tap zone) is tucked into the top-right corner of the main column at 120px square via flex column + `align-self: flex-end`.
+- The right column (360px wide) hosts the 8-cell stats grid on top, then the solves list filling the rest.
+- `timer-time` font is `clamp(140px, 18vw, 280px)` — scales with viewport so a 13" laptop still feels enormous without overflowing on smaller windows.
+
+This layout lives entirely in `index.html`'s inline `<style>` block under `/* ---------- cstimer-style timer layout ---------- */`. `timer.js`'s DOM was not modified — all the rearrangement is CSS `grid-area`.
 
 State machine (in `timer.js`): `idle → preInspectArm → inspecting → arming → armed → running → stopped`. `idle` enters `preInspectArm` on space-down if WCA inspection is enabled (default on); otherwise skips straight to `arming`. `armed` requires `HOLD_ARM_MS = 300ms` of space hold; release fires `startRun`. During `running`, each space press records a phase split via `splitOrStop`; the press that triggers the last phase stops the timer. Any non-space key during running also stops (cstimer behavior). ESC cancels at any pre-stop stage without recording.
 
@@ -158,6 +242,8 @@ Math verified on 200 random 5-PLL batches (200/200 end solved). All 288 LL permu
 OLLs are silently filtered out — chained OLL would need a larger composition table (orientation matters, ~216 OLL states × AUFs).
 
 To regenerate `pll-compose.json` (if PLL setups change or new ones are added), see the Python block in batch-related commits — runs against `/tmp/cubevenv/bin/python` with pycuber installed.
+
+**Rotation-conjugation stripper** (`stripRotationConjugation` in `batch.js`): 16 of the 288 scrambles in `pll-compose.json` are wrapped in matched rotation pairs like `x R2 D2 R U R' D2 R U' R x'`. The user complained these "useless" rotations clutter the displayed scramble. Before display, the stripper detects a rotation token followed by its inverse later in the scramble (with no other rotation between them) and rewrites the enclosed moves by conjugating each through the leading rotation — e.g. `x R2 D2 R U R' D2 R U' R x'` becomes `R2 F2 R B R' F2 R B' R`. The conjugation tables (`FACE_MAP`) were derived empirically against pycuber rather than from memory — my first hand-derived `y` table was inverted, which a 288/288 validation run caught. The script `/tmp/cubevenv/bin/python` + the loop in `batch.js`'s test harness re-derives the truth tables for sanity. Slice / wide / unknown tokens cancel the rewrite (the original scramble is kept). The fix is display-only — `pll-compose.json` itself is untouched, so the composition math is preserved.
 
 ## Preferences
 - Honest uncertainty: flag stuff rather than guess silently.
@@ -220,10 +306,20 @@ Optional Supabase-backed sync for `rs-stats-v2` (drill + SRS state) and `rs-sess
 - All four tables have RLS enabled with policy `auth.uid() = user_id` (both USING and WITH CHECK) — each user reads/writes only their own rows. The Supabase anon key is publishable; RLS is what actually enforces isolation.
 
 **Sync model: local-first, cloud-mirror**. localStorage stays the working copy (reads instant, offline-safe). When signed in, every local `save()` pushes a diff up. On sign-in, `startForUser` compares local vs cloud presence:
-- local empty + cloud has data → silent pull (apply cloud to local).
+- **cloud has data → silent pull (apply cloud to local)** — regardless of whether local has data. The earlier "use this device / use the cloud / cancel" conflict popup was destructive (no diff shown, no preview, easy to nuke the wrong side) and the user asked to remove it. The cloud is now always treated as the source of truth on sign-in.
 - local has data + cloud empty → silent upload.
-- both non-empty → modal `askConflict` asks **Use this device's data** / **Use the cloud data** / **Cancel**. Cancel calls `signOut`.
 - both empty → no-op.
+
+`askConflict` and its DOM are deleted from `auth-ui.js`; the dynamic import in `cloud-sync.js`'s `startForUser` is gone.
+
+**Sync failure toasts**: every failure path in `cloud-sync.js` now surfaces a toast via the existing `showToast` (exported from `app.js`, styled via the `.soon-toast` rules in `index.html`):
+- Push fails (retryable or non-retryable) → `Sync failed — will retry` / `Sync failed: <reason>`
+- Offline → `Offline — sync paused`
+- Initial cloud fetch fails → `Couldn't load cloud data`
+- Realtime channel drops → `Live-sync dropped — changes from other devices may lag` (once per session, debounced via `realtimeDropToasted`)
+- After a previously-failed flush completes cleanly → `Sync caught up`
+
+The `notifyFailure / notifyRecovery` helpers in `cloud-sync.js` throttle failure toasts to once per 4 seconds (`lastFailToastAt`) so a burst of pushes doesn't spam, and track `failedSinceLastOk` so the recovery toast only fires when there was actually something to recover from. State is cleared in `stop()` (sign-out).
 
 Diff tracking uses per-row `JSON.stringify` against `lastStats` / `lastSessions` / `lastSolves` / `lastPrefs` snapshots, seeded from local state right after the initial reconcile. This keeps ongoing pushes minimal — only rows that genuinely changed get upserted. Diff loop also detects deletions (key in last-snapshot but not in current state) and queues server-side deletes.
 
@@ -248,9 +344,11 @@ For events to fire, the four tables must be in the `supabase_realtime` publicati
 
 `applyRemoteSession` deliberately never deactivates locally from a remote `is_active=false` write — the local user might be mid-something. Active flips only when the remote asserts `is_active=true`. `applyRemoteSolve` skips orphan rows (parent session not yet streamed in) rather than crashing.
 
-## UI redesign sandbox (`ui-lab.html`)
+## UI redesign sandbox (`ui-lab.html`) — MERGED
 
-A self-contained planning file for the next visual direction. **Independent of the live app** — the live app (`index.html` + `styles.css`) is untouched. Each screen gets iterated in `ui-lab.html`; once locked, those decisions get merged back into the real app.
+This file used to be the live sandbox for the next visual direction; that direction has now **shipped in `index.html` + `styles.css`**. `ui-lab.html` is kept as a historical reference (decision log + design tokens) but is no longer the source of truth for any screen — the live app is.
+
+Standing design tokens that survived the merge into the live app:
 
 ### Locked design tokens
 
@@ -277,78 +375,25 @@ A self-contained planning file for the next visual direction. **Independent of t
 - Single shadow token `--shadow-float` reserved for *floating* elements only (popovers, modals, toasts, fixed markers). Currently the only consumer is `.lab-meta`. Future modals/dropdowns should reuse it.
 - No gradients. No `backdrop-filter`. No animations. Flat structural design — distinction between layers comes from borders + surface-color contrast, never lift effects.
 
-### View structure
-
-Single HTML file. Four top-level views toggled by JS `showView(name)`:
-
-1. **`#landing`** (initial active) — marketing page with conventional SaaS structure: nav + hero + 3-col features + 4-step process + 2-col pricing + final CTA + footer. User considered more "original" alternatives (single-screen, manifesto, no-landing) and explicitly chose to keep the conventional structure — pragmatic call for a side project. Don't re-pitch alternatives unless asked. Hero is **single-column centered text + CTAs** — there used to be a product-mock card on the right (timer, then case-card with cube face). Both were rejected (the timer mock was wrong because the product isn't primarily a timer — cstimer already exists — and the case card was rejected as a "hook"). The empty-right-side feel is intentional; don't re-add a hero-right element without asking.
-2. **`#signin`** — split layout (left: product-feature checklist with → bullets; right: form). Email + password + "Continue with Google" + toggle to signup. **Do not put per-user stats (best, ao12, solves count) on the auth side** — user can't be logged in there, so fake personal numbers are dishonest. Product capabilities only.
-3. **`#signup`** — same split shape as signin, with an added Name field, same feature-list approach on the left.
-4. **`.app`** (no id) — workspace-top-bar shell. A sticky `.ws-bar` at the top contains brand + 6 `.ws-mode` buttons + account avatar. Each mode has a small colored square dot (`.ws-mode-dot`) keyed to a cube face color, so the navigation chrome itself reads as cube content. NO left sidebar — that was an earlier iteration the user rejected as "literally copy paste" with too much empty space.
-
-Every view except the active one gets `class="hidden"` (`display: none`). Buttons with `data-go="<view>"` are auto-wired by JS to switch. Form submits in signin/signup call `showView('app')` — auth is fake here; this is a visual sandbox.
-
-### Recurring visual: `.face-sticker`
-
-A real 3×3 cube-face grid rendered in pure CSS. This is the design's strongest visual signature — every "case" appears via this element, anchoring the product as cube content rather than generic dashboard tiles.
-
-- Class composition: `<div class="face-sticker"><span class="r"></span>... 9 sticker spans ...</div>`. Each span gets one of: `.y .w .r .o .b .g .x` (yellow / white / red / orange / blue / green / transparent-hidden).
-- Uses `grid-template-columns: repeat(3, 1fr)` + `aspect-ratio: 1` + `gap: 2px` + 3px padding. Outer `border: 1px solid var(--border)` + `border-radius: var(--r-sm)`.
-- **Reused in**: landing brand mark (2×2 mini variant via `.ws-brand-mark`), workspace mode dots (per-mode color hint), home focus strip (130px), home recommended-next list (56px thumbnails), browse card previews (~60% of `.alg-img` square).
-- The `.x` (transparent) class is for OLL-shape patterns where some sticker slots represent side colors visible from above (= not a U-face yellow). Use it to convey the unsolved shape.
-
-### Workspace top bar (`.ws-bar`)
-
-- Sticky `position: sticky; top: 0; z-index: 20`. Sits above all content.
-- Layout: `brand | modes (flex:1, wrap-able) | account avatar`. The modes are a flat horizontal list of 6 buttons (Home / Browse / Practice / Timer / Stats / Settings). Each has a `.ws-mode-dot` colored to a cube face — this is what makes adding more modes feel native to the product, not "another sidebar item."
-- Active state: muted surface background + border, NOT cobalt-tinted. (Earlier iteration used cobalt-soft background; user found triple-treatment too loud.)
-- Scaling: more modes wrap to a second line; sub-features should NOT become new top-level modes — they go inside their parent mode as `.submode-row` chips (see below).
-
-### Sub-mode pattern (`.submode-row` / `.submode`)
-
-When a mode has multiple sub-features (Practice has Drill / Recognition / Batch / Today's drill / Fingertricks; Stats has Overview / Solve analysis / Achievements / Sharing), they appear as a row of pill buttons under the page-head. This is how the app-map's planned features stay visible in the UI without bloating the top bar.
-
-- `.submode` — pill button. `.submode.active` for current. `.submode.planned` for planned features — appends a small "soon" tag after the label, dims the color, removes cursor pointer.
-- Same pattern works for any future mode that grows sub-features.
-
-### App shell pages (all placeholder content shaped like real cube data — algorithm names, notation, milestone names match what the real app would show)
-
-- **Home**: NOT the old hero+sections stack. **Focus strip** at the top (cube face + "Today's drill · Due now" + case name + algorithm + Skip/Start buttons) — the cube state of what you're working on is always shown. Below: 3-col **workshop grid** — `Your path` (compact milestone list: Two-look CFOP → Full PLL → Full OLL → Sub-20 → Sub-15) | `Recommended next` (4 cards each with their own `.face-sticker` thumbnail) | `This week` (3 stat tiles). This represents the **Guided Path** + **Milestones** planned features from app-map.
-- **Browse**: search + 8 chip filters covering **all content categories from app-map** — PLL / OLL / F2L / Notation live, COLL / ZBLL / OH / Roux as `.chip.planned`. 4-col card grid; each card has a `.face-sticker` thumbnail (not the bare "PREVIEW" text from earlier). Sample cards use real case names (T-perm, Aa-perm, OLL · Cross, Anti-Sune, Sune, H-perm, F2L · Slot 3, Ja-perm).
-- **Practice**: page-head + `.submode-row` for **Drill / Recognition / Batch (5) / Today's drill** (live) + **Fingertricks** (planned). The split-stage layout follows: bigger 320px case preview + smaller text-soft 48px timer (Practice = studying; case dominates).
-- **Timer**: 168px display dominates the left stage; right side has 2×2 WCA stats grid (best/mean/ao5/ao12) + Solves list. **Sessions** and **Solve Info** features from app-map are represented via the Session button in the page-head and the per-solve list rows.
-- **Stats**: page-head + `.submode-row` for **Overview** (= the live Progress Dashboard) + **Solve analysis / Achievements / Sharing** (all planned from app-map). Overview shows 4 stat cells + chart row.
-- **Settings**: 3 sections (Account / Preferences / Data), each a bordered group with `settings-row` dividers and slightly-rounded toggle switches. Account section covers Sign in / Cloud sync from app-map's account category.
-
-### Coverage vs. app-map.html
-
-The lab now represents every node in `app-map.html`. Quick audit:
-
-- **Live (16 nodes)**: Home, Algorithm Browser, PLL, OLL, F2L, Notation, Drill, Recognition, Batch (5), Today's Drill, Timer, Sessions, Solve Info, Settings, Sign In, Account — all present as modes, sub-modes, chips, or page elements.
-- **Planned (11 nodes)**: Guided Path + Milestones (Home `Your path`), Fingertricks (Practice planned submode), COLL / ZBLL / OH Variants / Roux Method (Browse planned chips), Solve Analysis / Achievements / Sharing (Stats planned submodes), Progress Dashboard (Stats Overview, live).
-
-When app-map grows new nodes, add them as `.submode.planned` chips inside the relevant mode page — don't bloat the workspace top bar.
-
 ### Standing user feedback (re-check any new work against these)
 
 - **"Don't make it look AI"** — drove curve reduction, shadow removal, font choices, gradient deletion, no backdrop-blur, no soft pastels.
-- **"Way too squarish"** was the next correction after the 0-radius pass. The current 3/5/8px scale is the negotiated middle — don't go lower OR higher without asking.
+- **"Way too squarish"** was the correction after the 0-radius pass. The current 3/5/8px scale is the negotiated middle — don't go lower OR higher without asking.
 - **Shadows only on floating UI** — never on cards / sections / top bar / buttons in default state.
 - **Desktop only for now** — no media queries; responsive treatment deferred until visual language is locked.
-- **"Sidebar+main is generic / copy paste"** — the left sidebar was rejected outright. The workspace top bar with cube-color mode dots is the replacement. Don't re-introduce a sidebar pattern without explicit approval. The earlier "fill the empty sidebar space with a Today's Drill widget" band-aid is gone (the whole sidebar is gone).
-- **No fake personal stats before login** — auth-side panel must show product capabilities, not made-up Best/ao12/Solves counts. The user explicitly called this out as dishonest.
-- **No "sales hook" mock on the landing hero right** — both the timer mock and the case-card mock were rejected. Hero is single-column centered text + CTAs only.
-- **Cube-face sticker is the design's signature** — when in doubt, anchor a visual in `.face-sticker` rather than another text/stat card. The face uses real cube colors and immediately reads as cube content.
-- **Honest critique, not flattery** — user explicitly wants flagged issues, including problems with the lab itself.
+- **"Sidebar+main is generic / copy paste"** — the workspace top bar with cube-color mode dots is the locked navigation pattern. Don't re-introduce a left sidebar without explicit approval.
+- **No fake personal stats before login** — auth-side panels show product capabilities, not made-up numbers.
+- **No "sales hook" mock on the landing hero right** — single-column centered text + CTAs only.
+- **Cube-face sticker is the design's signature** — anchor visuals in `.face-sticker` (or the equivalent `.picker-face` 100px square) rather than generic stat tiles.
+- **Honest critique, not flattery** — flag issues directly.
+- **"Boxes are too small / too tight"** — picker cards were bumped ~1.75x (100px face, 23px name, 380px column minmax). Don't shrink back to a "compact row" layout without asking.
+- **Practice page should fill its width like cstimer** — single-panel stage, no side panel. Same instruction applies to the Timer page: huge timer dominates left, compact side panel on right.
 
 ### Open work (in rough priority order)
 
-1. Per-page polish now that the shell is locked — Stats charts are still placeholders (skewed line + random heatmap); Settings could use the cube-face element somewhere.
+1. Stats charts are still placeholders (skewed line + random heatmap).
 2. Make the planned `.submode.planned` and `.chip.planned` chips interactive — clicking could open a "Coming soon — what this will do" mini explainer instead of being inert.
-3. Practice sub-mode switching — `.submode` buttons currently don't actually swap content within Practice; making them work would be a useful next pass.
-4. Possibly more landing sections (user hasn't asked yet).
-5. Integration into the real app (`index.html` + `styles.css`) — not started.
-6. Mobile (deferred until visual language is locked).
+3. Mobile (deferred until visual language is locked).
 
 ## Deploy
 Site is published to GitHub Pages at https://sawmint.github.io/rubiks-storage/ (repo: sawmint/rubiks-storage). After approved code changes, invoke the `deploy` skill at `.claude/skills/deploy/SKILL.md` to commit, bump the PWA cache version if needed, and push. `git push` works via the SSH alias `github-rubiks` in `~/.ssh/config`; no env vars or `-c` flags needed.
