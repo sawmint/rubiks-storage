@@ -224,12 +224,29 @@ export function subscribe(fn) {
 }
 
 /* Format helpers for display */
+/* No-suffix duration formatter shared with the live-running drill timer
+ * tick so a long session above 60s / 1h reads consistently with stored
+ * stats. < 60s → "ss.cc"; < 3600s → "m:ss.cc"; ≥ 3600s → "h:mm:ss.cc". */
+export function fmtSecs(seconds) {
+  if (seconds == null) return "-";
+  if (!isFinite(seconds)) return "DNF";
+  if (seconds < 60) return seconds.toFixed(2);
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = (seconds % 60).toFixed(2);
+    return `${m}:${s.padStart(5, "0")}`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const mm = Math.floor((seconds % 3600) / 60);
+  const ss = (seconds % 60).toFixed(2);
+  return `${h}:${String(mm).padStart(2, "0")}:${ss.padStart(5, "0")}`;
+}
 export function fmtTime(seconds) {
   if (seconds == null) return "-";
-  if (seconds < 60) return `${seconds.toFixed(2)}s`;
-  const m = Math.floor(seconds / 60);
-  const s = (seconds % 60).toFixed(2);
-  return `${m}:${s.padStart(5, "0")}`;
+  const base = fmtSecs(seconds);
+  // Append the "s" unit only to bare-seconds; "1:23.45" and "1:00:00" are
+  // self-evident from the colon punctuation.
+  return seconds < 60 ? `${base}s` : base;
 }
 
 export function fmtAccuracy(recog) {

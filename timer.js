@@ -814,7 +814,7 @@ function startRun() {
 function runTick() {
   if (!session || session.state !== "running") return;
   const elapsed = performance.now() - session.startMs;
-  session.ui.timeDisplay.textContent = (elapsed / 1000).toFixed(2);
+  session.ui.timeDisplay.textContent = sessions.fmtMs(elapsed);
   rafId = requestAnimationFrame(runTick);
 }
 
@@ -839,7 +839,7 @@ function finishRun(totalMs) {
   cancelRaf();
   session.state = "stopped";
   session.ui.timeDisplay.className = "timer-time timer-stopped";
-  session.ui.timeDisplay.textContent = (totalMs / 1000).toFixed(2);
+  session.ui.timeDisplay.textContent = sessions.fmtMs(totalMs);
   // inspectionPenalty is the LOCKED inspection-overrun penalty; the manual
   // penalty (user clicking +2 / DNF after the fact) starts as null and is
   // edited via the OK/+2/DNF pills in the solves row. Without this split,

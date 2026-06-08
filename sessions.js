@@ -561,15 +561,22 @@ export function bestAverage(solves, n) {
   return best;
 }
 
-/* Format ms as "ss.cc" or "m:ss.cc"; Infinity → "DNF"; null → "-". */
+/* Format ms as "ss.cc", "m:ss.cc", or "h:mm:ss.cc" depending on magnitude.
+ * Infinity → "DNF"; null → "-". Hour roll-over kicks in at 3600s (1h). */
 export function fmtMs(ms) {
   if (ms == null) return "-";
   if (!isFinite(ms)) return "DNF";
   const s = ms / 1000;
   if (s < 60) return s.toFixed(2);
-  const m = Math.floor(s / 60);
-  const r = (s % 60).toFixed(2);
-  return `${m}:${r.padStart(5, "0")}`;
+  if (s < 3600) {
+    const m = Math.floor(s / 60);
+    const r = (s % 60).toFixed(2);
+    return `${m}:${r.padStart(5, "0")}`;
+  }
+  const h = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const rr = (s % 60).toFixed(2);
+  return `${h}:${String(mm).padStart(2, "0")}:${rr.padStart(5, "0")}`;
 }
 
 /* Display string for a solve. Penalty markers:

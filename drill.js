@@ -260,7 +260,7 @@ function startTimer() {
 function tick() {
   if (!session || session.timer.state !== "running") return;
   const elapsed = (performance.now() - session.timer.startMs) / 1000;
-  session.ui.timer.textContent = elapsed.toFixed(2);
+  session.ui.timer.textContent = stats.fmtSecs(elapsed);
   rafId = requestAnimationFrame(tick);
 }
 
@@ -276,7 +276,7 @@ function stopTimer() {
   session.timer.elapsedMs = seconds * 1000;
   session.ui.timer.classList.remove("armed", "running");
   session.ui.timer.classList.add("stopped");
-  session.ui.timer.textContent = seconds.toFixed(2);
+  session.ui.timer.textContent = stats.fmtSecs(seconds);
 
   // PB detection — read prior best BEFORE recording so the new time doesn't
   // count as "beating" itself. A new PB triggers a brief CSS pulse on the
@@ -292,7 +292,7 @@ function stopTimer() {
   } catch (err) {
     console.error("drill: stats.recordDrill failed", err);
   }
-  session.ui.lastTime.textContent = `Last: ${seconds.toFixed(2)}s` + (isPB ? "  (PB)" : "");
+  session.ui.lastTime.textContent = `Last: ${stats.fmtTime(seconds)}` + (isPB ? "  (PB)" : "");
 
   if (isPB) {
     const t = session.ui.timer;
