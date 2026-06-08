@@ -323,6 +323,24 @@ const appState = {
   activePage: "home",
 };
 
+/* ---------- Timer display preferences ----------
+ * Lightweight localStorage-backed prefs for visual toggles on the Timer
+ * page. Applied to <html data-...> attributes so CSS rules in index.html
+ * can react without timer.js having to read prefs itself. */
+const TIMER_PREVIEW_KEY = "rs-timer-show-preview";
+export function getShowCubePreview() {
+  try { return localStorage.getItem(TIMER_PREVIEW_KEY) !== "false"; }
+  catch { return true; }
+}
+export function setShowCubePreview(on) {
+  try { localStorage.setItem(TIMER_PREVIEW_KEY, on ? "true" : "false"); }
+  catch { /* localStorage disabled — pref reverts to default on next load */ }
+  applyShowCubePreview();
+}
+function applyShowCubePreview() {
+  document.documentElement.dataset.timerPreview = getShowCubePreview() ? "on" : "off";
+}
+
 const browseState = {
   category: "pll_2look",     // start beginners on the 2-look set
   search: "",
@@ -382,6 +400,7 @@ async function init() {
     return;
   }
 
+  applyShowCubePreview();
   bindWorkspaceBar();
   bindAccount();
 
@@ -1795,6 +1814,7 @@ function renderSettings() {
   prefCol.className = "settings-col";
   const inspection = sessions.getInspection();
   const inspectionDur = sessions.getInspectionDurationSec();
+  const showPreview = getShowCubePreview();
   prefCol.innerHTML = `
     <p class="settings-section-title">Timer preferences</p>
     <div class="settings-section">
@@ -1804,6 +1824,13 @@ function renderSettings() {
           <div class="settings-desc">Countdown before each solve. Overrun adds +2 / DNF.</div>
         </div>
         <div class="toggle ${inspection ? "on" : ""}" id="set-inspection"></div>
+      </div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Show cube preview on Timer</div>
+          <div class="settings-desc">Renders a small cube of the scrambled state in the timer's top-right corner. Hides automatically during a solve.</div>
+        </div>
+        <div class="toggle ${showPreview ? "on" : ""}" id="set-show-preview"></div>
       </div>
       <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: var(--s-3);">
         <div>
@@ -1820,6 +1847,10 @@ function renderSettings() {
     </div>`;
   prefCol.querySelector("#set-inspection").addEventListener("click", () => {
     sessions.setInspection(!sessions.getInspection());
+  });
+  prefCol.querySelector("#set-show-preview").addEventListener("click", () => {
+    setShowCubePreview(!getShowCubePreview());
+    renderSettings();
   });
   for (const pill of prefCol.querySelectorAll("[data-dur]")) {
     pill.addEventListener("click", () => {

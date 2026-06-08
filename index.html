@@ -1616,7 +1616,15 @@
       padding: 6px 10px;
       font-size: 12px;
     }
-    .timer-inline-host .timer-solves-header { text-align: center; }
+    /* Header labels share alignment with their row values: # and Time are
+       left-aligned to match the row's natural left-flow, ao5/ao12 are
+       center-aligned for the number columns. (Previously the header was
+       all-centered while rows were all-left, which made # and Time labels
+       drift visibly off from their values below.) */
+    .timer-inline-host .timer-solves-header > div:nth-child(1),
+    .timer-inline-host .timer-solves-header > div:nth-child(2) {
+      text-align: left;
+    }
     .timer-inline-host .timer-solve-row > div:nth-child(3),
     .timer-inline-host .timer-solve-row > div:nth-child(4),
     .timer-inline-host .timer-solves-header > div:nth-child(3),
@@ -1647,6 +1655,22 @@
       justify-content: center;
     }
     .timer-inline-host .timer-solve-menu { gap: 3px; justify-content: flex-end; }
+
+    /* Topbar now lives at the bottom of the times box, so the session
+       manager + settings popovers must open UPWARD (bottom: 100%) instead
+       of downward — otherwise they'd fall off-screen below the panel. */
+    .timer-inline-host .timer-session-pop,
+    .timer-inline-host .timer-settings-pop {
+      top: auto;
+      bottom: 100%;
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+
+    /* Cube preview overlay can be disabled from Settings. The toggle sets
+       data-timer-preview on <html>; "off" hides the preview regardless of
+       timer state. */
+    html[data-timer-preview="off"] .timer-inline-host .timer-preview { display: none; }
     .timer-inline-host .timer-pill {
       padding: 2px 6px;
       font-size: 10px;
