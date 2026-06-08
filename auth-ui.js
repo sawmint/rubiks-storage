@@ -57,6 +57,13 @@ export function openSignIn() {
   emailStatus.className = "auth-status";
   emailSection.appendChild(emailStatus);
 
+  // Track whether a link has been sent so we can switch the label to
+  // "Resend" and briefly hold the button disabled — supabase rate-limits
+  // repeated OTP requests, and a panicked spam-clicker would otherwise hit
+  // it and confuse themselves with the resulting error.
+  let linkSent = false;
+  const RESEND_COOLDOWN_MS = 30000;
+
   emailBtn.addEventListener("click", async () => {
     const email = emailInput.value.trim();
     if (!email || !email.includes("@")) {
@@ -65,16 +72,29 @@ export function openSignIn() {
       return;
     }
     emailBtn.disabled = true;
-    emailBtn.textContent = "Sending…";
+    emailBtn.textContent = linkSent ? "Resending…" : "Sending…";
     emailStatus.textContent = "";
     emailStatus.className = "auth-status";
     const res = await auth.signInWithMagicLink(email);
-    emailBtn.disabled = false;
-    emailBtn.textContent = "Email me a sign-in link";
     if (res.ok) {
+      linkSent = true;
       emailStatus.textContent = `Check ${email} for a sign-in link. You can close this dialog — clicking the link will log you in.`;
       emailStatus.className = "auth-status auth-status-ok";
+      emailBtn.textContent = `Resend in ${Math.round(RESEND_COOLDOWN_MS / 1000)}s`;
+      let remaining = RESEND_COOLDOWN_MS / 1000;
+      const tick = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(tick);
+          emailBtn.disabled = false;
+          emailBtn.textContent = "Resend sign-in link";
+        } else {
+          emailBtn.textContent = `Resend in ${remaining}s`;
+        }
+      }, 1000);
     } else {
+      emailBtn.disabled = false;
+      emailBtn.textContent = linkSent ? "Resend sign-in link" : "Email me a sign-in link";
       emailStatus.textContent = res.error || "Could not send link. Try again in a moment.";
       emailStatus.className = "auth-status auth-status-error";
     }

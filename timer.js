@@ -368,8 +368,14 @@ function renderSolvesList() {
       t.appendChild(chip);
     }
     // Build a clear tooltip that names every penalty source contributing
+    // s.phases is cumulative-since-start; subtract the prior phase to show
+    // the per-phase duration the user actually wants to read.
     if (s.phases && s.phases.length > 1) {
-      t.title = s.phases.map((cum, phaseIdx) => `${labelForPhaseIndex(phaseIdx)}: ${(cum / 1000).toFixed(2)}`).join("\n");
+      t.title = s.phases.map((cum, phaseIdx) => {
+        const prevCum = phaseIdx > 0 ? s.phases[phaseIdx - 1] : 0;
+        const dur = cum - prevCum;
+        return `${labelForPhaseIndex(phaseIdx)}: ${(dur / 1000).toFixed(2)} (@${(cum / 1000).toFixed(2)})`;
+      }).join("\n");
     }
     t.title = (t.title ? t.title + "\n\n" : "") + `Scramble: ${s.scramble}`;
     t.title += `\n\nPenalty: ${penaltySummary(s)}`;
@@ -947,7 +953,20 @@ function detachKeyHandlers() {
 }
 
 function attachWindowBlur() {
-  const fn = () => cancelRun();
+  // Blur during a running solve should not silently discard it — a stray
+  // OS notification or address-bar focus would nuke a great time. Match
+  // cstimer's behavior: stop (record) on blur during run, cancel only from
+  // the pre-run states.
+  const fn = () => {
+    if (!session) return;
+    if (session.state === "running") {
+      const elapsed = performance.now() - session.startMs;
+      session.phases.push(elapsed);
+      finishRun(elapsed);
+      return;
+    }
+    cancelRun();
+  };
   window.addEventListener("blur", fn);
   session.cleanup.push(() => window.removeEventListener("blur", fn));
 }
@@ -1141,20 +1160,32 @@ function openSettingsPanel() {
 
   const cfg = sessions.getPhaseConfig();
 
+  // The inspection state machine reads getInspection() / getInspectionDurationSec()
+  // at multiple points during a solve; toggling them mid-solve corrupts the
+  // pre-run flow (e.g. user flips inspection off mid-inspect → releaseHold
+  // falls back to idle and the in-progress inspection is lost). Lock those
+  // controls while the timer is in any non-idle/stopped state.
+  const solveActive = session && session.state !== "idle" && session.state !== "stopped";
+
   const pop = document.createElement("div");
   pop.className = "timer-settings-pop";
 
   const inspectLabel = document.createElement("label");
   inspectLabel.className = "timer-settings-row";
+  if (solveActive) inspectLabel.classList.add("disabled");
   const inspectCb = document.createElement("input");
   inspectCb.type = "checkbox";
   inspectCb.checked = sessions.getInspection();
+  inspectCb.disabled = !!solveActive;
   inspectCb.addEventListener("change", () => {
     sessions.setInspection(inspectCb.checked);
     durationRow.style.display = inspectCb.checked ? "" : "none";
   });
   inspectLabel.appendChild(inspectCb);
   inspectLabel.appendChild(document.createTextNode(" WCA inspection"));
+  if (solveActive) {
+    inspectLabel.title = "Finish the current solve before changing inspection settings.";
+  }
   pop.appendChild(inspectLabel);
 
   // Inspection duration selector (only meaningful when inspection is on).
@@ -1200,6 +1231,7 @@ function openSettingsPanel() {
     b.className = "timer-pill" + (sec === currentDuration ? " active" : "");
     b.dataset.sec = String(sec);
     b.textContent = sec + "s";
+    b.disabled = !!solveActive;
     b.addEventListener("click", () => {
       sessions.setInspectionDurationSec(sec);
       customInput.value = String(sec);
@@ -1207,6 +1239,7 @@ function openSettingsPanel() {
     });
     durationGroup.appendChild(b);
   }
+  if (solveActive) customInput.disabled = true;
   durationControls.appendChild(durationGroup);
 
   // Save on change/blur AND on Enter. Clamp to [1, 999]; reject non-numeric.

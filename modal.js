@@ -11,6 +11,7 @@ const root = () => document.getElementById("modal-root");
 let previousFocus = null;
 let closeHandler = null;
 let escListener = null;
+let backdropListener = null;
 
 export function open({ title, body, onClose, allowBackdropClose = true }) {
   close(); // ensure clean slate
@@ -64,9 +65,10 @@ export function open({ title, body, onClose, allowBackdropClose = true }) {
   window.addEventListener("keydown", escListener);
 
   if (allowBackdropClose) {
-    r.addEventListener("click", (e) => {
+    backdropListener = (e) => {
       if (e.target === r) close();
-    });
+    };
+    r.addEventListener("click", backdropListener);
   }
 
   // Focus first focusable inside the panel, else the close button
@@ -89,6 +91,10 @@ export function close() {
   if (escListener) {
     window.removeEventListener("keydown", escListener);
     escListener = null;
+  }
+  if (backdropListener) {
+    r.removeEventListener("click", backdropListener);
+    backdropListener = null;
   }
   if (closeHandler) {
     const fn = closeHandler;

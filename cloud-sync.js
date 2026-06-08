@@ -645,8 +645,16 @@ function subscribeRealtime() {
   );
 
   channel.subscribe((status, err) => {
-    if (err) {
-      console.warn("realtime channel error:", err);
+    // supabase-js v2 dispatches status strings (SUBSCRIBED, CHANNEL_ERROR,
+    // CLOSED, TIMED_OUT) with `err` only populated for the explicit error
+    // path — silent CLOSED on an idle network drop is also a problem we
+    // want to surface.
+    const dropped = err
+      || status === "CHANNEL_ERROR"
+      || status === "TIMED_OUT"
+      || status === "CLOSED";
+    if (dropped) {
+      console.warn("realtime channel dropped:", status, err);
       if (!realtimeDropToasted) {
         realtimeDropToasted = true;
         notifyFailure("Live-sync dropped — changes from other devices may lag");
@@ -663,6 +671,9 @@ function subscribeRealtime() {
  * runs the initial reconcile + starts ongoing sync. */
 async function startForUser(user) {
   if (started) return;
+  // Lock synchronously so a second SIGNED_IN arriving during the await below
+  // can't start a parallel reconcile + duplicate realtime subscription.
+  started = true;
   userId = user.id;
 
   let cloud;
@@ -671,6 +682,8 @@ async function startForUser(user) {
   } catch (e) {
     console.error("cloud sync: initial fetch failed", e);
     notifyFailure("Couldn't load cloud data");
+    started = false; // roll back so a retry / reconnect can try again
+    userId = null;
     return;
   }
 
@@ -701,8 +714,6 @@ async function startForUser(user) {
   onlineHandler = () => flushQueue();
   window.addEventListener("online", onlineHandler);
   flushQueue();
-
-  started = true;
 }
 
 function stop() {

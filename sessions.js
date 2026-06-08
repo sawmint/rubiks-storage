@@ -443,8 +443,17 @@ export function applyRemoteSolve(id, row) {
   if (existingIdx >= 0) {
     target.solves[existingIdx] = solveObj;
   } else {
-    target.solves.push(solveObj);
-    target.solves.sort((a, b) => a.date - b.date);
+    // Binary insertion by date. Realtime bursts (bulk imports on another
+    // device) used to re-sort the whole array per row, O(n log n) each.
+    const arr = target.solves;
+    let lo = 0;
+    let hi = arr.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (arr[mid].date <= solveObj.date) lo = mid + 1;
+      else hi = mid;
+    }
+    arr.splice(lo, 0, solveObj);
   }
   save();
 }
@@ -548,15 +557,27 @@ export function bestSingle(solves) {
   return best;
 }
 
-/* Best ao_N across all windows in the array. Returns ms or null. */
+/* Best ao_N across all windows in the array. Returns ms or null.
+ * Iterates directly over consecutive N-windows so we only ever sort N items
+ * (not the growing 0..i slice the previous implementation re-allocated each
+ * step). O(M · N log N), and for N ∈ {5, 12} that's effectively O(M). */
 export function bestAverage(solves, n) {
   if (!solves || solves.length < n) return null;
   let best = null;
+  const windowTimes = new Array(n);
   for (let i = n; i <= solves.length; i++) {
-    const a = trimmedAverage(solves.slice(0, i), n);
-    if (a == null) continue;
-    if (!isFinite(a)) continue;
-    if (best == null || a < best) best = a;
+    let dnfCount = 0;
+    for (let j = 0; j < n; j++) {
+      const t = effectiveMs(solves[i - n + j]);
+      windowTimes[j] = t;
+      if (!isFinite(t)) dnfCount++;
+    }
+    if (dnfCount > 1) continue;
+    const sorted = windowTimes.slice().sort((a, b) => a - b);
+    let sum = 0;
+    for (let k = 1; k < sorted.length - 1; k++) sum += sorted[k];
+    const avg = sum / (n - 2);
+    if (best == null || avg < best) best = avg;
   }
   return best;
 }

@@ -105,11 +105,18 @@ export function currentUser() {
  * don't need a separate initial read. */
 export function onAuthChange(fn) {
   listeners.add(fn);
-  // Fire once with the current cached user; await ensureClient lazily so we
-  // don't force SDK load on subscribers that just want "let me know when…".
-  Promise.resolve().then(() => {
+  // Fire once with the current cached user. When cloud is configured, defer
+  // the synthetic INITIAL fire until ensureClient has loaded the restored
+  // session — otherwise the account chip paints "Sign in" for a beat before
+  // flipping to the user's email on the real onAuthStateChange callback.
+  const fireInitial = () => {
     try { fn(user, "INITIAL"); } catch (e) { console.error("auth listener init error:", e); }
-  });
+  };
+  if (CLOUD_ENABLED) {
+    ensureClient().then(fireInitial, fireInitial);
+  } else {
+    Promise.resolve().then(fireInitial);
+  }
   return () => listeners.delete(fn);
 }
 

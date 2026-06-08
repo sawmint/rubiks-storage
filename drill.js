@@ -235,7 +235,7 @@ function resetTimerState() {
   session.timer.elapsedMs = 0;
   session.ui.timer.textContent = "0.00";
   session.ui.timer.classList.remove("armed", "running", "stopped");
-  session.ui.hint.textContent = "Hold space to arm, release to start, press any key to stop.";
+  session.ui.hint.textContent = "Hold space to arm, release to start, press any key to stop. Esc to skip.";
 }
 
 function armTimer() {
@@ -349,6 +349,23 @@ function attachKeyHandlers() {
     const t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
 
+    // Esc: if the user is mid-rep (armed or running), cancel + skip to the
+    // next case without recording. If they're idle/stopped, let the modal's
+    // own Esc handler close the whole modal as before. Registered in the
+    // capture phase so we get the event before modal.js's esc listener does.
+    if (e.code === "Escape") {
+      const st = session.timer.state;
+      if (st === "armed" || st === "running") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        cancelArmedOrRunning();
+        if (session.items.length > 1) next();
+        return;
+      }
+      // Otherwise: don't intercept — modal.js will close the modal.
+      return;
+    }
+
     if (e.code === "Space") {
       e.preventDefault();
       if (session.timer.state === "idle" || session.timer.state === "stopped") {
@@ -377,7 +394,8 @@ function attachKeyHandlers() {
   const onBlur = () => cancelArmedOrRunning();
 
   session.keyHandlers = { onKeyDown, onKeyUp, onBlur };
-  window.addEventListener("keydown", onKeyDown);
+  // capture: true so onKeyDown fires before modal.js's bubble-phase esc handler
+  window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp);
   window.addEventListener("blur", onBlur);
 }
@@ -386,7 +404,7 @@ function detachKeyHandlers() {
   cancelRaf();
   if (!session || !session.keyHandlers) return;
   const { onKeyDown, onKeyUp, onBlur } = session.keyHandlers;
-  window.removeEventListener("keydown", onKeyDown);
+  window.removeEventListener("keydown", onKeyDown, true);
   window.removeEventListener("keyup", onKeyUp);
   window.removeEventListener("blur", onBlur);
 }

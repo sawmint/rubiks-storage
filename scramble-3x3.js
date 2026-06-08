@@ -36,10 +36,10 @@ function generate(length = DEFAULT_LENGTH) {
     do {
       face = FACES[Math.floor(Math.random() * FACES.length)];
       attempts++;
+      if (attempts > 100) break; // safety: shouldn't happen, but never spin
     } while (
       (face === prevFace) ||
-      (AXIS[face] === AXIS[prevFace] && face === prevAxisFace) ||
-      attempts > 100 // safety
+      (AXIS[face] === AXIS[prevFace] && face === prevAxisFace)
     );
     const mod = MODIFIERS[Math.floor(Math.random() * MODIFIERS.length)];
     moves.push(face + mod);

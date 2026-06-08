@@ -671,7 +671,7 @@ function renderHome() {
     <div class="stat-tile">
       <p class="stat-label">Drill reps</p>
       <p class="stat-value">${week.drillReps}</p>
-      <p class="stat-delta ${week.drillRepsDelta < 0 ? "negative" : week.drillRepsDelta === 0 ? "neutral" : ""}">${formatDelta(week.drillRepsDelta, "vs last week")}</p>
+      <p class="stat-delta neutral">${week.drillReps === 0 ? "no reps yet" : "this week"}</p>
     </div>`;
   grid.appendChild(col3);
 
@@ -781,7 +781,6 @@ function computeWeekStats() {
   const allStats = stats.getAll();
   const weekSec = nowMs / 1000 - 7 * 86400;
   let drillRepsThisWeek = 0;
-  let drillRepsLastWeek = 0;
   for (const slot of Object.values(allStats)) {
     if (!slot?.drill) continue;
     // We don't store per-rep timestamps, only n + lastAt. Approximate: if
@@ -795,7 +794,6 @@ function computeWeekStats() {
     solvesDelta: thisWeek.length - lastWeek.length,
     ao12: ao12 != null && isFinite(ao12) ? ao12 : null,
     drillReps: drillRepsThisWeek,
-    drillRepsDelta: drillRepsThisWeek - drillRepsLastWeek,
   };
 }
 
@@ -1206,7 +1204,7 @@ function renderPractice() {
         renderPractice();
       });
     } else {
-      btn.addEventListener("click", () => showToast("Fingertricks", "info"));
+      btn.addEventListener("click", () => showToast("Fingertricks: coming soon"));
     }
     submodeRow.appendChild(btn);
   }
@@ -1546,7 +1544,7 @@ function renderStats() {
     <button class="submode planned">Achievements</button>
     <button class="submode planned">Sharing</button>`;
   for (const sm of submodeRow.querySelectorAll(".submode.planned")) {
-    sm.addEventListener("click", () => showToast(sm.textContent.trim(), "info"));
+    sm.addEventListener("click", () => showToast(`${sm.textContent.trim()}: coming soon`));
   }
 
   const body = document.createElement("div");
@@ -1986,7 +1984,7 @@ export function showToast(label, kind = "info") {
   if (existing) existing.remove();
   const t = document.createElement("div");
   t.className = "soon-toast" + (kind === "error" ? " error" : "");
-  t.textContent = kind === "info" ? `${label}: coming soon` : label;
+  t.textContent = label;
   document.body.appendChild(t);
   requestAnimationFrame(() => t.classList.add("show"));
   setTimeout(() => {
