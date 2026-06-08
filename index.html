@@ -1501,7 +1501,7 @@
       flex: 1;
       min-height: calc(100vh - 95px);
       display: grid;
-      grid-template-columns: 1fr 360px;
+      grid-template-columns: 1fr 400px;
       /* Right column: stats / solves / topbar. Solves row = 1fr so it
          fills available height, then the session+gear topbar clings to
          the BOTTOM of the times box. The timer container on the left
@@ -1602,19 +1602,32 @@
     .timer-inline-host .timer-stat-val { font-size: 22px; }
     .timer-inline-host .timer-solves   { max-height: none; overflow-y: auto; }
 
-    /* Tighten the solve rows so all 5 control pills (OK / +2 / DNF / info /
-       ×) fit inside the 360px side panel without overflowing or clipping. */
+    /* Solve rows + header share a FIXED grid so labels line up perfectly
+       with values. The earlier `auto` for the menu column meant the header
+       (empty 5th cell, sized to 0) and the rows (5 pills, sized to ~150px)
+       had completely different 1fr widths, which dragged ao5/ao12 label
+       positions ~150px off from the values below them. Fix: pin the menu
+       column at 150px on both header and rows so the four other columns
+       line up identically. */
     .timer-inline-host .timer-solves-header,
     .timer-inline-host .timer-solve-row {
-      grid-template-columns: 28px minmax(0, 1fr) 50px 50px auto;
-      gap: 6px;
+      grid-template-columns: 24px minmax(0, 1fr) 42px 42px 150px;
+      gap: 4px;
       padding: 6px 10px;
       font-size: 12px;
     }
+    .timer-inline-host .timer-solves-header { text-align: center; }
+    .timer-inline-host .timer-solve-row > div:nth-child(3),
+    .timer-inline-host .timer-solve-row > div:nth-child(4),
+    .timer-inline-host .timer-solves-header > div:nth-child(3),
+    .timer-inline-host .timer-solves-header > div:nth-child(4) {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
     /* Time cell stacks the time number above the inspection-penalty chip
        (insp DNF / +2 insp) so the chip never widens the column and shoves
-       the menu pills off-screen. `min-width: 0` lets the flex column
-       shrink past its content's natural width when the row gets tight. */
+       the menu pills off-screen. min-width: 0 lets the flex column shrink
+       past its content's natural width when the row gets tight. */
     .timer-inline-host .timer-solve-time {
       font-size: 13px;
       flex-direction: column;
@@ -1622,12 +1635,18 @@
       gap: 1px;
       min-width: 0;
     }
+    /* Insp chip: inline-flex so the "insp DNF" / "+2 insp" text is
+       vertically AND horizontally centered inside the pill regardless of
+       font metrics. Padding tightened to match the smaller font. */
     .timer-inline-host .timer-insp-chip {
       font-size: 9px;
-      padding: 0 5px;
-      line-height: 1.4;
+      padding: 1px 5px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    .timer-inline-host .timer-solve-menu { gap: 3px; }
+    .timer-inline-host .timer-solve-menu { gap: 3px; justify-content: flex-end; }
     .timer-inline-host .timer-pill {
       padding: 2px 6px;
       font-size: 10px;
