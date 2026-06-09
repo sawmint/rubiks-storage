@@ -10,11 +10,10 @@
  *   - Advance to next on click or Enter
  * ========================================================= */
 
-import * as modal from "./modal.js";
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
 import { randomAUF } from "./cube-notation.js";
-import { vcImage } from "./app.js";
+import { vcImage, openSessionPage } from "./app.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const RECOG_CATEGORIES = new Set(["pll", "oll"]);
@@ -55,7 +54,7 @@ export function start(data, keys) {
     );
 
   if (resolved.length === 0) {
-    modal.open({
+    openSessionPage({
       title: "Recognition trainer",
       body: messageBody("Select at least one PLL or OLL case to practice."),
     });
@@ -71,7 +70,7 @@ function showSettings(data, resolved) {
     saveSettings(finalSettings);
     startSession(data, resolved, finalSettings);
   });
-  modal.open({
+  openSessionPage({
     title: "Recognition trainer settings",
     body,
   });
@@ -205,10 +204,10 @@ function startSession(data, resolved, settings) {
   };
 
   const body = buildBody();
-  modal.open({
-    title: `Recognition (${resolved.length} cases)`,
+  openSessionPage({
+    title: `Recognition — ${resolved.length} case${resolved.length === 1 ? "" : "s"}`,
     body,
-    onClose: () => endSession(),
+    onLeave: () => endSession(),
   });
 
   attachKeyHandler();
@@ -544,7 +543,7 @@ function finalize(correct) {
   f.appendChild(prefixSpan);
   f.appendChild(document.createTextNode(item.name));
   if (session.settings.showAlgInFeedback && item.algorithm) {
-    f.appendChild(document.createTextNode(" · "));
+    f.appendChild(document.createTextNode(" — "));
     const algSpan = document.createElement("span");
     algSpan.innerHTML = colorizeAlg(item.algorithm);
     f.appendChild(algSpan);

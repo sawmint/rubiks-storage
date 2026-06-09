@@ -329,6 +329,21 @@
       gap: var(--s-5);
       flex-wrap: wrap;
     }
+    /* Session pages (Drill / Batch / Recognition) — header is a Back
+       button + module title flush-left, no bottom border so the body
+       below feels uninterrupted. The body host is a flex column the
+       module mounts into directly. */
+    .session-page-head {
+      justify-content: flex-start;
+      align-items: center;
+      border-bottom: 0;
+      gap: var(--s-4);
+    }
+    .session-back { font-size: 13px; }
+    .session-page-body {
+      padding: 0 var(--s-7) var(--s-7);
+      min-height: calc(100vh - 200px);
+    }
     .page-eyebrow {
       font-family: var(--font-mono);
       font-size: 11px;
@@ -430,7 +445,6 @@
       flex-wrap: wrap;
       align-items: center;
       padding: var(--s-3) var(--s-7);
-      border-bottom: 1px solid var(--border);
       background: var(--surface-1);
     }
     .submode {
@@ -521,6 +535,12 @@
       gap: var(--s-6);
       padding: var(--s-6) var(--s-7);
       align-items: start;
+    }
+    /* After the milestones column was removed, the home grid is 2-col:
+       Recommended next on the left fills the available width, This week's
+       compact stat tiles sit on the right. */
+    .home-grid.home-grid-2col {
+      grid-template-columns: 1fr 260px;
     }
     .home-col-title {
       font-family: var(--font-display);
@@ -797,13 +817,14 @@
       border: 1px solid var(--border);
       border-radius: var(--r-md);
       padding: var(--s-4);
-      cursor: pointer;
+      cursor: default;
       position: relative;
       display: flex;
       flex-direction: column;
       gap: 0;
     }
-    .alg-card:hover { background: var(--surface-2); border-color: var(--muted); }
+    /* Browse cards are reference-only. No hover lift, no selected state —
+       case selection happens on the Practice page. */
     .alg-card.selected { border-color: var(--accent); background: rgba(46,76,242,0.06); }
     /* Checkbox: square with soft 4px corners, sits in the top-right card
        corner. Empty state shows a subtle dashed accent ring on hover so
@@ -866,25 +887,28 @@
       grid-template-columns: repeat(3, 1fr);
       gap: var(--s-2);
       padding-top: var(--s-3);
-      border-top: 1px solid var(--border);
-      font-family: var(--font-sans);
-      font-size: 12px;
-      color: var(--muted);
       margin-top: auto;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
     .alg-stats > span {
       display: flex;
-      align-items: baseline;
-      gap: 4px;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
       min-width: 0;
     }
     .alg-stats strong {
       color: var(--text);
       font-family: var(--font-display);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 600;
       letter-spacing: -0.005em;
       font-variant-numeric: tabular-nums;
+      text-transform: none;
     }
     .alg-stats.empty { color: var(--faint); }
     .alg-stats.empty strong { color: var(--muted); font-weight: 500; }
@@ -916,7 +940,6 @@
       display: flex;
       flex-direction: column;
       background: var(--surface-1);
-      border-top: 1px solid var(--border);
       min-height: calc(100vh - 200px);
       padding: var(--s-5) var(--s-7) var(--s-6);
       gap: var(--s-4);
@@ -926,16 +949,20 @@
       align-items: center;
       justify-content: space-between;
       gap: var(--s-4);
-      padding-bottom: var(--s-4);
-      border-bottom: 1px solid var(--border);
+      padding-bottom: var(--s-3);
       flex-wrap: wrap;
     }
+    /* Drill label + selection count share a baseline so "0 cases selected"
+       reads as a small caption tucked under the label, not floating in a
+       different row. The wrapper aligns to the label baseline; the count
+       gets a smaller font and a leading dash. */
     .stage-meta {
       display: flex;
       align-items: baseline;
       gap: var(--s-3);
       flex-wrap: wrap;
     }
+    .stage-meta .stage-count { align-self: baseline; padding-top: 4px; }
     .stage-label {
       font-family: var(--font-display);
       font-size: 22px;
@@ -995,10 +1022,9 @@
       flex-wrap: wrap;
     }
     .picker-cat-row { padding-bottom: var(--s-2); }
-    .picker-facet-row { padding-bottom: var(--s-2); border-bottom: 1px solid var(--border); }
+    .picker-facet-row { padding-bottom: var(--s-2); }
     .picker-actions-row {
       padding: var(--s-2) 0;
-      border-bottom: 1px solid var(--border);
     }
     .picker-counter {
       margin-left: auto;
@@ -1015,7 +1041,11 @@
        and the meta typography is comfortably readable across the room. */
     .picker-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      /* auto-fit so trailing empty tracks collapse instead of stretching
+         the last visible card across the entire right gutter. Cards keep
+         their natural ~380px width. */
+      grid-template-columns: repeat(auto-fit, minmax(360px, max-content));
+      justify-content: start;
       gap: var(--s-3);
       align-content: start;
       padding-top: var(--s-3);
@@ -1027,7 +1057,9 @@
 
     .picker-card {
       display: grid;
-      grid-template-columns: 100px 1fr;
+      /* Right column is min-content + ellipsis so the card sizes to fit its
+         meta text instead of leaving a fat empty right strip. */
+      grid-template-columns: 100px minmax(200px, max-content);
       gap: var(--s-4);
       align-items: center;
       padding: 8px var(--s-4);
@@ -1039,6 +1071,8 @@
       font-family: inherit;
       color: var(--text);
       transition: border-color 100ms ease, background 100ms ease;
+      width: 100%;
+      max-width: 420px;
     }
     .picker-card:hover {
       border-color: var(--border-strong);
@@ -1418,6 +1452,20 @@
       grid-template-columns: repeat(4, 1fr);
       gap: var(--s-5);
     }
+    /* Slim variant: 2 cells. Lets each cell get half the width and the
+       footer reads like a real page footer instead of squashed-left. */
+    .settings-about.settings-about-slim {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    /* Push the settings page-body to fill its column, so trimming the
+       about row + section list doesn't leave a giant dead strip at the
+       bottom of the page. */
+    .page-body:has(.settings-shell) {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 220px);
+    }
+    .page-body:has(.settings-shell) .settings-about { margin-top: auto; }
     .settings-about-cell { display: flex; flex-direction: column; gap: 4px; }
     .settings-about-label {
       font-family: var(--font-mono);
@@ -1586,20 +1634,57 @@
     }
     .timer-inline-host .timer-hint { font-size: 13px; }
 
-    /* Side panel: stats grid is 2x4 compact tiles; solves fills below. */
+    /* Side panel: stats laid out as two labeled groups (current / best)
+       so the 8 numbers don't read as undifferentiated noise. Each group
+       has a small "current" / "best" header, then a 4-column row of
+       label-over-value cells with no borders or backgrounds — clean. */
     .timer-inline-host .timer-stats-footer {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+      display: flex;
+      flex-direction: column;
       gap: var(--s-2);
       padding: var(--s-3);
     }
-    .timer-inline-host .timer-stats-footer .timer-stat {
-      padding: var(--s-2) var(--s-3);
-      background: var(--surface-1);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
+    .timer-inline-host .timer-stats-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    .timer-inline-host .timer-stat-val { font-size: 22px; }
+    .timer-inline-host .timer-stats-group-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .timer-inline-host .timer-stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--s-2);
+    }
+    .timer-inline-host .timer-stats-footer .timer-stat {
+      padding: 4px 6px;
+      background: transparent;
+      border: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+    .timer-inline-host .timer-stat-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-faint);
+      letter-spacing: 0.06em;
+      text-transform: lowercase;
+    }
+    .timer-inline-host .timer-stat-val {
+      font-size: 18px;
+      font-family: var(--font-display);
+      font-weight: 600;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.05;
+    }
     .timer-inline-host .timer-solves   { max-height: none; overflow-y: auto; }
 
     /* Solve rows + header share a FIXED grid so labels line up perfectly
@@ -1914,6 +1999,27 @@
       border: 1px solid var(--border);
       border-radius: var(--r-md);
     }
+    /* Tiny corner badge that names the cube orientation in WCA terms.
+       Replaces the old stats-page ribbon — now lives directly on the
+       cube preview where it actually clarifies what the user is seeing. */
+    .with-wca-badge {
+      position: relative;
+    }
+    .with-wca-badge::after {
+      content: "WCA: white top";
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      padding: 2px 6px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #f0eada;
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      border-radius: 3px;
+      pointer-events: none;
+      z-index: 2;
+    }
     .timer-tapzone {
       background: var(--surface-2);
       border: 1px solid var(--border);
@@ -2204,6 +2310,10 @@
     <section class="page"        data-page="timer"  id="page-timer"></section>
     <section class="page"        data-page="stats"  id="page-stats"></section>
     <section class="page"        data-page="settings" id="page-settings"></section>
+    <!-- Drill / Batch / Recognition mount inline here instead of opening a
+         modal overlay. The page header carries a Back button that routes
+         to Practice (or wherever the session was launched from). -->
+    <section class="page"        data-page="session" id="page-session"></section>
   </main>
 </div>
 

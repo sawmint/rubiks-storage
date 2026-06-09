@@ -28,13 +28,17 @@ const VISUALCUBE_BASE = "https://visualcube.api.cubing.net/visualcube.php";
 
 /* ---------- VisualCube ---------- */
 
-export function vcImage({ setup, caseAlg, stage, view, size = 140, sch }) {
-  const params = new URLSearchParams({ fmt: "svg", size: String(size), bg: "t" });
+export function vcImage({ setup, caseAlg, stage, view, size = 140, sch, bg }) {
+  const params = new URLSearchParams({ fmt: "svg", size: String(size), bg: bg || "t" });
   if (setup)   params.set("alg",  setup);
   if (caseAlg) params.set("case", caseAlg);
   if (stage)   params.set("stage", stage);
   if (view)    params.set("view", view);
   if (sch)     params.set("sch",  sch);
+  // VisualCube's default cubie outline ("co") is a light grey that reads
+  // as a transparent gap between stickers on dark surfaces. Force opaque
+  // black so the cube reads cleanly against the warm-dark UI.
+  params.set("co", "000000");
   return `${VISUALCUBE_BASE}?${params.toString()}`;
 }
 
@@ -444,6 +448,13 @@ function setActivePage(page) {
   if (prev === "timer" && page !== "timer") {
     import("./timer.js").then((mod) => mod.unmountTimer());
   }
+  // Tear down whatever module mounted the session page when leaving it,
+  // so drill/batch/recognition can release their key handlers + sessions.
+  if (prev === "session" && page !== "session" && sessionPageCleanup) {
+    const fn = sessionPageCleanup;
+    sessionPageCleanup = null;
+    try { fn(); } catch (e) { console.error("session page leave hook failed:", e); }
+  }
   const renderer = ({
     home: renderHome,
     browse: renderBrowse,
@@ -454,6 +465,47 @@ function setActivePage(page) {
   })[page];
   if (renderer) renderer();
   window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+/* Mount a module's body inline into the dedicated #page-session host, with
+ * a "← Back" header. Replaces the old modal flow for drill / batch /
+ * recognition — those are long-lived sessions that read better as their
+ * own page than a popup the user can accidentally backdrop-close. The
+ * onLeave hook fires when the user navigates anywhere else (Back button,
+ * top-bar nav, Esc). Calling openSessionPage again replaces the prior
+ * mount's content + fires the previous onLeave first. */
+let sessionPageCleanup = null;
+let sessionPageReturn = "practice";  // page to return to from Back
+export function openSessionPage({ title, body, onLeave, returnTo }) {
+  // Fire prior cleanup before clobbering the host (prevents two drill
+  // sessions stacking key handlers).
+  if (sessionPageCleanup) {
+    const fn = sessionPageCleanup;
+    sessionPageCleanup = null;
+    try { fn(); } catch (e) { console.error("prior session leave hook failed:", e); }
+  }
+  sessionPageCleanup = onLeave || null;
+  sessionPageReturn = returnTo || "practice";
+
+  const host = document.getElementById("page-session");
+  if (!host) return;
+  host.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "page-head session-page-head";
+  const titleSpan = title ? `<h1 class="page-title">${escapeHtml(title)}</h1>` : "";
+  head.innerHTML = `
+    <button class="btn btn-ghost session-back" id="session-back" type="button">← Back</button>
+    <div>${titleSpan}</div>`;
+  head.querySelector("#session-back").addEventListener("click", () => setActivePage(sessionPageReturn));
+  host.appendChild(head);
+
+  const wrap = document.createElement("div");
+  wrap.className = "session-page-body";
+  if (body) wrap.appendChild(body);
+  host.appendChild(wrap);
+
+  setActivePage("session");
 }
 
 /* Account chip in the workspace bar. When cloud sync isn't configured
@@ -485,8 +537,7 @@ function bindAccount() {
 
   auth.onAuthChange((user) => {
     if (user) {
-      const short = (user.email || "").split("@")[0] || "Account";
-      label.textContent = short;
+      label.textContent = displayNameFor(user);
       dot.style.display = "inline-block";
       btn.title = user.email || "Account";
     } else {
@@ -555,7 +606,7 @@ function renderHome() {
       </div>
       <div class="focus-meta">
         <span class="focus-eyebrow">${focusEyebrow(focus)}</span>
-        <h1 class="focus-name">${focus.category.toUpperCase()} · ${escapeHtml(focus.item.name)}</h1>
+        <h1 class="focus-name">${focus.category.toUpperCase()} ${escapeHtml(focus.item.name)}</h1>
         <div class="focus-alg">${colorizeAlg(focus.item.algorithm)}</div>
       </div>
       <div class="focus-actions">
@@ -594,24 +645,10 @@ function renderHome() {
 
   /* Workshop grid */
   const grid = document.createElement("div");
-  grid.className = "home-grid";
+  grid.className = "home-grid home-grid-2col";
 
-  // Milestones column
-  const col1 = document.createElement("div");
-  col1.innerHTML = `
-    <h2 class="home-col-title">
-      Your path
-      <span class="home-col-title-meta">${milestones.filter(m=>m.done).length} of ${milestones.length}</span>
-    </h2>
-    <ul class="milestone-list">
-      ${milestones.map((m, i) => `
-        <li class="milestone ${m.done ? "done" : ""} ${m.current ? "current" : ""}">
-          <span class="milestone-num">${String(i + 1).padStart(2, "0")}</span>
-          <span class="milestone-name">${escapeHtml(m.name)}</span>
-          <span class="milestone-meta">${escapeHtml(m.meta)}</span>
-        </li>`).join("")}
-    </ul>`;
-  grid.appendChild(col1);
+  // (The "Your path" milestones column was removed — the focus strip + SRS
+  // queue already convey the same progression in a less goal-y way.)
 
   // Recommended next
   const col2 = document.createElement("div");
@@ -622,7 +659,7 @@ function renderHome() {
             <img src="${vcImageFor(c, 80)}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
           </div>
           <div class="upnext-meta">
-            <span class="upnext-cat">${c.category.toUpperCase()}${c.item.group ? " · " + escapeHtml(c.item.group) : ""}${c.item.shape ? " · " + escapeHtml(c.item.shape) : ""}</span>
+            <span class="upnext-cat">${c.category.toUpperCase()}${c.item.group ? " " + escapeHtml(c.item.group) : ""}${c.item.shape ? " " + escapeHtml(c.item.shape) : ""}</span>
             <span class="upnext-name">${escapeHtml(c.item.name)}</span>
             <span class="upnext-alg">${colorizeAlg(c.item.algorithm)}</span>
             <span class="upnext-best">best <strong>${escapeHtml(stats.fmtTime(c.best))}</strong></span>
@@ -826,7 +863,7 @@ function formatDateLabel(ms) {
 }
 
 function formatDelta(n, suffix) {
-  if (n === 0) return `± 0 ${suffix}`;
+  if (n === 0) return `0 ${suffix}`;
   const arrow = n > 0 ? "↑" : "↓";
   return `${arrow} ${Math.abs(n)} ${suffix}`;
 }
@@ -834,11 +871,11 @@ function formatDelta(n, suffix) {
 function focusEyebrow(c) {
   if (c.isDue) {
     const overdue = Math.max(0, Math.floor((-(c.dueDelta || 0)) / 86400));
-    if (overdue === 0) return "Today's drill · Due now";
-    return `Today's drill · Due ${overdue}d ago`;
+    if (overdue === 0) return "Today's drill — Due now";
+    return `Today's drill — Due ${overdue}d ago`;
   }
-  if (c.isUnpracticed) return "Today's drill · Never drilled";
-  return "Today's drill · Weakest recent";
+  if (c.isUnpracticed) return "Today's drill — Never drilled";
+  return "Today's drill — Weakest recent";
 }
 
 function vcImageFor(c, size = 140) {
@@ -1048,7 +1085,7 @@ function catSubtitle(cat) {
   if (cat.key === "oll") return "All 60 last-layer orientations (57 cases + 3 generic 2-look entries). The 7 OCLL cases also live in 2-look OLL.";
   if (cat.key === "f2l_adv") return "41 first-two-layers cases (25 advanced + 16 beginner). Reference only, not drillable — F2L algs are short enough to learn through actual solving.";
   if (cat.key === "f2l_beg") return "16 beginner first-two-layers cases. Reference only, not drillable.";
-  if (cat.key === "notation") return "Move notation reference. Click a card to see the cube state after applying that move from solved.";
+  if (cat.key === "notation") return "Move notation reference. Each card shows the cube state after applying that move from solved.";
   return "";
 }
 
@@ -1065,9 +1102,22 @@ function renderBrowseCard(it, cat) {
   const img = document.createElement("div");
   img.className = "alg-img";
   if (cat.key === "notation") {
-    // For notation, show the move letter big and bold instead of a tiny SVG
-    img.classList.add("notation-letter");
-    img.innerHTML = `<div>${colorizeAlg(it.algorithm)}</div>`;
+    // Real cube preview of the move applied to a solved cube, viewed in
+    // WCA orientation so the user can visually see what changes.
+    // Rotations (x/y/z) use the trans view so the cube's rotated body is
+    // visible; everything else uses the default plan view.
+    const isRotation = /^[xyz]/i.test(it.setup || "");
+    const imgEl = document.createElement("img");
+    imgEl.src = vcImage({
+      setup: it.setup,
+      view: isRotation ? "trans" : "plan",
+      size: 140,
+      sch: "wrgyob",
+    });
+    imgEl.alt = `${it.name} state`;
+    imgEl.loading = "lazy";
+    imgEl.decoding = "async";
+    img.appendChild(imgEl);
   } else if (cat.imageUrl && it.algorithm) {
     const imgEl = document.createElement("img");
     imgEl.src = cat.imageUrl(it);
@@ -1172,17 +1222,13 @@ function renderPractice() {
   const ollCount = selectedKeys.filter((k) => k.startsWith("oll/")).length;
   const totalSel = selectedKeys.length;
 
-  /* Header */
+  /* Header (Clear selection moved into the stage CTAs next to Start) */
   const head = document.createElement("div");
   head.className = "page-head";
   head.innerHTML = `
     <div>
       <h1 class="page-title">Practice</h1>
-    </div>
-    <div class="row" style="gap:var(--s-2);">
-      <button class="btn btn-ghost" id="practice-clear" ${totalSel === 0 ? "disabled" : ""}>Clear selection</button>
     </div>`;
-  head.querySelector("#practice-clear").addEventListener("click", () => selection.clear());
 
   /* Sub-mode row */
   const submodeRow = document.createElement("div");
@@ -1232,21 +1278,31 @@ function practiceStageContent(submode, ctx) {
   const ctas = document.createElement("div");
   ctas.className = "stage-ctas";
 
+  // Builder for the inline Clear-selection chip — sits in the stage-top
+  // CTAs next to Start, not buried in the picker action row. Disabled when
+  // selection is empty.
+  const buildClear = () => {
+    const c = btn("btn", "Clear selection");
+    c.disabled = selection.size() === 0;
+    c.addEventListener("click", () => selection.clear());
+    return c;
+  };
+
   if (submode === "drill") {
     meta.innerHTML = `
       <span class="stage-label">Drill</span>
-      <span class="stage-count"><b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` · ${ctx.pllCount} PLL · ${ctx.ollCount} OLL` : ""}</span>`;
+      <span class="stage-count"><b>${ctx.totalSel}</b> case${ctx.totalSel === 1 ? "" : "s"} selected${ctx.totalSel ? ` (${ctx.pllCount} PLL, ${ctx.ollCount} OLL)` : ""}</span>`;
     const start = btn("btn btn-primary btn-lg", "Start drill →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openDrill());
-    ctas.append(start);
+    ctas.append(buildClear(), start);
   } else if (submode === "weak") {
     const weak = rankWeakCases(["pll", "oll"], 20);
     const dueCount = weak.filter((c) => c.isDue).length;
     const newCount = weak.filter((c) => c.isUnpracticed && !c.isDue).length;
     meta.innerHTML = `
       <span class="stage-label">Today's drill</span>
-      <span class="stage-count"><b>${dueCount}</b> due · <b>${newCount}</b> never drilled</span>`;
+      <span class="stage-count"><b>${dueCount}</b> due, <b>${newCount}</b> never drilled</span>`;
     const start = btn("btn btn-primary btn-lg", "Open today's drill →");
     start.addEventListener("click", () => openWeakCases());
     ctas.append(start);
@@ -1257,15 +1313,15 @@ function practiceStageContent(submode, ctx) {
     const start = btn("btn btn-primary btn-lg", "Start recognition →");
     start.disabled = ctx.totalSel === 0;
     start.addEventListener("click", () => openRecognition());
-    ctas.append(start);
+    ctas.append(buildClear(), start);
   } else if (submode === "batch") {
     meta.innerHTML = `
       <span class="stage-label">Batch (5)</span>
-      <span class="stage-count"><b>${ctx.pllCount}</b> PLL selected${ctx.pllCount && ctx.pllCount < 5 ? " · pick 5+ for variety" : ""}</span>`;
+      <span class="stage-count"><b>${ctx.pllCount}</b> PLL selected${ctx.pllCount && ctx.pllCount < 5 ? " — pick 5+ for variety" : ""}</span>`;
     const start = btn("btn btn-primary btn-lg", "Start batch →");
     start.disabled = ctx.pllCount === 0;
     start.addEventListener("click", () => openBatch());
-    ctas.append(start);
+    ctas.append(buildClear(), start);
   }
   topBar.append(meta, ctas);
   out.push(topBar);
@@ -1336,15 +1392,13 @@ function renderPracticePicker(submode) {
     else selection.selectMany(selCat, visible);
   });
 
-  const clearBtn = btn("btn btn-small", "Clear selection");
-  clearBtn.disabled = selection.size() === 0;
-  clearBtn.addEventListener("click", () => selection.clear());
-
+  // Clear selection lives in stage-top next to Start now; this row stays
+  // focused on per-view bulk select + the running count.
   const counter = document.createElement("span");
   counter.className = "picker-counter";
-  counter.textContent = `${selectedHere}/${allHere} in view · ${selection.size()} total`;
+  counter.textContent = `${selectedHere}/${allHere} in view, ${selection.size()} total`;
 
-  actionsRow.append(selAll, clearBtn, counter);
+  actionsRow.append(selAll, counter);
 
   // -- Picker grid --
   const grid = document.createElement("div");
@@ -1586,34 +1640,13 @@ function renderStats() {
       </div>
     </div>
 
-    <div class="recent-head" style="margin-top: var(--s-6); margin-bottom: 0;">
-      <h2>Algorithm mastery</h2>
-      <a id="stats-go-browse">Browse all cases →</a>
-    </div>
-    <div class="mastery-grid" id="stats-mastery"></div>
-
     ${total === 0 ? `
       <div class="stats-empty" style="margin-top: var(--s-6);">
         <strong>Stats fill in as you practice</strong>
-        Open the <a id="stats-go-timer">Timer</a> to start logging solves, and click cases in
-        <a id="stats-go-browse2">Browse</a> to populate the mastery grid above.
+        Open the <a id="stats-go-timer">Timer</a> to start logging solves, or head to
+        <a id="stats-go-browse2">Browse</a> to drill a few cases.
         Spaced-repetition kicks in after your first drill.
-      </div>` : ""}
-
-    <div class="page-ribbon">
-      <div class="page-ribbon-left">
-        <span class="page-ribbon-stripes">
-          <span style="background: var(--cube-white)"></span>
-          <span style="background: var(--cube-yellow)"></span>
-          <span style="background: var(--cube-red)"></span>
-          <span style="background: var(--cube-orange)"></span>
-          <span style="background: var(--cube-blue)"></span>
-          <span style="background: var(--cube-green)"></span>
-        </span>
-        <span class="page-ribbon-text">${allSolves.length} solve${allSolves.length === 1 ? "" : "s"} across ${allSessions.length} session${allSessions.length === 1 ? "" : "s"} since you started. Best ever <b>${sessions.fmtMs(sessions.bestSingle(allSolves)) || "-"}</b>.</span>
-      </div>
-      <div class="page-ribbon-text" style="text-align: right;">WCA orientation: white top, green front</div>
-    </div>`;
+      </div>` : ""}`;
 
   // Draw the chart (best-of-rolling-ao5 over time)
   const chartHost = body.querySelector("#stats-chart");
@@ -1623,11 +1656,9 @@ function renderStats() {
   const heatmapHost = body.querySelector("#stats-heatmap");
   drawHeatmap(heatmapHost, allSolves);
 
-  // Mastery grid - top 6 drilled cases by best time (ascending)
-  const masteryHost = body.querySelector("#stats-mastery");
-  drawMastery(masteryHost);
-
-  body.querySelector("#stats-go-browse").addEventListener("click", () => setActivePage("browse"));
+  // Mastery grid + WCA ribbon were removed from the stats page — the
+  // orientation hint now lives as a small badge on individual cube
+  // previews where it's actually useful (see .cube-orient-badge).
   const goTimer = body.querySelector("#stats-go-timer");
   if (goTimer) goTimer.addEventListener("click", () => setActivePage("timer"));
   const goBrowse2 = body.querySelector("#stats-go-browse2");
@@ -1706,7 +1737,7 @@ function drawHeatmap(host, solves) {
       else if (c >= 15) cls = "l3";
       else if (c >= 5) cls = "l2";
       else if (c >= 1) cls = "l1";
-      cells.push(`<div class="heatmap-cell ${cls}" title="${d.toDateString()} · ${c} solve${c === 1 ? "" : "s"}"></div>`);
+      cells.push(`<div class="heatmap-cell ${cls}" title="${d.toDateString()} — ${c} solve${c === 1 ? "" : "s"}"></div>`);
     }
   }
   host.innerHTML = cells.join("");
@@ -1732,7 +1763,7 @@ function drawMastery(host) {
     return;
   }
   host.innerHTML = top.map((c) => `
-    <div class="mastery-cell" title="${escapeHtml(c.item.name)} · ${c.n} reps">
+    <div class="mastery-cell" title="${escapeHtml(c.item.name)} — ${c.n} reps">
       <div class="mastery-face">
         <img src="${vcImage({ setup: c.item.setup, stage: c.cat, view: "plan", size: 80 })}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
       </div>
@@ -1773,7 +1804,7 @@ function renderSettings() {
       ${cloudConfigured ? `
         <div class="settings-row">
           <div>
-            <div class="settings-label">${user ? "Email" : "Sign in / create account"}</div>
+            <div class="settings-label">${user ? `Hi, ${escapeHtml(displayNameFor(user))}` : "Sign in / create account"}</div>
             <div class="settings-desc">${user ? escapeHtml(user.email || "(unknown)") : "Email magic-link or Google sign-in"}</div>
           </div>
           ${user ? `<button class="btn" id="set-signout">Sign out</button>` : `<button class="btn btn-primary" id="set-signin">Sign in</button>`}
@@ -1888,7 +1919,7 @@ function renderSettings() {
       <div class="settings-row">
         <div>
           <div class="settings-label">Storage summary</div>
-          <div class="settings-desc">${allSolves} timer solve${allSolves === 1 ? "" : "s"} · ${allDrills} drilled case${allDrills === 1 ? "" : "s"}</div>
+          <div class="settings-desc">${allSolves} timer solve${allSolves === 1 ? "" : "s"}, ${allDrills} drilled case${allDrills === 1 ? "" : "s"}</div>
         </div>
         <span class="chip">local</span>
       </div>
@@ -1947,28 +1978,22 @@ function renderSettings() {
 
   shell.append(accountCol, prefCol, dataCol);
 
-  /* About footer */
+  /* About footer — trimmed to the two cells that actually carry useful
+   * info (account status + GitHub link). The previous "App / Tip" cells
+   * were noise; without them the columns also get to breathe wider so the
+   * about row fills the page width instead of leaving a fat right margin. */
   const about = document.createElement("div");
-  about.className = "settings-about";
+  about.className = "settings-about settings-about-slim";
   about.innerHTML = `
     <div class="settings-about-cell">
-      <span class="settings-about-label">App</span>
-      <span class="settings-about-value">Rubik's Storage</span>
-    </div>
-    <div class="settings-about-cell">
       <span class="settings-about-label">Account</span>
-      <span class="settings-about-value">${user ? "Signed in · synced" : cloudConfigured ? "Local only" : "No cloud configured"}</span>
+      <span class="settings-about-value">${user ? "Signed in & synced" : cloudConfigured ? "Local only" : "No cloud configured"}</span>
     </div>
     <div class="settings-about-cell">
       <span class="settings-about-label">Links</span>
       <div class="settings-about-links">
         <a href="https://github.com/sawmint/rubiks-storage" target="_blank" rel="noopener">GitHub</a>
-        <a href="SETUP.md" target="_blank" rel="noopener">Setup guide</a>
       </div>
-    </div>
-    <div class="settings-about-cell">
-      <span class="settings-about-label">Tip</span>
-      <span class="settings-about-value" style="font-size: 12px; font-weight: 400; color: var(--text-soft);">Hold space on the Timer page to arm, release to start, press a key to stop.</span>
     </div>`;
 
   body.append(shell, about);
@@ -1978,6 +2003,31 @@ function renderSettings() {
 /* ============================================================ */
 /* Helpers                                                        */
 /* ============================================================ */
+
+/* Turn a Supabase user object into a friendly short display name.
+ * Tries (in order): user_metadata.full_name → user_metadata.name → first
+ * name parsed out of the email local-part → "Account" fallback. Names get
+ * title-cased so "arjun.singhal" reads as "Arjun" and "nitin_s" as "Nitin". */
+export function displayNameFor(user) {
+  if (!user) return "Account";
+  const meta = user.user_metadata || {};
+  const named = meta.full_name || meta.name || meta.given_name;
+  if (typeof named === "string" && named.trim()) {
+    return titleCase(named.trim().split(/\s+/)[0]);
+  }
+  const email = user.email || "";
+  const local = email.split("@")[0] || "";
+  if (!local) return "Account";
+  // Split on the common separators in email local-parts and take the first
+  // chunk — "arjun.singhal" → "Arjun", "nitin_s" → "Nitin".
+  const first = local.split(/[.\-_+]/)[0] || local;
+  return titleCase(first);
+}
+
+function titleCase(s) {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
 
 export function showToast(label, kind = "info") {
   const existing = document.querySelector(".soon-toast");

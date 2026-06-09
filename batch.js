@@ -16,9 +16,8 @@
  *   idle → armed (hold space) → running (release) → split×5 → done
  * ========================================================= */
 
-import * as modal from "./modal.js";
 import * as selection from "./selection.js";
-import { vcImage } from "./app.js";
+import { vcImage, openSessionPage } from "./app.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 const BATCH_SIZE = 5;
@@ -123,7 +122,7 @@ export async function start(data, keys) {
     .filter(({ category, item }) => DRILLABLE.has(category) && typeof item.setup === "string");
 
   if (resolved.length === 0) {
-    modal.open({
+    openSessionPage({
       title: "Batch mode",
       body: messageBody("Select at least one PLL case. (OLL batch coming later.)"),
     });
@@ -160,10 +159,10 @@ export async function start(data, keys) {
   };
 
   const body = buildBody();
-  modal.open({
+  openSessionPage({
     title: `Batch mode — ${BATCH_SIZE} chained algs`,
     body,
-    onClose: endSession,
+    onLeave: endSession,
   });
 
   attachKeyHandlers();
@@ -285,7 +284,7 @@ function renderCurrent() {
   if (currentIdx >= queue.length) return;
   const pick = queue[currentIdx];
   session.ui.status.textContent = `Alg ${currentIdx + 1} of ${BATCH_SIZE}`;
-  session.ui.caseInfo.textContent = `PLL ${pick.item.id} · ${pick.item.name}`;
+  session.ui.caseInfo.textContent = `PLL ${pick.item.id} — ${pick.item.name}`;
   if (pick.item.algorithm) {
     session.ui.alg.innerHTML = colorizeAlg(pick.item.algorithm);
   } else {
@@ -313,7 +312,7 @@ function renderSplits(total) {
 
   const head = document.createElement("div");
   head.className = "batch-splits-head";
-  head.textContent = `Total: ${(total / 1000).toFixed(2)}s · average ${(total / BATCH_SIZE / 1000).toFixed(2)}s`;
+  head.textContent = `Total: ${(total / 1000).toFixed(2)}s, average ${(total / BATCH_SIZE / 1000).toFixed(2)}s`;
   wrap.appendChild(head);
 
   const list = document.createElement("div");

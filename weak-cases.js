@@ -273,7 +273,7 @@ function renderList() {
   if (newCount > 0) parts.push(`${newCount} never drilled`);
   parts.push(`${total} total in selected categories`);
   session.ui.blurb.textContent =
-    parts.join(" · ") +
+    parts.join(", ") +
     ". Ranking: SR-overdue first, then never-drilled, then slowest by best time.";
 
   const host = session.ui.list;
@@ -324,9 +324,9 @@ function renderList() {
       meta.appendChild(tag);
     } else {
       // Practiced but not yet due: show best + SRS state if we have it
-      let txt = `best ${stats.fmtTime(e.best)} · ${humanAgo(e.lastAt)} · n=${e.n}`;
+      let txt = `best ${stats.fmtTime(e.best)}, ${humanAgo(e.lastAt)}, n=${e.n}`;
       if (e.srs && e.dueDelta != null) {
-        txt += ` · next ${humanIn(e.dueDelta)}`;
+        txt += `, next ${humanIn(e.dueDelta)}`;
       }
       meta.textContent = txt;
     }
@@ -340,7 +340,7 @@ function renderList() {
  * is appended so the user sees how many reps they've stacked on the case. */
 function dueLabel(deltaSec, box) {
   const overdueDays = Math.max(0, Math.floor((-(deltaSec || 0)) / 86400));
-  const boxStr = box ? ` · box ${box}` : "";
+  const boxStr = box ? ` (box ${box})` : "";
   if (overdueDays === 0) return "due now" + boxStr;
   if (overdueDays === 1) return "due 1d ago" + boxStr;
   return `due ${overdueDays}d ago` + boxStr;

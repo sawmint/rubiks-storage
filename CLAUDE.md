@@ -36,7 +36,7 @@ The visual redesign that lived in `ui-lab.html` has been **merged into the live 
 ## Architecture
 Single `CATEGORIES` table in `app.js` drives tabs, search, filters, cards, and **feature gating** via per-category flags (`drillable`, `recognitionMode`). Adding a category (ZBLL, COLL, scrambles, etc.) = one new row + matching data in the JSON.
 
-The **Notation** tab is a reference grid built off the same machinery — it has its own row in `CATEGORIES` (`key: "notation"`, `drillable: false`) and pulls items from a hardcoded `NOTATION_DATA` array in `app.js` instead of the JSON dataset. Each notation entry is shaped like a regular algorithm item (`id`, `name`, `algorithm`, `setup`), so the existing card renderer + colorizer work without changes.
+The **Notation** tab is a reference grid built off the same machinery — it has its own row in `CATEGORIES` (`key: "notation"`, `drillable: false`) and pulls items from a hardcoded `NOTATION_DATA` array in `app.js` instead of the JSON dataset. Each notation entry is shaped like a regular algorithm item (`id`, `name`, `algorithm`, `setup`), so the existing card renderer + colorizer work without changes. The card image is a real cube preview rendered by `vcImage` (the move applied to a solved cube in WCA orientation), not the move letter overlay used previously — rotation moves get `view: "trans"` so the cube's rotated body is visible, everything else uses the default plan view.
 
 Extension hooks per category:
 - `getItems(data) → Item[]` — the rows to show in that tab
@@ -53,7 +53,9 @@ Extension hooks per category:
 
 Each renderer (`renderHome`, `renderBrowse`, `renderPractice`, `renderTimer`, `renderStats`, `renderSettings`) builds its DOM with `document.createElement` + `root.replaceChildren(...)` (no virtual DOM — full re-render on every state change, simple and fast for this scale).
 
-The four modal-based modules (`drill.js`, `recognition.js`, `batch.js`, `weak-cases.js`) still open via `modal.js` on top of the page. The `Timer` mode is NOT a modal — it mounts inline into `#page-timer` via `timer.js`'s `mountTimer(host)` and unmounts on page-switch via `unmountTimer()`.
+**Drill / Batch / Recognition are full pages**, not modals. They mount into a single shared `#page-session` host via `openSessionPage({ title, body, onLeave, returnTo })` (exported from `app.js`). The header is a `← Back` button + module title; clicking Back routes to `returnTo` (defaults to `"practice"`). Top-bar navigation also fires the `onLeave` cleanup via `setActivePage`'s prev-page hook, so users can route away without leaking key handlers or in-progress sessions. Each module's `start()` calls `openSessionPage` instead of `modal.open` and passes its `endSession` as `onLeave`. The previous modal-based approach was replaced because long-lived sessions (drilling 20 cases at a time) read poorly as a popup the user can accidentally backdrop-close.
+
+Only `weak-cases.js` and `auth-ui.js` still use `modal.js` — those are short single-purpose pickers that don't suffer the same "feels like an interrupt" problem. The `Timer` mode is NOT a modal — it mounts inline into `#page-timer` via `timer.js`'s `mountTimer(host)` and unmounts on page-switch via `unmountTimer()`.
 
 **No legacy DOM.** The old shell + its `legacy-triggers` hidden trigger buttons are gone. Module entry points are direct function calls — `app.js` exports `openTimer / openWeakCases / openDrill(keys?) / openBatch(keys?) / openRecognition(keys?)` and every Practice / Home button invokes those.
 
@@ -67,7 +69,9 @@ The four modal-based modules (`drill.js`, `recognition.js`, `batch.js`, `weak-ca
 
 `renderBrowse` shows a search bar + category chips + the matching facet chip row + an `.alg-card` grid. Cards are informational — title, colored algorithm notation, meta rows, and a 3-column footer (`best / reps / recog`).
 
-The footer always renders the same three columns whether or not data exists; missing values show as em-dashes (`—`). This is a grid (`grid-template-columns: repeat(3, 1fr)`) so card heights and column positions are consistent across the grid, not just within "drilled" or "untried" subsets. There used to be branches that rendered 2 spans for `untried` and 1–3 spans for partial data — those produced jittery alignment and confusing labels like `no best · no reps · 100% recog`. Gone now.
+Browse cards are **explicitly non-clickable**: no hover lift, `cursor: default`, no click handler, no selected state painted. Reference only. Case selection happens on the Practice page (see "Practice picker"). The earlier hover/selected styling that hinted at clickability was misleading because clicking did nothing.
+
+The footer always renders the same three columns whether or not data exists; missing values show as em-dashes (`—`). This is a grid (`grid-template-columns: repeat(3, 1fr)`) so card heights and column positions are consistent across the grid, not just within "drilled" or "untried" subsets. There used to be branches that rendered 2 spans for `untried` and 1–3 spans for partial data — those produced jittery alignment and confusing labels like `no best, no reps, 100% recog`. Gone now. Footer values are stacked label-above-number in mono caps (`BEST` / `REPS` / `RECOG`) for a flatter, cleaner read; no top border separating them from the meta row above.
 
 Search placeholder is `"Search algorithms…"` — short enough to fit the 220px input without truncation across all viewports. (The earlier `"Search by name, id, algorithm, recognition…"` was getting cut to `"Search by name,id,algorithm,r"` on narrow widths.)
 
@@ -77,7 +81,7 @@ Search placeholder is `"Search algorithms…"` — short enough to fit the 220px
 - **Top bar**: label ("Drill" / "Today's drill" / "Recognition" / "Batch (5)") + selection-count meta + Start CTA
 - **Category chips** (`.picker-cat-row`): `2L PLL` / `PLL` / `2L OLL` / `OLL`. Batch submode restricts to PLL-only chips (it ignores OLL anyway)
 - **Facet chips** (`.picker-facet-row`): whatever the picked category's `filterFacets` exposes. For PLL: the 11-tag system. For 2L PLL: only `Headlights` and `Diagonal`. For OLL / 2L OLL: shape chips
-- **Action row** (`.picker-actions-row`): `Select all in view` (auto-flips to `Deselect all in view` when everything visible is already selected) + `Clear selection` + `N/M in view · K total` counter
+- **Action row** (`.picker-actions-row`): `Select all in view` (auto-flips to `Deselect all in view` when everything visible is already selected) + `N/M in view, K total` counter. `Clear selection` was moved out — it lives in stage-top next to the Start CTA so the two selection-mutating actions are grouped
 - **Card grid** (`.picker-grid`): every case in the picked category, filtered by chips. Click a card to toggle. Card layout is face-on-left (100px) + meta-on-right (cat/name/best). Grid scrolls inside the stage when content overflows
 
 Today's drill submode is special — it doesn't show the picker (selection isn't user-driven there). Instead it renders a weak-cases preview grid using the same `.picker-card` styling so the visual language is consistent.
@@ -118,7 +122,7 @@ Per-case reset via the ↺ button on the card badge; reset-all via header button
 
 ## Drill mode behavior
 
-`drill.js` opens the drill modal. Spacebar-style timer (hold to arm, release to start, any key to stop) with tap-anywhere fallback for touch.
+`drill.js` mounts the drill body into the shared session page (see "Drill / Batch / Recognition" above). Spacebar-style timer (hold to arm, release to start, any key to stop) with tap-anywhere fallback for touch.
 
 - **Auto-advance** between cases is **500ms** (`AUTO_ADVANCE_MS`). The earlier 1200ms felt sluggish; 500ms matches the recognition trainer's "Fast" preset.
 - **Single-case sessions** (`session.items.length === 1`) skip the auto-advance setTimeout entirely and show `"Saved. Hit space to drill again."` instead of `"Loading next case…"`. Without this guard, `drawFromBag()` re-draws the same index and the UI looks stuck because nothing visually changes.
@@ -176,6 +180,10 @@ F2L algorithms sourced from **rubiksplace.com** (algdb.net was down at generatio
 Case visualizations come from VisualCube at `https://visualcube.api.cubing.net/visualcube.php`. URL is built in `vcImage()` (app.js). For PLL/OLL, pass `setup` (forward-applied via `alg=` param). For F2L, pass `caseAlg` (inverse-applied via `case=` param — no setup precomputed because F2L isn't drillable). Click-to-load with retry to avoid flooding the API.
 
 `vcImage` also accepts an optional `sch` param (6-letter VisualCube color scheme, order **U R F D L B**). Timer scramble preview passes `sch: "wrgyob"` to render with white-on-top WCA orientation (white up, red right, green front, yellow down, orange left, blue back) — matching how a cuber physically holds the cube while scrambling. PLL/OLL/F2L cards leave `sch` unset and use the VisualCube default (yellow-up) since the existing card visuals were designed against that.
+
+`vcImage` also forces `co=000000` (cubie outline = solid black) on every call. VisualCube's default outline is a light grey that reads as a transparent gap between stickers against the warm-dark UI. The Notation tab uses the same helper but with `sch: "wrgyob"` so the move previews land in WCA orientation — rotations (`x`/`y`/`z`) pass `view: "trans"` so the whole cube body is visible after the rotation, everything else uses `view: "plan"`.
+
+The "WCA: white top" orientation hint is no longer a page-level ribbon. It's a small `.with-wca-badge` overlay applied to individual cube previews (timer's corner preview, the solve-info popup preview). Any new cube preview that uses `sch: "wrgyob"` should also get the `with-wca-badge` class on its wrapper so the orientation hint is local to the image, not buried in page chrome.
 
 ## Timer
 The Timer is **embedded inline** in `#page-timer` via `timer.js`'s `mountTimer(host)`, not a fullscreen modal. The same `.timer-modal` class is still set on the wrapper (`timer-inline-host .timer-modal`) so the existing timer CSS in `styles.css` keeps applying. `mountTimer` is idempotent — re-rendering the page doesn't blow up live timer state; `unmountTimer` is called from `setActivePage` when navigating away.
@@ -261,11 +269,9 @@ To regenerate `pll-compose.json` (if PLL setups change or new ones are added), s
 Tokenizer uses a regex negative lookahead `(?![A-Za-z])` plus a MANUAL lookbehind (index check inside the tokenize loop) so prose like "fix" or "Right" doesn't get partially colored. Regex literals with `(?<=...)` are a SyntaxError on iOS Safari < 16.4 — using one would kill the module at parse time and cascade-blank the whole PWA on older phones, so the lookbehind is done in JS. The post-modifier lookahead is also dropped when a non-empty modifier matched (`'` and `2` are unambiguous move terminators), so `R'U` tokenizes cleanly as `R'` + `U` even without a space. Whitespace, parens, and unknown chars fall through as raw escaped text.
 
 ## Solve info editor (per-row "info" pill)
-`info` text pill in each timer-solves row opens a backdrop-overlaid editor card (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` with z-index 1000, sitting above the timer modal. The card title is `Solve info · 12.34s`. Three sections: the colored scramble notation, a VisualCube preview of the scrambled state (white-on-top WCA orientation), and a multi-line note textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes. The note persists at `sess.solves[i].comment` (schema was already in place); pill gets an `.active` class when a note exists.
+`info` pill in each timer-solves row opens a backdrop-overlaid editor (`.timer-comment-backdrop` / `.timer-comment-pop`) attached to `document.body` (NOT inside the solves list — the sessions listener rebuilds the list on every solve/penalty/comment change and would wipe in-progress typing). Title is `Solve info — 12.34s`. Sections: colored scramble notation, WCA-orientation cube preview (with `.with-wca-badge`), note textarea. Ctrl/⌘+Enter saves, Esc cancels, backdrop click closes (only if both mousedown AND click hit the backdrop, so text-selection drags don't dismiss). Note persists at `sess.solves[i].comment`; pill gets `.active` when a note exists.
 
-Key architectural note: the editor lives on `document.body`, NOT inside the solves list. The timer's sessions listener runs `renderSolvesList` (which does `list.innerHTML = ""`) on every solve/penalty/comment change — if the editor were inside the list, it would be wiped along with the user's in-progress typing. Same reason any popover spawned from inside the timer modal should follow this pattern. The backdrop also tracks `mousedown` target: it only closes on click if BOTH mousedown and click landed on the backdrop, so a text-selection drag from the textarea to outside the card doesn't throw away the user's typing.
-
-`attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")`, returning a `close()` function used by every dismissal path. Applied to session-manager and settings popovers (the comment editor uses backdrop-click only) — without it the document-level click listeners leaked. The setTimeout-deferred `addEventListener` checks a `closed` flag before adding, so a popover dismissed in the same tick doesn't leak the listener. No scroll-close: the modal panel scrolls internally on small viewports, so a scroll-close handler would snap-close the popover the moment the user scrolled the modal content underneath.
+`attachPopoverDismiss(pop, anchor)` in timer.js pairs `pop.remove()` with `removeEventListener("click")`, returning a `close()` used by every dismissal path. Applied to session-manager + settings popovers. The setTimeout-deferred `addEventListener` checks a `closed` flag so a popover dismissed in the same tick doesn't leak the listener. No scroll-close (modal panel scrolls internally on small viewports).
 
 ## Session export + import
 `sessions.exportSession(id)` and `sessions.exportAll()` return pretty-printed JSON envelopes (`{kind, schema, exportedAt, ...}`). Triggered from the session-manager popover: per-session `export` pill, `Export all` footer button. Download via Blob + `<a download>` (`downloadJson`, `slugify`, `dateStamp` helpers in timer.js). Filenames: `{slugified-name}-{YYYY-MM-DD}.json` per session, `rubiks-storage-sessions-{date}.json` for all.
@@ -344,11 +350,24 @@ For events to fire, the four tables must be in the `supabase_realtime` publicati
 
 `applyRemoteSession` deliberately never deactivates locally from a remote `is_active=false` write — the local user might be mid-something. Active flips only when the remote asserts `is_active=true`. `applyRemoteSolve` skips orphan rows (parent session not yet streamed in) rather than crashing.
 
-## UI redesign sandbox (`ui-lab.html`) — MERGED
+## Visual cleanup pass
 
-This file used to be the live sandbox for the next visual direction; that direction has now **shipped in `index.html` + `styles.css`**. `ui-lab.html` is kept as a historical reference (decision log + design tokens) but is no longer the source of truth for any screen — the live app is.
+A round of UI scrubbing changed several standing patterns. Re-read this before re-introducing any of the removed pieces:
 
-Standing design tokens that survived the merge into the live app:
+- **Middle dots (`·`) banned from UI text**. Every `· ` separator across `app.js / batch.js / drill.js / recognition.js / weak-cases.js / timer.js` was replaced with `— ` (em dash with spaces, for strong category-level separation) or `, ` (for inline lists). Don't reintroduce `·` in user-facing strings. Source code comments may still contain it (e.g. `sessions.js` Big-O notes).
+- **`formatDelta(0, suffix)` returns `"0 suffix"`**, not `"± 0 suffix"`. The `±` looked apologetic for zero-change weeks.
+- **Section dividers removed** across `.submode-row`, `.picker-cat-row`, `.picker-facet-row`, `.picker-actions-row`, and `.practice-stage-v2`. The earlier `border-bottom: 1px solid var(--border)` lines made every screen look like a settings form. Spacing alone separates groups now.
+- **Home page is 2-column** (`.home-grid.home-grid-2col`). The "Your path" milestones column was deleted — the focus strip + SRS queue already convey the same progression in a less goal-y way. `computeMilestones()` is dead code; harmless and left in case the column comes back.
+- **Settings about-footer trimmed to 2 cells** (Account + Links). The "App / Tip" cells were noise. Slim variant uses `.settings-about.settings-about-slim` with `grid-template-columns: repeat(2, 1fr)`. The settings page-body uses `:has(.settings-shell)` to flex-fill the viewport so the about row gets pushed to the bottom instead of leaving a dead strip.
+- **Stats page**: the `.mastery-grid`, the "Algorithm mastery" header, the "X solves across N sessions since you started" ribbon, and the "WCA orientation: white top" right-side text are all gone. `drawMastery()` remains in the file as harmless dead code. The orientation hint moved to a per-preview `.with-wca-badge` overlay (see Images section).
+- **Clear selection** moved from the Practice page-head + picker actions row into the stage-top CTAs next to the Start button. Both selection-mutating actions are grouped now. The page-head and the actions row no longer carry their own Clear button.
+- **Practice picker grid**: `auto-fit, minmax(360px, max-content)` (was `auto-fill, minmax(380px, 1fr)`) so trailing empty tracks collapse instead of stretching the last visible card across the right gutter. Cards are capped at `max-width: 420px` and use `100px minmax(200px, max-content)` columns so the meta column sizes to its content.
+- **Timer stats footer = two labeled groups**: `current` (solve / ao5 / ao12 / mean) on top, `best` (single / ao5 / ao12 / count) below. Each group has a small mono-caps header. No backgrounds or borders on the individual `.timer-stat` cells — the grouping label carries the structure. This replaced the flat 2×4 block that read as undifferentiated noise.
+- **`displayNameFor(user)`** in `app.js` is the canonical helper for showing a user's name. It tries `user_metadata.full_name → name → given_name`, then falls back to the email local-part split on `.` / `-` / `_` / `+` and title-cased. Account chip + settings greeting both go through it. Don't re-implement `email.split("@")[0]` inline.
+
+## Design tokens + standing feedback
+
+`ui-lab.html` is the historical sandbox — every locked decision below has shipped into the live `index.html` + `styles.css`. Don't iterate new screens in the sandbox.
 
 ### Locked design tokens
 

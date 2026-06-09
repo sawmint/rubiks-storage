@@ -9,11 +9,10 @@
  * Timer state machine: idle → armed → running → stopped → idle (next)
  * ========================================================= */
 
-import * as modal from "./modal.js";
 import * as selection from "./selection.js";
 import * as stats from "./stats.js";
 import { buildScramble } from "./cube-notation.js";
-import { vcImage } from "./app.js";
+import { vcImage, openSessionPage } from "./app.js";
 import { renderHtml as colorizeAlg } from "./alg-color.js";
 
 let session = null;
@@ -33,7 +32,7 @@ export function start(data, keys) {
     );
 
   if (resolved.length === 0) {
-    modal.open({
+    openSessionPage({
       title: "Drill",
       body: messageBody("Select at least one PLL or OLL case to drill."),
     });
@@ -52,10 +51,10 @@ export function start(data, keys) {
   };
 
   const body = buildBody();
-  modal.open({
-    title: `Drill (${resolved.length} cases)`,
+  openSessionPage({
+    title: `Drill — ${resolved.length} case${resolved.length === 1 ? "" : "s"}`,
     body,
-    onClose: () => endSession(),
+    onLeave: () => endSession(),
   });
 
   attachKeyHandlers();
@@ -175,7 +174,7 @@ function next() {
   ci.innerHTML = "";
   const label = document.createElement("span");
   label.className = "drill-label";
-  label.textContent = (category === "pll" ? "PLL" : "OLL") + " · " + item.name;
+  label.textContent = (category === "pll" ? "PLL" : "OLL") + " — " + item.name;
   ci.appendChild(label);
 
   // Image (rendered from setup, not the case's own algorithm string)

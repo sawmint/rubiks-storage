@@ -238,7 +238,7 @@ function buildBody() {
 
   // Preview
   const preview = document.createElement("div");
-  preview.className = "timer-preview";
+  preview.className = "timer-preview with-wca-badge";
   session.ui.preview = preview;
   main.appendChild(preview);
 
@@ -323,15 +323,30 @@ function renderStatsFooter() {
   const bestAo5  = sessions.fmtMs(sessions.bestAverage(solves, 5));
   const bestAo12 = sessions.fmtMs(sessions.bestAverage(solves, 12));
 
+  // Two-row cstimer-style layout:
+  //   row 1 ("current"): solve | ao5 | ao12 | mean
+  //   row 2 ("best"):    best  | best ao5 | best ao12 | count
+  // The visual grouping makes "what was my latest" vs "what's my record"
+  // readable at a glance instead of all 8 values in one flat 2×4 block.
   session.ui.statsFooter.innerHTML = `
-    <div class="timer-stat"><div class="timer-stat-label">solve</div><div class="timer-stat-val">${cur}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">ao5</div><div class="timer-stat-val">${ao5}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">ao12</div><div class="timer-stat-val">${ao12}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">mean</div><div class="timer-stat-val">${meanV}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">best</div><div class="timer-stat-val">${bestS}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">best ao5</div><div class="timer-stat-val">${bestAo5}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">best ao12</div><div class="timer-stat-val">${bestAo12}</div></div>
-    <div class="timer-stat"><div class="timer-stat-label">count</div><div class="timer-stat-val">${solves.length}</div></div>
+    <div class="timer-stats-group timer-stats-group-current">
+      <div class="timer-stats-group-label">current</div>
+      <div class="timer-stats-row">
+        <div class="timer-stat"><div class="timer-stat-label">solve</div><div class="timer-stat-val">${cur}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">ao5</div><div class="timer-stat-val">${ao5}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">ao12</div><div class="timer-stat-val">${ao12}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">mean</div><div class="timer-stat-val">${meanV}</div></div>
+      </div>
+    </div>
+    <div class="timer-stats-group timer-stats-group-best">
+      <div class="timer-stats-group-label">best</div>
+      <div class="timer-stats-row">
+        <div class="timer-stat"><div class="timer-stat-label">single</div><div class="timer-stat-val">${bestS}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">ao5</div><div class="timer-stat-val">${bestAo5}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">ao12</div><div class="timer-stat-val">${bestAo12}</div></div>
+        <div class="timer-stat"><div class="timer-stat-label">count</div><div class="timer-stat-val">${solves.length}</div></div>
+      </div>
+    </div>
   `;
 }
 
@@ -446,7 +461,7 @@ function openCommentPopover(anchor, solve) {
   head.className = "timer-comment-head";
   const headTitle = document.createElement("div");
   headTitle.className = "timer-comment-title";
-  headTitle.textContent = `Solve info · ${sessions.fmtSolve(solve)}`;
+  headTitle.textContent = `Solve info — ${sessions.fmtSolve(solve)}`;
   head.appendChild(headTitle);
   const closeBtn = document.createElement("button");
   closeBtn.type = "button";
@@ -471,7 +486,7 @@ function openCommentPopover(anchor, solve) {
 
   if (solve.scramble) {
     const previewWrap = document.createElement("div");
-    previewWrap.className = "timer-comment-preview-wrap";
+    previewWrap.className = "timer-comment-preview-wrap with-wca-badge";
     const previewImg = document.createElement("img");
     previewImg.className = "timer-comment-preview";
     previewImg.alt = "Scrambled cube state";
@@ -503,7 +518,7 @@ function openCommentPopover(anchor, solve) {
   // Hint row (keyboard shortcuts)
   const hint = document.createElement("div");
   hint.className = "timer-comment-hint";
-  hint.textContent = "Ctrl/⌘+Enter to save · Esc to cancel";
+  hint.textContent = "Ctrl/⌘+Enter to save, Esc to cancel";
   card.appendChild(hint);
 
   // Actions
@@ -607,7 +622,7 @@ function penaltySummary(s) {
   if (ins === "+2") parts.push("+2 from inspection");
   if (man === "+2") parts.push("+2 manual");
   if (parts.length === 0) return "none";
-  if (parts.length === 2) return parts.join(" · ") + " → total +4";
+  if (parts.length === 2) return parts.join(" + ") + " → total +4";
   return parts[0];
 }
 
