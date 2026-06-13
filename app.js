@@ -441,25 +441,26 @@ function bindWorkspaceBar() {
 const NAV_COLLAPSE_KEY = "rs-nav-collapsed-v1";
 function bindSidebarCollapse() {
   const app = document.querySelector(".app");
-  const toggle = document.getElementById("ws-collapse");
-  if (!app || !toggle) return;
+  const collapseBtn = document.getElementById("ws-collapse");  // inside the sidebar
+  const expandBtn = document.getElementById("ws-expand");      // floating, shown when collapsed
+  if (!app) return;
 
   let collapsed = false;
   try { collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === "1"; } catch (e) { /* private mode */ }
 
   const apply = () => {
     app.classList.toggle("nav-collapsed", collapsed);
-    toggle.setAttribute("aria-expanded", String(!collapsed));
-    toggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
-    toggle.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+    if (collapseBtn) collapseBtn.setAttribute("aria-expanded", String(!collapsed));
   };
   apply();
 
-  toggle.addEventListener("click", () => {
-    collapsed = !collapsed;
+  const setCollapsed = (v) => {
+    collapsed = v;
     try { localStorage.setItem(NAV_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch (e) { /* private mode */ }
     apply();
-  });
+  };
+  if (collapseBtn) collapseBtn.addEventListener("click", () => setCollapsed(true));
+  if (expandBtn) expandBtn.addEventListener("click", () => setCollapsed(false));
 }
 
 function setActivePage(page) {
