@@ -161,28 +161,45 @@
 
     .app {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      align-items: stretch;
       min-height: 100vh;
     }
 
+    /* ---------- Collapsible left sidebar (was the .ws-bar top bar) ---------- */
     .ws-bar {
       display: flex;
-      align-items: center;
-      gap: var(--s-5);
-      padding: var(--s-3) var(--s-6);
+      flex-direction: column;
+      gap: var(--s-4);
+      padding: var(--s-4) var(--s-3);
       background: var(--surface-1);
-      border-bottom: 1px solid var(--border);
+      border-right: 1px solid var(--border);
       position: sticky;
       top: 0;
+      align-self: flex-start;
+      height: 100vh;
+      width: 212px;
+      flex-shrink: 0;
       z-index: 20;
+      overflow: hidden;
+      transition: width 0.15s ease;
+    }
+    .app.nav-collapsed .ws-bar { width: 60px; }
+
+    /* Brand + collapse toggle row */
+    .ws-top {
+      display: flex;
+      align-items: center;
+      gap: var(--s-2);
+      min-height: 30px;
     }
     .ws-brand {
       display: flex;
       align-items: center;
       gap: var(--s-2);
-      padding-right: var(--s-4);
-      border-right: 1px solid var(--border);
-      margin-right: var(--s-2);
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
     }
     .ws-brand-mark {
       width: 18px;
@@ -203,16 +220,33 @@
       font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--text);
+      white-space: nowrap;
     }
+    .ws-collapse {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--r-md);
+      color: var(--text-soft);
+      cursor: pointer;
+    }
+    .ws-collapse:hover { color: var(--text); background: var(--surface-2); border-color: var(--border); }
+    .ws-collapse svg { width: 16px; height: 16px; display: block; }
+
     .ws-modes {
       display: flex;
+      flex-direction: column;
       gap: 2px;
-      flex-wrap: wrap;
-      flex: 1;
       min-width: 0;
     }
     .ws-mode {
-      padding: 6px 12px;
+      padding: 8px 10px;
       background: transparent;
       border: 1px solid transparent;
       color: var(--text-soft);
@@ -223,9 +257,11 @@
       letter-spacing: -0.005em;
       cursor: pointer;
       user-select: none;
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: var(--s-2);
+      gap: var(--s-3);
+      width: 100%;
+      text-align: left;
     }
     .ws-mode:hover { color: var(--text); background: var(--surface-2); }
     .ws-mode.active {
@@ -234,11 +270,12 @@
       border-color: var(--border);
     }
     .ws-mode-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 1.5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
       flex-shrink: 0;
     }
+    .ws-mode-label { white-space: nowrap; overflow: hidden; }
     .ws-mode[data-page="home"]     .ws-mode-dot { background: var(--cube-white); }
     .ws-mode[data-page="browse"]   .ws-mode-dot { background: var(--cube-blue); }
     .ws-mode[data-page="practice"] .ws-mode-dot { background: var(--cube-red); }
@@ -246,10 +283,10 @@
     .ws-mode[data-page="stats"]    .ws-mode-dot { background: var(--cube-yellow); }
     .ws-mode[data-page="settings"] .ws-mode-dot { background: var(--cube-green); }
 
-    .ws-user { display: flex; align-items: center; gap: var(--s-2); }
+    .ws-user { margin-top: auto; display: flex; }
     .ws-account {
-      min-width: 30px;
-      height: 30px;
+      width: 100%;
+      min-height: 34px;
       padding: 0 10px;
       background: var(--surface-3);
       border: 1px solid var(--border);
@@ -259,19 +296,34 @@
       font-weight: 600;
       color: var(--text);
       cursor: pointer;
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       letter-spacing: 0;
+      text-align: left;
     }
     .ws-account:hover { border-color: var(--muted); }
+    .ws-account-icon { width: 15px; height: 15px; flex-shrink: 0; display: none; color: var(--text-soft); }
+    .ws-account-icon svg { width: 100%; height: 100%; display: block; }
     .ws-account-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
       background: var(--good);
+      flex-shrink: 0;
       display: inline-block;
     }
+    .ws-account-label { white-space: nowrap; overflow: hidden; }
+
+    /* Collapsed state: drop every text label, center the icons/dots */
+    .app.nav-collapsed .ws-brand-name,
+    .app.nav-collapsed .ws-mode-label,
+    .app.nav-collapsed .ws-account-label { display: none; }
+    .app.nav-collapsed .ws-top { flex-direction: column-reverse; gap: var(--s-3); }
+    .app.nav-collapsed .ws-brand { flex: 0 0 auto; }
+    .app.nav-collapsed .ws-mode { justify-content: center; padding: 8px 0; }
+    .app.nav-collapsed .ws-account { justify-content: center; padding: 0; }
+    .app.nav-collapsed .ws-account-icon { display: inline-flex; }
 
     .ws-main {
       flex: 1;
@@ -2277,27 +2329,41 @@
 <div class="app">
 
   <header class="ws-bar">
-    <div class="ws-brand">
-      <span class="ws-brand-mark" aria-hidden="true">
-        <span style="background:var(--cube-yellow)"></span>
-        <span style="background:var(--cube-red)"></span>
-        <span style="background:var(--cube-blue)"></span>
-        <span style="background:var(--cube-green)"></span>
-      </span>
-      <span class="ws-brand-name">rubik's storage</span>
+    <div class="ws-top">
+      <div class="ws-brand">
+        <span class="ws-brand-mark" aria-hidden="true">
+          <span style="background:var(--cube-yellow)"></span>
+          <span style="background:var(--cube-red)"></span>
+          <span style="background:var(--cube-blue)"></span>
+          <span style="background:var(--cube-green)"></span>
+        </span>
+        <span class="ws-brand-name">rubik's storage</span>
+      </div>
+      <button class="ws-collapse" id="ws-collapse" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="1.5" y="2.5" width="13" height="11" rx="1.5"></rect>
+          <line x1="6" y1="2.5" x2="6" y2="13.5"></line>
+        </svg>
+      </button>
     </div>
     <nav class="ws-modes" id="ws-modes">
-      <button class="ws-mode active" data-page="home">Home</button>
-      <button class="ws-mode" data-page="browse">Browse</button>
-      <button class="ws-mode" data-page="practice">Practice</button>
-      <button class="ws-mode" data-page="timer">Timer</button>
-      <button class="ws-mode" data-page="stats">Stats</button>
-      <button class="ws-mode" data-page="settings">Settings</button>
+      <button class="ws-mode active" data-page="home" title="Home"><span class="ws-mode-dot"></span><span class="ws-mode-label">Home</span></button>
+      <button class="ws-mode" data-page="browse" title="Browse"><span class="ws-mode-dot"></span><span class="ws-mode-label">Browse</span></button>
+      <button class="ws-mode" data-page="practice" title="Practice"><span class="ws-mode-dot"></span><span class="ws-mode-label">Practice</span></button>
+      <button class="ws-mode" data-page="timer" title="Timer"><span class="ws-mode-dot"></span><span class="ws-mode-label">Timer</span></button>
+      <button class="ws-mode" data-page="stats" title="Stats"><span class="ws-mode-dot"></span><span class="ws-mode-label">Stats</span></button>
+      <button class="ws-mode" data-page="settings" title="Settings"><span class="ws-mode-dot"></span><span class="ws-mode-label">Settings</span></button>
     </nav>
     <div class="ws-user">
       <button class="ws-account" id="ws-account" aria-label="Account">
+        <span class="ws-account-icon" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="5" r="2.6"></circle>
+            <path d="M2.6 13.4c0-2.6 2.4-4.2 5.4-4.2s5.4 1.6 5.4 4.2"></path>
+          </svg>
+        </span>
         <span class="ws-account-dot" id="ws-account-dot" style="display:none"></span>
-        <span id="ws-account-label">Sign in</span>
+        <span class="ws-account-label" id="ws-account-label">Sign in</span>
       </button>
     </div>
   </header>

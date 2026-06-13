@@ -406,6 +406,7 @@ async function init() {
 
   applyShowCubePreview();
   bindWorkspaceBar();
+  bindSidebarCollapse();
   bindAccount();
 
   selection.subscribe(() => {
@@ -432,6 +433,33 @@ function bindWorkspaceBar() {
   for (const btn of document.querySelectorAll(".ws-mode")) {
     btn.addEventListener("click", () => setActivePage(btn.dataset.page));
   }
+}
+
+/* Collapsible sidebar. The collapsed/expanded state is a `.nav-collapsed`
+ * class on `.app`; CSS handles the width + label hiding. Persisted across
+ * sessions in localStorage so the user's preference sticks. */
+const NAV_COLLAPSE_KEY = "rs-nav-collapsed-v1";
+function bindSidebarCollapse() {
+  const app = document.querySelector(".app");
+  const toggle = document.getElementById("ws-collapse");
+  if (!app || !toggle) return;
+
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === "1"; } catch (e) { /* private mode */ }
+
+  const apply = () => {
+    app.classList.toggle("nav-collapsed", collapsed);
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+    toggle.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  };
+  apply();
+
+  toggle.addEventListener("click", () => {
+    collapsed = !collapsed;
+    try { localStorage.setItem(NAV_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch (e) { /* private mode */ }
+    apply();
+  });
 }
 
 function setActivePage(page) {
