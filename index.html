@@ -183,18 +183,30 @@
       z-index: 20;
       overflow: hidden;
     }
-    /* Collapsed: the whole sidebar disappears; only #ws-expand remains. */
-    .app.nav-collapsed .ws-bar { display: none; }
+    /* Collapsed: the sidebar shrinks away to the right; only #ws-expand stays. */
+    .app.nav-collapsed .ws-bar {
+      width: 0;
+      padding-left: 0;
+      padding-right: 0;
+      border-left-width: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* Animate open/close. The .nav-anim guard (added one frame after load)
+       stops a localStorage-collapsed sidebar from animating shut on every load. */
+    .app.nav-anim .ws-bar {
+      transition: width 0.22s ease, padding 0.22s ease, opacity 0.16s ease;
+    }
 
-    /* Floating "open menu" button — visible only when the sidebar is hidden. */
+    /* Floating hamburger that brings the sidebar back when it's hidden. */
     .ws-expand {
-      display: none;
       position: fixed;
       top: var(--s-4);
       right: var(--s-4);
       z-index: 30;
       width: 36px;
       height: 36px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       padding: 0;
@@ -203,11 +215,31 @@
       border-radius: var(--r-md);
       color: var(--text-soft);
       cursor: pointer;
-      box-shadow: var(--shadow-float);
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.92);
+      pointer-events: none;
     }
     .ws-expand:hover { color: var(--text); background: var(--surface-3); border-color: var(--border-strong); }
     .ws-expand svg { width: 18px; height: 18px; display: block; }
-    .app.nav-collapsed .ws-expand { display: inline-flex; }
+    .app.nav-collapsed .ws-expand {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    /* Fade the hamburger in only after the sidebar has finished sliding away. */
+    .app.nav-anim .ws-expand {
+      transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+    }
+    .app.nav-anim.nav-collapsed .ws-expand {
+      transition: opacity 0.16s ease 0.14s, transform 0.16s ease 0.14s, visibility 0s;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app.nav-anim .ws-bar,
+      .app.nav-anim .ws-expand { transition: none; }
+    }
 
     /* Brand + collapse toggle row */
     .ws-top {
@@ -562,16 +594,16 @@
 
     .focus-strip {
       display: grid;
-      grid-template-columns: 130px 1fr auto;
+      grid-template-columns: 92px 1fr auto;
       gap: var(--s-5);
       align-items: center;
       padding: var(--s-5) var(--s-7);
       background: var(--surface-1);
       border-bottom: 1px solid var(--border);
     }
-    .focus-face { width: 130px; height: 130px; display: flex; align-items: center; justify-content: center; }
+    .focus-face { width: 92px; height: 92px; display: flex; align-items: center; justify-content: center; }
     .focus-face img { width: 100%; height: 100%; object-fit: contain; }
-    .focus-meta { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+    .focus-meta { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; justify-content: center; }
     .focus-eyebrow {
       font-family: var(--font-mono);
       font-size: 11px;
@@ -2381,9 +2413,10 @@
         <span class="ws-brand-name">rubik's storage</span>
       </div>
       <button class="ws-collapse" id="ws-collapse" type="button" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M4 3l4 5-4 5"></path>
-          <path d="M9 3l4 5-4 5"></path>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true">
+          <line x1="2.5" y1="4" x2="13.5" y2="4"></line>
+          <line x1="2.5" y1="8" x2="13.5" y2="8"></line>
+          <line x1="2.5" y1="12" x2="13.5" y2="12"></line>
         </svg>
       </button>
     </div>

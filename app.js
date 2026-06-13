@@ -453,6 +453,10 @@ function bindSidebarCollapse() {
     if (collapseBtn) collapseBtn.setAttribute("aria-expanded", String(!collapsed));
   };
   apply();
+  // Enable transitions only after the initial state has painted, so a
+  // sidebar restored to "collapsed" from localStorage doesn't visibly
+  // animate closed on every page load.
+  requestAnimationFrame(() => app.classList.add("nav-anim"));
 
   const setCollapsed = (v) => {
     collapsed = v;
