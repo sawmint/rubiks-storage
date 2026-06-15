@@ -1669,6 +1669,7 @@ function renderStats() {
         <p class="meta-label">Activity</p>
         <h3 class="section-title" style="margin: var(--s-2) 0 0;">14-week heatmap</h3>
         <div class="heatmap" id="stats-heatmap"></div>
+        <div class="heatmap-legend"><span>Less</span><i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><span>More</span></div>
       </div>
     </div>
 
@@ -1680,13 +1681,8 @@ function renderStats() {
         Spaced-repetition kicks in after your first drill.
       </div>` : ""}`;
 
-  // Draw the chart (best-of-rolling-ao5 over time)
   const chartHost = body.querySelector("#stats-chart");
-  drawTrendChart(chartHost, filtered);
-
-  // Heatmap of solves per (week, day-of-week) for last 14 weeks
   const heatmapHost = body.querySelector("#stats-heatmap");
-  drawHeatmap(heatmapHost, allSolves);
 
   // Mastery grid + WCA ribbon were removed from the stats page — the
   // orientation hint now lives as a small badge on individual cube
@@ -1697,6 +1693,11 @@ function renderStats() {
   if (goBrowse2) goBrowse2.addEventListener("click", () => setActivePage("browse"));
 
   root.replaceChildren(head, submodeRow, body);
+
+  // Draw AFTER mounting so the hosts report real pixel dimensions — lets the
+  // SVG map its viewBox 1:1 to the host (crisp text, fluid width, no stretch).
+  drawTrendChart(chartHost, filtered);
+  drawHeatmap(heatmapHost, allSolves);
 }
 
 function rangeLabel(r) {
@@ -1711,32 +1712,100 @@ function filterByRange(solves, range) {
   return solves.filter((s) => s.date >= cutoff);
 }
 
-function drawTrendChart(host, solves) {
-  if (!solves || solves.length < 2) {
-    host.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-family:var(--font-mono); font-size:12px;">Need at least 2 solves to plot a trend.</div>`;
-    return;
+function drawTrendChart(host, solvesIn) {
+  if (!host) return;
+  const empty = (msg) => { host.innerHTML = `<div class="chart-empty">${msg}</div>`; };
+  if (!solvesIn || solvesIn.length < 2) return empty("Need at least 2 solves to plot a trend.");
+
+  // Chronological order so x = solve order and the PB/date labels line up.
+  const solves = [...solvesIn].sort((a, b) => (a.date || 0) - (b.date || 0));
+  const N = solves.length;
+  const singles = solves.map((s) => sessions.effectiveMs(s));          // ms | Infinity (DNF)
+  const ao5 = solves.map((s, i) =>                                     // rolling ao5, aligned to index
+    i >= 4 ? sessions.trimmedAverage(solves.slice(i - 4, i + 1), 5) : null);
+
+  const finite = [];
+  for (const v of singles) if (isFinite(v)) finite.push(v);
+  for (const v of ao5) if (v != null && isFinite(v)) finite.push(v);
+  if (finite.length < 2) return empty("All solves in range are DNF.");
+
+  let yMin = Math.min(...finite);
+  let yMax = Math.max(...finite);
+  if (yMax === yMin) yMax = yMin + 1;
+  const padY = (yMax - yMin) * 0.08;
+  yMin -= padY; yMax += padY;
+
+  const W = Math.max(host.clientWidth || 600, 280);
+  const H = Math.max(host.clientHeight || 220, 150);
+  const ML = 50, MR = 12, MT = 16, MB = 22;
+  const plotW = W - ML - MR;
+  const plotH = H - MT - MB;
+  const xs = (i) => ML + (N === 1 ? plotW / 2 : (i / (N - 1)) * plotW);
+  const ys = (t) => MT + plotH - ((t - yMin) / (yMax - yMin)) * plotH;
+
+  // Horizontal gridlines + y-axis time labels.
+  const TICKS = 4;
+  let grid = "", yLabels = "";
+  for (let k = 0; k <= TICKS; k++) {
+    const val = yMin + (k / TICKS) * (yMax - yMin);
+    const y = ys(val).toFixed(1);
+    grid += `<line x1="${ML}" y1="${y}" x2="${W - MR}" y2="${y}" stroke="var(--border)" stroke-width="1" />`;
+    yLabels += `<text x="${ML - 7}" y="${(+y + 3).toFixed(1)}" text-anchor="end" class="ct-axis">${sessions.fmtMs(val)}</text>`;
   }
-  const points = solves
-    .map((s, i) => ({ x: i, y: sessions.effectiveMs(s) }))
-    .filter((p) => isFinite(p.y));
-  if (points.length < 2) {
-    host.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); font-family:var(--font-mono); font-size:12px;">All solves in range are DNF.</div>`;
-    return;
+  // Left axis line.
+  grid += `<line x1="${ML}" y1="${MT}" x2="${ML}" y2="${MT + plotH}" stroke="var(--border)" stroke-width="1" />`;
+
+  // X-axis date labels (~4 evenly spaced).
+  const idxs = N <= 4 ? solves.map((_, i) => i)
+    : [0, Math.round((N - 1) / 3), Math.round((2 * (N - 1)) / 3), N - 1];
+  let xLabels = "";
+  const seen = new Set();
+  for (const i of idxs) {
+    if (seen.has(i)) continue; seen.add(i);
+    const d = new Date(solves[i].date);
+    const lbl = isFinite(d.getTime()) ? `${d.getMonth() + 1}/${d.getDate()}` : `#${i + 1}`;
+    xLabels += `<text x="${xs(i).toFixed(1)}" y="${H - 6}" text-anchor="middle" class="ct-axis">${lbl}</text>`;
   }
-  const minY = Math.min(...points.map((p) => p.y));
-  const maxY = Math.max(...points.map((p) => p.y));
-  const range = Math.max(maxY - minY, 1);
-  const w = 600, h = 200;
-  const pad = 10;
-  const innerW = w - pad * 2;
-  const innerH = h - pad * 2;
-  const xs = (x) => pad + (x / Math.max(points.length - 1, 1)) * innerW;
-  const ys = (y) => pad + innerH - ((y - minY) / range) * innerH;
-  const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${xs(p.x).toFixed(1)} ${ys(p.y).toFixed(1)}`).join(" ");
+
+  // Build a path string with gaps (move, not line) wherever the value is missing.
+  const linePath = (vals) => {
+    let d = "", drawn = false;
+    for (let i = 0; i < N; i++) {
+      const v = vals[i];
+      if (v == null || !isFinite(v)) { drawn = false; continue; }
+      d += `${drawn ? "L" : "M"}${xs(i).toFixed(1)} ${ys(v).toFixed(1)} `;
+      drawn = true;
+    }
+    return d.trim();
+  };
+  const sPath = linePath(singles);
+  const aPath = linePath(ao5);
+
+  // PB single marker.
+  let pbVal = Infinity, pbIdx = -1;
+  for (let i = 0; i < N; i++) if (isFinite(singles[i]) && singles[i] < pbVal) { pbVal = singles[i]; pbIdx = i; }
+  let pbMark = "";
+  if (pbIdx >= 0) {
+    const cx = xs(pbIdx).toFixed(1), cy = ys(pbVal).toFixed(1);
+    pbMark = `<circle cx="${cx}" cy="${cy}" r="3.5" fill="none" stroke="var(--good)" stroke-width="1.5" />
+      <text x="${cx}" y="${(+cy - 7).toFixed(1)}" text-anchor="middle" class="ct-pb">PB ${sessions.fmtMs(pbVal)}</text>`;
+  }
+
+  const hasAo5 = aPath.length > 0;
+  const legend = `<g transform="translate(${ML + 6}, ${MT})">
+      <line x1="0" y1="0" x2="15" y2="0" stroke="var(--text-faint)" stroke-width="1.5" />
+      <text x="20" y="3" class="ct-axis">single</text>
+      ${hasAo5 ? `<line x1="62" y1="0" x2="77" y2="0" stroke="var(--accent)" stroke-width="2" />
+      <text x="82" y="3" class="ct-axis">ao5</text>` : ""}
+    </g>`;
+
   host.innerHTML = `
-    <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-      <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" />
-      ${points.slice(-1).map((p) => `<circle cx="${xs(p.x).toFixed(1)}" cy="${ys(p.y).toFixed(1)}" r="3" fill="var(--accent)" />`).join("")}
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none">
+      ${grid}
+      <path d="${sPath}" fill="none" stroke="var(--text-faint)" stroke-width="1.25" opacity="0.7" vector-effect="non-scaling-stroke" />
+      ${hasAo5 ? `<path d="${aPath}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" />` : ""}
+      ${pbMark}
+      ${yLabels}${xLabels}${legend}
     </svg>`;
 }
 
