@@ -183,21 +183,25 @@
       z-index: 20;
       overflow: hidden;
     }
-    /* Collapsed: the sidebar shrinks to a thin rail that shows only the arrow.
-       Everything else (logo, nav, account) fades out and is clipped away. */
+    /* Collapsed: thin rail. The logo is hidden, but the arrow + section icons
+       stay (centered, labels clipped away) so you can still navigate. */
     .app.nav-collapsed .ws-bar {
       width: 52px;
       padding-left: var(--s-2);
       padding-right: var(--s-2);
     }
-    .app.nav-collapsed .ws-brand,
-    .app.nav-collapsed .ws-modes,
-    .app.nav-collapsed .ws-user {
+    .app.nav-collapsed .ws-brand {
       opacity: 0;
       pointer-events: none;
+      flex: 0 0 0;
+      width: 0;
     }
-    .app.nav-collapsed .ws-brand { flex: 0 0 0; width: 0; }
     .app.nav-collapsed .ws-top { justify-content: center; gap: 0; }
+    .app.nav-collapsed .ws-mode-label,
+    .app.nav-collapsed .ws-account-label,
+    .app.nav-collapsed .ws-account-dot { display: none; }
+    .app.nav-collapsed .ws-mode { justify-content: center; padding: 8px 0; }
+    .app.nav-collapsed .ws-account { justify-content: center; padding: 0; }
     /* Arrow points right while open (→ "collapse"); flips to point left while
        collapsed (← "expand"). */
     .app.nav-collapsed .ws-collapse svg { transform: rotate(180deg); }
@@ -207,9 +211,7 @@
     .app.nav-anim .ws-bar {
       transition: width 0.24s ease, padding 0.24s ease;
     }
-    .app.nav-anim .ws-brand,
-    .app.nav-anim .ws-modes,
-    .app.nav-anim .ws-user {
+    .app.nav-anim .ws-brand {
       transition: opacity 0.16s ease;
     }
     .app.nav-anim .ws-collapse svg {
@@ -219,8 +221,6 @@
     @media (prefers-reduced-motion: reduce) {
       .app.nav-anim .ws-bar,
       .app.nav-anim .ws-brand,
-      .app.nav-anim .ws-modes,
-      .app.nav-anim .ws-user,
       .app.nav-anim .ws-collapse svg { transition: none; }
     }
 
