@@ -441,16 +441,17 @@ function bindWorkspaceBar() {
 const NAV_COLLAPSE_KEY = "rs-nav-collapsed-v1";
 function bindSidebarCollapse() {
   const app = document.querySelector(".app");
-  const collapseBtn = document.getElementById("ws-collapse");  // inside the sidebar
-  const expandBtn = document.getElementById("ws-expand");      // floating, shown when collapsed
-  if (!app) return;
+  const toggleBtn = document.getElementById("ws-collapse");  // the arrow at the top of the rail
+  if (!app || !toggleBtn) return;
 
   let collapsed = false;
   try { collapsed = localStorage.getItem(NAV_COLLAPSE_KEY) === "1"; } catch (e) { /* private mode */ }
 
   const apply = () => {
     app.classList.toggle("nav-collapsed", collapsed);
-    if (collapseBtn) collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+    toggleBtn.setAttribute("aria-expanded", String(!collapsed));
+    toggleBtn.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+    toggleBtn.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
   };
   apply();
   // Enable transitions only after the initial state has painted, so a
@@ -458,13 +459,11 @@ function bindSidebarCollapse() {
   // animate closed on every page load.
   requestAnimationFrame(() => app.classList.add("nav-anim"));
 
-  const setCollapsed = (v) => {
-    collapsed = v;
+  toggleBtn.addEventListener("click", () => {
+    collapsed = !collapsed;
     try { localStorage.setItem(NAV_COLLAPSE_KEY, collapsed ? "1" : "0"); } catch (e) { /* private mode */ }
     apply();
-  };
-  if (collapseBtn) collapseBtn.addEventListener("click", () => setCollapsed(true));
-  if (expandBtn) expandBtn.addEventListener("click", () => setCollapsed(false));
+  });
 }
 
 function setActivePage(page) {
