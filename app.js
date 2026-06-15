@@ -675,6 +675,62 @@ function renderHome() {
     focusEl.querySelector('[data-act="browse"]').addEventListener("click", () => setActivePage("browse"));
   }
 
+  /* Learning path — 2-look foundations → 1-look mastery */
+  const pathEl = document.createElement("section");
+  pathEl.className = "path";
+  const stages = computePathStages();
+  const tierHtml = (tier, label) => {
+    const cards = stages
+      .map((s, gi) => ({ s, gi }))
+      .filter((x) => x.s.tier === tier)
+      .map(({ s, gi }, i) => {
+        const statusCls = s.done ? "done" : s.current ? "current" : "";
+        const status = s.done ? "✓ Complete" : (s.drillable ? `${s.learned || 0}/${s.total}` : `${s.total} cases`);
+        const cta = s.drillable ? (s.done ? "Review →" : "Practice →") : "Browse →";
+        return `
+          <article class="path-stage ${statusCls}" data-stage-idx="${gi}" style="--stage-accent: var(${s.color});">
+            <div class="path-stage-top">
+              <span class="path-stage-num">${tier * 3 + i + 1}</span>
+              <span class="path-stage-status">${status}</span>
+            </div>
+            <h3 class="path-stage-name">${escapeHtml(s.name)}</h3>
+            <p class="path-stage-desc">${escapeHtml(s.desc)}</p>
+            ${s.drillable
+              ? `<div class="path-bar"><div class="path-bar-fill" style="width:${s.pct}%;"></div></div>`
+              : `<div class="path-ref">Reference — learn by solving</div>`}
+            <span class="path-stage-cta">${cta}</span>
+          </article>`;
+      })
+      .join('<div class="path-connector" aria-hidden="true">›</div>');
+    return `
+      <div class="path-tier">
+        <div class="path-tier-label">${escapeHtml(label)}</div>
+        <div class="path-stages">${cards}</div>
+      </div>`;
+  };
+  pathEl.innerHTML = `
+    <div class="path-head">
+      <h2 class="home-col-title">Your learning path</h2>
+      <span class="path-sub">From 2-look foundations to 1-look mastery</span>
+    </div>
+    ${tierHtml(0, "Foundations — 2-look")}
+    ${tierHtml(1, "Mastery — 1-look")}`;
+  for (const el of pathEl.querySelectorAll(".path-stage[data-stage-idx]")) {
+    const s = stages[Number(el.dataset.stageIdx)];
+    el.addEventListener("click", () => {
+      if (s.drillable) {
+        selection.clear();
+        for (const it of s.items) selection.toggle(s.cat, it.id);
+        openDrill();
+      } else if (s.browse) {
+        browseState.category = s.browse;
+        browseState.filters = {};
+        browseState.search = "";
+        setActivePage("browse");
+      }
+    });
+  }
+
   /* Workshop grid */
   const grid = document.createElement("div");
   grid.className = "home-grid home-grid-2col";
@@ -782,7 +838,39 @@ function renderHome() {
     }
   }
 
-  root.replaceChildren(focusEl, grid, strip);
+  root.replaceChildren(focusEl, pathEl, grid, strip);
+}
+
+/* The CFOP learning path: 2-look foundations → 1-look mastery. Each stage
+ * maps to a pool of cases. Drillable stages (OLL/PLL) track real progress
+ * from drill stats; F2L stages are reference-only (not drillable yet). */
+function computePathStages() {
+  const d = appState.data;
+  const all = stats.getAll();
+  const learnedCount = (cat, items) =>
+    items.filter((it) => (all[`${cat}/${it.id}`]?.drill?.n || 0) > 0).length;
+
+  const oll2 = d.oll.filter(isTwoLookOll);
+  const pll2 = d.pll.filter(isTwoLookPll);
+  const f2lBeg = d.f2l.beginner;
+  const f2lAll = [...d.f2l.advanced, ...d.f2l.beginner];
+
+  const stages = [
+    { tier: 0, name: "Basic F2L",  desc: "First two layers, intuitively",     drillable: false, browse: "f2l_beg", cat: "f2l", color: "--cube-green",  items: f2lBeg, total: f2lBeg.length },
+    { tier: 0, name: "2-Look OLL", desc: "Orient the last layer in two algs", drillable: true,  cat: "oll", color: "--cube-yellow", items: oll2, total: oll2.length, learned: learnedCount("oll", oll2) },
+    { tier: 0, name: "2-Look PLL", desc: "Permute the last layer in two algs", drillable: true, cat: "pll", color: "--cube-blue",   items: pll2, total: pll2.length, learned: learnedCount("pll", pll2) },
+    { tier: 1, name: "Full F2L",   desc: "Every pair, solved with look-ahead", drillable: false, browse: "f2l_adv", cat: "f2l", color: "--cube-green", items: f2lAll, total: f2lAll.length },
+    { tier: 1, name: "Full OLL",   desc: "Orient in a single algorithm",       drillable: true,  cat: "oll", color: "--cube-yellow", items: d.oll, total: d.oll.length, learned: learnedCount("oll", d.oll) },
+    { tier: 1, name: "Full PLL",   desc: "Permute in a single algorithm",      drillable: true,  cat: "pll", color: "--cube-blue",   items: d.pll, total: d.pll.length, learned: learnedCount("pll", d.pll) },
+  ];
+  for (const s of stages) {
+    s.pct = s.total ? Math.round(((s.learned || 0) / s.total) * 100) : 0;
+    s.done = s.drillable && s.total > 0 && (s.learned || 0) >= s.total;
+  }
+  // The current stage is the first drillable one not yet complete.
+  const cur = stages.find((s) => s.drillable && !s.done);
+  if (cur) cur.current = true;
+  return stages;
 }
 
 function computeMilestones() {
@@ -1809,13 +1897,18 @@ function drawTrendChart(host, solvesIn) {
     </svg>`;
 }
 
+// How many weeks (columns) the activity heatmap spans. Bump or drop this one
+// number to resize the whole grid — the column count, the date window, and the
+// CSS grid track count all derive from it.
+const HEATMAP_WEEKS = 14;
+
 function drawHeatmap(host, solves) {
   const cells = [];
   const now = new Date();
-  // Build 14 columns × 7 rows. Each cell = one day. Columns ordered oldest→newest left→right.
+  // HEATMAP_WEEKS columns × 7 rows. Each cell = one day, oldest→newest L→R.
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const oldest = new Date(today);
-  oldest.setDate(today.getDate() - (14 * 7 - 1));
+  oldest.setDate(today.getDate() - (HEATMAP_WEEKS * 7 - 1));
   // Count solves per day
   const counts = new Map();
   for (const s of solves) {
@@ -1823,11 +1916,10 @@ function drawHeatmap(host, solves) {
     const key = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate();
     counts.set(key, (counts.get(key) || 0) + 1);
   }
-  // We render row-by-day, with 14 columns. We need cells in row-major order
-  // for CSS grid (which the .heatmap uses 14 columns).
-  // Build a 14*7 array, going week-by-week, day-by-day.
+  // Cells in row-major order for the CSS grid (HEATMAP_WEEKS columns).
+  host.style.gridTemplateColumns = `repeat(${HEATMAP_WEEKS}, 1fr)`;
   for (let row = 0; row < 7; row++) {
-    for (let col = 0; col < 14; col++) {
+    for (let col = 0; col < HEATMAP_WEEKS; col++) {
       const dayOffset = col * 7 + row;
       const d = new Date(oldest);
       d.setDate(oldest.getDate() + dayOffset);
