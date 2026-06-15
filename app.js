@@ -617,105 +617,49 @@ function renderHome() {
   const root = document.getElementById("page-home");
   if (!appState.data) return;
 
-  // Milestone-aware so the recommendation aligns with the sidebar:
-  // a user on the Two-look CFOP milestone gets a 2-look case, not a
-  // random 1-look advanced case from the full pool.
-  const weakAll = rankWeakCases(["pll", "oll"], 24, { milestoneAware: true });
-  const weak = weakAll.filter((c) => !skippedFocusKeys.has(c.key));
-  const focus = weak[0] || null;
-  const upNext = weak.slice(1, 5);
-  const week = computeWeekStats();
-  const recents = computeRecentSessions();
-  const milestones = computeMilestones();
-
-  /* Focus strip */
-  const focusEl = document.createElement("div");
-  focusEl.className = "focus-strip";
-  if (focus) {
-    focusEl.innerHTML = `
-      <div class="focus-face">
-        <img src="${vcImageFor(focus)}" alt="${escapeHtml(focus.item.name)}" loading="lazy" />
-      </div>
-      <div class="focus-meta">
-        <span class="focus-eyebrow">${focusEyebrow(focus)}</span>
-        <h1 class="focus-name">${focus.category.toUpperCase()} ${escapeHtml(focus.item.name)}</h1>
-        <div class="focus-alg">${colorizeAlg(focus.item.algorithm)}</div>
-      </div>
-      <div class="focus-actions">
-        <button class="btn" data-act="skip">Skip</button>
-        <button class="btn btn-primary" data-act="start">Start drill →</button>
-      </div>`;
-    focusEl.querySelector('[data-act="skip"]').addEventListener("click", () => {
-      // Mark this case as skipped for the rest of the session - the next
-      // renderHome() will surface the next-weakest as the focus. Skipped
-      // set is in-memory only (cleared on reload) since the underlying
-      // SRS schedule + actual practice is what determines tomorrow's focus.
-      skippedFocusKeys.add(focus.key);
-      renderHome();
-    });
-    focusEl.querySelector('[data-act="start"]').addEventListener("click", () => {
-      selection.clear();
-      selection.toggle(focus.category, focus.item.id);
-      openDrill();
-    });
-  } else {
-    focusEl.style.gridTemplateColumns = "1fr auto";
-    focusEl.innerHTML = `
-      <div class="focus-meta">
-        <span class="focus-eyebrow">Today's drill</span>
-        <h1 class="focus-name">Pick a starting point.</h1>
-        <div class="focus-alg" style="color: var(--text-soft);">
-          Head to Browse and select a few PLL or OLL cases to start drilling.
-          We'll surface the weakest ones here as you practice.
-        </div>
-      </div>
-      <div class="focus-actions">
-        <button class="btn btn-primary" data-act="browse">Browse algorithms →</button>
-      </div>`;
-    focusEl.querySelector('[data-act="browse"]').addEventListener("click", () => setActivePage("browse"));
-  }
-
-  /* Learning path — 2-look foundations → 1-look mastery */
-  const pathEl = document.createElement("section");
-  pathEl.className = "path";
   const stages = computePathStages();
-  const tierHtml = (tier, label) => {
-    const cards = stages
-      .map((s, gi) => ({ s, gi }))
-      .filter((x) => x.s.tier === tier)
-      .map(({ s, gi }, i) => {
-        const statusCls = s.done ? "done" : s.current ? "current" : "";
-        const status = s.done ? "✓ Complete" : (s.drillable ? `${s.learned || 0}/${s.total}` : `${s.total} cases`);
-        const cta = s.drillable ? (s.done ? "Review →" : "Practice →") : "Browse →";
-        return `
-          <article class="path-stage ${statusCls}" data-stage-idx="${gi}" style="--stage-accent: var(${s.color});">
-            <div class="path-stage-top">
-              <span class="path-stage-num">${tier * 3 + i + 1}</span>
-              <span class="path-stage-status">${status}</span>
-            </div>
-            <h3 class="path-stage-name">${escapeHtml(s.name)}</h3>
-            <p class="path-stage-desc">${escapeHtml(s.desc)}</p>
-            ${s.drillable
-              ? `<div class="path-bar"><div class="path-bar-fill" style="width:${s.pct}%;"></div></div>`
-              : `<div class="path-ref">Reference — learn by solving</div>`}
-            <span class="path-stage-cta">${cta}</span>
-          </article>`;
-      })
-      .join('<div class="path-connector" aria-hidden="true">›</div>');
+  // Phase labels sit inline on the single path, before stage 1 and stage 4.
+  const PHASES = { 0: "Foundations — 2-look", 3: "Mastery — 1-look" };
+  const checkSvg = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7.5"></path></svg>`;
+
+  const nodeHtml = (s, gi) => {
+    const cls = s.done ? "done" : s.current ? "current" : "upcoming";
+    const status = s.done ? "Complete" : (s.drillable ? `${s.learned || 0} / ${s.total}` : `${s.total} cases`);
+    const cta = s.drillable ? (s.done ? "Review" : "Practice") : "Browse";
+    const body = s.drillable
+      ? `<div class="lp-bar"><div class="lp-bar-fill" style="width:${s.pct}%;"></div></div>`
+      : `<span class="lp-ref">Reference — learn by solving</span>`;
     return `
-      <div class="path-tier">
-        <div class="path-tier-label">${escapeHtml(label)}</div>
-        <div class="path-stages">${cards}</div>
-      </div>`;
+      <li class="lp-node ${cls}" data-stage-idx="${gi}" style="--cube: var(${s.color});">
+        <div class="lp-marker">${s.done ? checkSvg : `<span>${gi + 1}</span>`}</div>
+        <div class="lp-card">
+          <div class="lp-card-head">
+            <h2 class="lp-name">${escapeHtml(s.name)}</h2>
+            <span class="lp-status">${status}</span>
+          </div>
+          <p class="lp-desc">${escapeHtml(s.desc)}</p>
+          ${body}
+          <span class="lp-cta">${cta} →</span>
+        </div>
+      </li>`;
   };
+
+  let items = `<span class="lp-spine" aria-hidden="true"></span><span class="lp-spine-fill" aria-hidden="true"></span>`;
+  stages.forEach((s, gi) => {
+    if (PHASES[gi]) items += `<li class="lp-phase">${escapeHtml(PHASES[gi])}</li>`;
+    items += nodeHtml(s, gi);
+  });
+
+  const pathEl = document.createElement("section");
+  pathEl.className = "lp";
   pathEl.innerHTML = `
-    <div class="path-head">
-      <h2 class="home-col-title">Your learning path</h2>
-      <span class="path-sub">From 2-look foundations to 1-look mastery</span>
-    </div>
-    ${tierHtml(0, "Foundations — 2-look")}
-    ${tierHtml(1, "Mastery — 1-look")}`;
-  for (const el of pathEl.querySelectorAll(".path-stage[data-stage-idx]")) {
+    <header class="lp-head">
+      <h1 class="lp-title">Your learning <em>path</em></h1>
+      <p class="lp-sub">From 2-look foundations to 1-look mastery</p>
+    </header>
+    <ol class="lp-track">${items}</ol>`;
+
+  for (const el of pathEl.querySelectorAll(".lp-node[data-stage-idx]")) {
     const s = stages[Number(el.dataset.stageIdx)];
     el.addEventListener("click", () => {
       if (s.drillable) {
@@ -731,114 +675,26 @@ function renderHome() {
     });
   }
 
-  /* Workshop grid */
-  const grid = document.createElement("div");
-  grid.className = "home-grid home-grid-2col";
+  root.replaceChildren(pathEl);
 
-  // (The "Your path" milestones column was removed — the focus strip + SRS
-  // queue already convey the same progression in a less goal-y way.)
-
-  // Recommended next
-  const col2 = document.createElement("div");
-  const upHtml = upNext.length
-    ? upNext.map((c) => `
-        <div class="upnext" data-key="${escapeHtml(c.key)}">
-          <div class="upnext-face">
-            <img src="${vcImageFor(c, 80)}" alt="${escapeHtml(c.item.name)}" loading="lazy" />
-          </div>
-          <div class="upnext-meta">
-            <span class="upnext-cat">${c.category.toUpperCase()}${c.item.group ? " " + escapeHtml(c.item.group) : ""}${c.item.shape ? " " + escapeHtml(c.item.shape) : ""}</span>
-            <span class="upnext-name">${escapeHtml(c.item.name)}</span>
-            <span class="upnext-alg">${colorizeAlg(c.item.algorithm)}</span>
-            <span class="upnext-best">best <strong>${escapeHtml(stats.fmtTime(c.best))}</strong></span>
-          </div>
-          <button class="btn btn-small" data-act="drill">Drill →</button>
-        </div>`).join("")
-    : `<div class="upnext" style="grid-template-columns: 1fr; cursor:default;"><div class="upnext-meta"><span class="upnext-cat">No recommendations yet</span><span class="upnext-name" style="font-size:14px; font-weight:500;">Drill a few cases to start the spaced-repetition queue.</span></div></div>`;
-  col2.innerHTML = `
-    <h2 class="home-col-title">
-      Recommended next
-      <span class="home-col-title-meta">${upNext.length} cases</span>
-    </h2>
-    <div class="upnext-list">${upHtml}</div>`;
-  for (const el of col2.querySelectorAll(".upnext[data-key]")) {
-    const key = el.dataset.key;
-    const startDrill = () => {
-      const parts = key.split("/");
-      selection.clear();
-      selection.toggle(parts[0], parts.slice(1).join("/"));
-      openDrill();
-    };
-    el.addEventListener("click", (e) => {
-      if (e.target.closest("[data-act='drill']")) startDrill();
-      else startDrill();
-    });
+  // Size the spine to span the first→last marker, and fill it with accent up to
+  // the current (or last completed) node. Done post-mount so rects are real.
+  const track = pathEl.querySelector(".lp-track");
+  const markers = [...pathEl.querySelectorAll(".lp-node .lp-marker")];
+  if (track && markers.length) {
+    const tr = track.getBoundingClientRect();
+    const centerY = (m) => { const r = m.getBoundingClientRect(); return (r.top + r.height / 2) - tr.top; };
+    const firstY = centerY(markers[0]);
+    const lastY = centerY(markers[markers.length - 1]);
+    const spine = pathEl.querySelector(".lp-spine");
+    const fill = pathEl.querySelector(".lp-spine-fill");
+    spine.style.top = `${firstY}px`;
+    spine.style.height = `${Math.max(0, lastY - firstY)}px`;
+    const target = pathEl.querySelector(".lp-node.current .lp-marker")
+      || [...pathEl.querySelectorAll(".lp-node.done .lp-marker")].pop();
+    fill.style.top = `${firstY}px`;
+    fill.style.height = `${target ? Math.max(0, centerY(target) - firstY) : 0}px`;
   }
-  grid.appendChild(col2);
-
-  // This week stats
-  const col3 = document.createElement("div");
-  col3.innerHTML = `
-    <h2 class="home-col-title">
-      This week
-      <span class="home-col-title-meta">Last 7 days</span>
-    </h2>
-    <div class="stat-tile">
-      <p class="stat-label">Solves</p>
-      <p class="stat-value">${week.solves}</p>
-      <p class="stat-delta ${week.solvesDelta < 0 ? "negative" : week.solvesDelta === 0 ? "neutral" : ""}">${formatDelta(week.solvesDelta, "vs last week")}</p>
-    </div>
-    <div class="stat-tile">
-      <p class="stat-label">ao12</p>
-      <p class="stat-value">${week.ao12 != null ? sessions.fmtMs(week.ao12) : "-"}</p>
-      <p class="stat-delta neutral">${week.solves >= 12 ? "session ao12" : "more solves needed"}</p>
-    </div>
-    <div class="stat-tile">
-      <p class="stat-label">Drill reps</p>
-      <p class="stat-value">${week.drillReps}</p>
-      <p class="stat-delta neutral">${week.drillReps === 0 ? "no reps yet" : "this week"}</p>
-    </div>`;
-  grid.appendChild(col3);
-
-  /* Recent sessions strip */
-  const strip = document.createElement("div");
-  strip.className = "recent-strip";
-  if (recents.length === 0) {
-    strip.innerHTML = `
-      <div class="recent-head">
-        <h2>Recent sessions</h2>
-        <a data-act="open-timer">Open the timer →</a>
-      </div>
-      <div class="recent-grid"><div style="grid-column:1/-1; padding: var(--s-5); border: 1px dashed var(--border); border-radius: var(--r-md); color: var(--muted); text-align:center; font-family: var(--font-mono); font-size: 12px;">No timer sessions yet. Press "Open the timer" above to start a session.</div></div>`;
-    strip.querySelector('[data-act="open-timer"]').addEventListener("click", () => setActivePage("timer"));
-  } else {
-    strip.innerHTML = `
-      <div class="recent-head">
-        <h2>Recent sessions</h2>
-        <a data-act="see-all">See all →</a>
-      </div>
-      <div class="recent-grid">
-        ${recents.map((r) => `
-          <div class="recent-card" data-id="${escapeHtml(r.id)}">
-            <div class="recent-card-head"><span>${escapeHtml(r.dateLabel)}</span><span>${r.count} solve${r.count===1?"":"s"}</span></div>
-            <div class="recent-card-best">${r.last != null ? sessions.fmtMs(r.last) : "-"}</div>
-            <div class="recent-card-meta">
-              <span>ao5 <b>${r.ao5 != null ? sessions.fmtMs(r.ao5) : "-"}</b></span>
-              <span>best <b>${r.best != null ? sessions.fmtMs(r.best) : "-"}</b></span>
-            </div>
-          </div>`).join("")}
-      </div>`;
-    strip.querySelector('[data-act="see-all"]').addEventListener("click", () => setActivePage("timer"));
-    for (const card of strip.querySelectorAll(".recent-card")) {
-      card.addEventListener("click", () => {
-        const id = card.dataset.id;
-        if (id) sessions.setActiveSession(id);
-        setActivePage("timer");
-      });
-    }
-  }
-
-  root.replaceChildren(focusEl, pathEl, grid, strip);
 }
 
 /* The CFOP learning path: 2-look foundations → 1-look mastery. Each stage
