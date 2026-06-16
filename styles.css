@@ -108,6 +108,10 @@
 /* ----- reset-ish ----- */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* Hide the page (document) scrollbar — keep wheel/keyboard/trackpad scrolling.
+   Scoped to the document so inner scroll areas keep their own scrollbars. */
+html, body { scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar, body::-webkit-scrollbar { width: 0; height: 0; display: none; }
 body {
   font-family: var(--font-sans);
   background: var(--bg);
